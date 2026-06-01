@@ -12,6 +12,10 @@ export default function GlobalMiniPlayer() {
     currentTime,
     duration,
     seekTo,
+    playNext,
+    playPrevious,
+    queue,
+    currentIndex,
   } = useAudio();
   const insets = useSafeAreaInsets();
 
@@ -22,6 +26,9 @@ export default function GlobalMiniPlayer() {
   const coverSource = currentSong.artworkUrl
     ? { uri: currentSong.artworkUrl }
     : require("../../assets/images/icon.png");
+
+  const hasNext = currentIndex < queue.length - 1;
+  const hasPrevious = currentIndex > 0 || currentTime > 5;
 
   return (
     <View style={[styles.miniPlayerContainer, { bottom: dynamicBottom }]}>
@@ -37,13 +44,39 @@ export default function GlobalMiniPlayer() {
           </Text>
         </View>
 
-        <TouchableOpacity onPress={togglePlayPause} style={styles.playButton}>
-          <Ionicons
-            name={playing ? "pause-circle" : "play-circle"}
-            size={38}
-            color="#1DB954"
-          />
-        </TouchableOpacity>
+        <View style={styles.controlsContainer}>
+          <TouchableOpacity
+            onPress={playPrevious}
+            disabled={!hasPrevious}
+            style={styles.controlButton}
+          >
+            <Ionicons
+              name="play-back"
+              size={24}
+              color={hasPrevious ? "#fff" : "#555"}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={togglePlayPause} style={styles.playButton}>
+            <Ionicons
+              name={playing ? "pause-circle" : "play-circle"}
+              size={38}
+              color="#1DB954"
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={playNext}
+            disabled={!hasNext}
+            style={styles.controlButton}
+          >
+            <Ionicons
+              name="play-forward"
+              size={24}
+              color={hasNext ? "#fff" : "#555"}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.sliderContainer}>
@@ -107,8 +140,15 @@ const styles = StyleSheet.create({
     color: "#b3b3b3",
     fontSize: 12,
   },
+  controlsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  controlButton: {
+    paddingHorizontal: 6,
+  },
   playButton: {
-    paddingLeft: 6,
+    paddingHorizontal: 6,
   },
   sliderContainer: {
     width: "100%",

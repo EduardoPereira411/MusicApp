@@ -45,7 +45,7 @@ export default function HomeScreen() {
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  const { currentSong, playing, playNewSong, togglePlayPause } = useAudio();
+  const { currentSong, playing, playSongNow, addToQueue } = useAudio();
 
   useEffect(() => {
     fetchAllDataInitial();
@@ -150,21 +150,7 @@ export default function HomeScreen() {
   }
 
   async function playSong(song: Song) {
-    try {
-      const creds = await authStorage.getCredentials();
-      const params = await getSubsonicAuthParams();
-      if (!creds || !params) return;
-
-      if (currentSong?.id === song.id) {
-        togglePlayPause();
-        return;
-      }
-
-      const nextStreamUrl = `${creds.serverUrl}/rest/stream.view?${params}&id=${song.id}`;
-      playNewSong(song, nextStreamUrl);
-    } catch (error) {
-      console.error("Error initiating stream:", error);
-    }
+    playSongNow(song);
   }
 
   const renderSongItem = ({ item }: { item: Song }) => {
@@ -172,29 +158,39 @@ export default function HomeScreen() {
     const isPlaying = isCurrent && playing;
 
     return (
-      <TouchableOpacity
-        style={[styles.itemCard, isCurrent && styles.activeCard]}
-        onPress={() => playSong(item)}
-      >
-        <Image
-          source={{ uri: item.artworkUrl }}
-          style={styles.cardArt}
-          contentFit="cover"
-          transition={200}
-        />
-        <View style={styles.infoContainer}>
-          <Text
-            style={[styles.mainText, isCurrent && styles.activeText]}
-            numberOfLines={1}
-          >
-            {item.title}
+      <View style={[styles.itemCard, isCurrent && styles.activeCard]}>
+        <TouchableOpacity
+          style={{ flex: 1, flexDirection: "row", alignItems: "center" }}
+          onPress={() => playSong(item)}
+        >
+          <Image
+            source={{ uri: item.artworkUrl }}
+            style={styles.cardArt}
+            contentFit="cover"
+            transition={200}
+          />
+          <View style={styles.infoContainer}>
+            <Text
+              style={[styles.mainText, isCurrent && styles.activeText]}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
+            <Text style={styles.subText} numberOfLines={1}>
+              {item.artist} {item.album ? `• ${item.album}` : ""}
+            </Text>
+          </View>
+          <Text style={styles.actionStatus}>{isPlaying ? "⏸" : "▶"}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ paddingLeft: 12, paddingVertical: 8 }}
+          onPress={() => addToQueue(item)}
+        >
+          <Text style={{ color: "#1DB954", fontSize: 12, fontWeight: "bold" }}>
+            + QUEUE
           </Text>
-          <Text style={styles.subText} numberOfLines={1}>
-            {item.artist} {item.album ? `• ${item.album}` : ""}
-          </Text>
-        </View>
-        <Text style={styles.actionStatus}>{isPlaying ? "⏸" : "▶"}</Text>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
     );
   };
 

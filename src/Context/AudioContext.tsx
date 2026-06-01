@@ -4,6 +4,7 @@ import {
   useAudioPlayerStatus,
   setAudioModeAsync,
 } from "expo-audio";
+import { authStorage, getSubsonicAuthParams } from "../Services/subsonicAuth";
 
 interface Song {
   id: string;
@@ -16,10 +17,15 @@ interface Song {
 
 interface AudioContextType {
   currentSong: Song | null;
+  queue: Song[];
+  currentIndex: number;
   playing: boolean;
   duration: number;
   currentTime: number;
-  playNewSong: (song: Song, streamUrl: string) => void;
+  playSongNow: (song: Song) => void;
+  addToQueue: (song: Song) => void;
+  playNext: () => void;
+  playPrevious: () => void;
   togglePlayPause: () => void;
   seekTo: (seconds: number) => void;
 }
@@ -27,10 +33,16 @@ interface AudioContextType {
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
-  const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [queue, setQueue] = useState<Song[]>([]);
+  const [currentIndex, setCurrentIndex] = useState<number>(-1);
 
   const player = useAudioPlayer();
   const status = useAudioPlayerStatus(player);
+
+  const currentSong =
+    currentIndex >= 0 && currentIndex < queue.length
+      ? queue[currentIndex]
+      : null;
 
   useEffect(() => {
     setAudioModeAsync({
@@ -55,21 +67,68 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [player, currentSong]);
 
-  useEffect(() => {
-    if (
-      currentSong &&
-      !status.playing &&
-      status.currentTime > 0 &&
-      status.currentTime >= (status.duration || 1)
-    ) {
-      setCurrentSong(null);
+  async function getStreamUrl(songId: string): Promise<string | null> {
+    try {
+      const creds = await authStorage.getCredentials();
+      const params = await getSubsonicAuthParams();
+      if (!creds || !params) return null;
+      return `${creds.serverUrl}/rest/stream.view?${params}&id=${songId}`;
+    } catch (e) {
+      console.error("Error generating stream link:", e);
+      return null;
     }
-  }, [status.playing, status.currentTime, status.duration]);
+  }
 
-  const playNewSong = (song: Song, url: string) => {
-    setCurrentSong(song);
+  async function loadSongAtIndex(index: number) {
+    if (index < 0 || index >= queue.length) return;
+
+    const targetSong = queue[index];
+    const url = await getStreamUrl(targetSong.id);
+    if (!url) return;
+
+    setCurrentIndex(index);
     player.replace({ uri: url });
     player.play();
+  }
+
+  const playSongNow = async (song: Song) => {
+    if (currentSong?.id === song.id) {
+      togglePlayPause();
+      return;
+    }
+
+    const url = await getStreamUrl(song.id);
+    if (!url) return;
+
+    const newQueue = [song];
+    setQueue(newQueue);
+    setCurrentIndex(0);
+
+    player.replace({ uri: url });
+    player.play();
+  };
+
+  const addToQueue = (song: Song) => {
+    setQueue((prev) => [...prev, song]);
+    // If nothing was playing, jump right into it
+    if (queue.length === 0) {
+      setCurrentIndex(0);
+      playSongNow(song);
+    }
+  };
+
+  const playNext = () => {
+    if (currentIndex < queue.length - 1) {
+      loadSongAtIndex(currentIndex + 1);
+    } else {
+      console.log("Queue complete.");
+    }
+  };
+
+  const playPrevious = () => {
+    if (currentIndex > 0) {
+      loadSongAtIndex(currentIndex - 1);
+    }
   };
 
   const togglePlayPause = () => {
@@ -86,14 +145,37 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Monitor playback progression to auto-advance when a track hits its end
+  useEffect(() => {
+    if (
+      currentSong &&
+      !status.playing &&
+      status.currentTime > 0 &&
+      status.currentTime >= (status.duration || 1)
+    ) {
+      if (currentIndex < queue.length - 1) {
+        playNext();
+      } else {
+        // Clear out all queue when last song is finished
+        setCurrentIndex(-1);
+        setQueue([]);
+      }
+    }
+  }, [status.playing, status.currentTime, status.duration]);
+
   return (
     <AudioContext.Provider
       value={{
         currentSong,
+        queue,
+        currentIndex,
         playing: status.playing,
         duration: status.duration,
         currentTime: status.currentTime,
-        playNewSong,
+        playSongNow,
+        addToQueue,
+        playNext,
+        playPrevious,
         togglePlayPause,
         seekTo,
       }}
