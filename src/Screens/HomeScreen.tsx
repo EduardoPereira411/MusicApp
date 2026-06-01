@@ -6,33 +6,13 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  TextStyle,
   RefreshControl,
 } from "react-native";
 import { authStorage, getSubsonicAuthParams } from "../Services/subsonicAuth";
 import { useAudio } from "@/Context/AudioContext";
-import { Image } from "expo-image";
-
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  album?: string;
-  artworkUrl?: string;
-}
-
-interface Album {
-  id: string;
-  name: string;
-  artist: string;
-  artworkUrl?: string;
-}
-
-interface Artist {
-  id: string;
-  name: string;
-  albumCount?: number;
-}
+import { SongItem, Song } from "@/Components/SongItem";
+import { AlbumItem, Album } from "@/Components/AlbumItem";
+import { ArtistItem, Artist } from "@/Components/ArtistItem";
 
 type SectionType = "tracks" | "albums" | "artists";
 
@@ -139,103 +119,52 @@ export default function HomeScreen() {
 
   async function handleRefresh() {
     setIsRefreshing(true);
-    if (activeSection === "tracks") {
-      await fetchTracks();
-    } else if (activeSection === "albums") {
-      await fetchAlbums();
-    } else if (activeSection === "artists") {
-      await fetchArtists();
-    }
+    if (activeSection === "tracks") await fetchTracks();
+    else if (activeSection === "albums") await fetchAlbums();
+    else if (activeSection === "artists") await fetchArtists();
     setIsRefreshing(false);
   }
 
-  async function playSong(song: Song) {
-    playSongNow(song);
-  }
-
-  const renderSongItem = ({ item }: { item: Song }) => {
-    const isCurrent = item.id === currentSong?.id;
-    const isPlaying = isCurrent && playing;
-
-    return (
-      <View style={[styles.itemCard, isCurrent && styles.activeCard]}>
-        <TouchableOpacity
-          style={{ flex: 1, flexDirection: "row", alignItems: "center" }}
-          onPress={() => playSong(item)}
-        >
-          <Image
-            source={{ uri: item.artworkUrl }}
-            style={styles.cardArt}
-            contentFit="cover"
-            transition={200}
-          />
-          <View style={styles.infoContainer}>
-            <Text
-              style={[styles.mainText, isCurrent && styles.activeText]}
-              numberOfLines={1}
-            >
-              {item.title}
-            </Text>
-            <Text style={styles.subText} numberOfLines={1}>
-              {item.artist} {item.album ? `• ${item.album}` : ""}
-            </Text>
-          </View>
-          <Text style={styles.actionStatus}>{isPlaying ? "⏸" : "▶"}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={{ paddingLeft: 12, paddingVertical: 8 }}
-          onPress={() => addToQueue(item)}
-        >
-          <Text style={{ color: "#1DB954", fontSize: 12, fontWeight: "bold" }}>
-            + QUEUE
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
+  const getListDataAndRenderer = () => {
+    switch (activeSection) {
+      case "tracks":
+        return {
+          data: songs,
+          emptyText: "No tracks found.",
+          renderItem: ({ item }: { item: any }) => (
+            <SongItem
+              item={item}
+              isCurrent={item.id === currentSong?.id}
+              isPlaying={item.id === currentSong?.id && playing}
+              onPlay={playSongNow}
+              onAddToQueue={addToQueue}
+            />
+          ),
+        };
+      case "albums":
+        return {
+          data: albums,
+          emptyText: "No albums found.",
+          renderItem: ({ item }: { item: any }) => (
+            <AlbumItem
+              item={item}
+              onPress={(id) => console.log("Album:", id)}
+            />
+          ),
+        };
+      case "artists":
+        return {
+          data: artists,
+          emptyText: "No artists found.",
+          renderItem: ({ item }: { item: any }) => (
+            <ArtistItem
+              item={item}
+              onPress={(id) => console.log("Artist:", id)}
+            />
+          ),
+        };
+    }
   };
-
-  const renderAlbumItem = ({ item }: { item: Album }) => (
-    <TouchableOpacity
-      style={styles.itemCard}
-      onPress={() => console.log("Album selected:", item.id)}
-    >
-      <Image
-        source={{ uri: item.artworkUrl }}
-        style={styles.cardArt}
-        contentFit="cover"
-        transition={200}
-      />
-      <View style={styles.infoContainer}>
-        <Text style={styles.mainText} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text style={styles.subText} numberOfLines={1}>
-          {item.artist}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-
-  const renderArtistItem = ({ item }: { item: Artist }) => (
-    <TouchableOpacity
-      style={styles.itemCard}
-      onPress={() => console.log("Artist selected:", item.id)}
-    >
-      <View style={[styles.cardArt, styles.artistAvatarPlaceholder]}>
-        <Text style={{ color: "#fff", fontWeight: "bold" }}>
-          {item.name.charAt(0)}
-        </Text>
-      </View>
-      <View style={styles.infoContainer}>
-        <Text style={styles.mainText} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text style={styles.subText}>
-          {item.albumCount ? `${item.albumCount} Albums` : "Artist"}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
 
   if (initialLoading) {
     return (
@@ -244,6 +173,8 @@ export default function HomeScreen() {
       </View>
     );
   }
+
+  const listConfig = getListDataAndRenderer();
 
   return (
     <View style={styles.container}>
@@ -272,62 +203,22 @@ export default function HomeScreen() {
       </View>
 
       <View style={{ flex: 1 }}>
-        {activeSection === "tracks" && (
-          <FlatList
-            data={songs}
-            keyExtractor={(item) => item.id}
-            renderItem={renderSongItem}
-            contentContainerStyle={styles.listContainer}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={handleRefresh}
-                tintColor="#1DB954"
-              />
-            }
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No tracks found.</Text>
-            }
-          />
-        )}
-
-        {activeSection === "albums" && (
-          <FlatList
-            data={albums}
-            keyExtractor={(item) => item.id}
-            renderItem={renderAlbumItem}
-            contentContainerStyle={styles.listContainer}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={handleRefresh}
-                tintColor="#1DB954"
-              />
-            }
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No albums found.</Text>
-            }
-          />
-        )}
-
-        {activeSection === "artists" && (
-          <FlatList
-            data={artists}
-            keyExtractor={(item) => item.id}
-            renderItem={renderArtistItem}
-            contentContainerStyle={styles.listContainer}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={handleRefresh}
-                tintColor="#1DB954"
-              />
-            }
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No artists found.</Text>
-            }
-          />
-        )}
+        <FlatList
+          data={listConfig.data}
+          keyExtractor={(item) => item.id}
+          renderItem={listConfig.renderItem}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor="#1DB954"
+            />
+          }
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>{listConfig.emptyText}</Text>
+          }
+        />
       </View>
     </View>
   );
@@ -378,54 +269,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingBottom: 100,
-  },
-  itemCard: {
-    backgroundColor: "#1e1e1e",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  activeCard: {
-    backgroundColor: "#282828",
-    borderColor: "#1DB954",
-    borderWidth: 1,
-  },
-  cardArt: {
-    width: 55,
-    height: 55,
-    borderRadius: 6,
-    backgroundColor: "#333",
-    marginRight: 14,
-  },
-  artistAvatarPlaceholder: {
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 27.5,
-    backgroundColor: "#444",
-  },
-  infoContainer: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  mainText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
-    marginBottom: 4,
-  } as TextStyle,
-  activeText: {
-    color: "#1DB954",
-  } as TextStyle,
-  subText: {
-    color: "#b3b3b3",
-    fontSize: 13,
-  },
-  actionStatus: {
-    color: "#1DB954",
-    fontSize: 18,
-    paddingHorizontal: 8,
   },
   emptyText: {
     color: "#b3b3b3",
