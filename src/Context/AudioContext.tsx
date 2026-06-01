@@ -1,10 +1,17 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import {
   useAudioPlayer,
   useAudioPlayerStatus,
   setAudioModeAsync,
 } from "expo-audio";
 import { authStorage, getSubsonicAuthParams } from "../Services/subsonicAuth";
+import MediaControl, { Command, PlaybackState } from "expo-media-control";
 
 interface Song {
   id: string;
@@ -44,6 +51,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       ? queue[currentIndex]
       : null;
 
+  const stateRef = useRef({ queue, currentIndex });
+  useEffect(() => {
+    stateRef.current = { queue, currentIndex };
+  }, [queue, currentIndex]);
+
   useEffect(() => {
     setAudioModeAsync({
       playsInSilentMode: true,
@@ -53,26 +65,82 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (player) {
-      if (currentSong) {
-        player.setActiveForLockScreen(
-          true,
-          {
-            title: currentSong.title,
-            artist: currentSong.artist,
-            albumTitle: currentSong.album || "Navidrome Album",
-            artworkUrl: currentSong.artworkUrl,
-          },
-          {
-            showSeekForward: true,
-            showSeekBackward: true,
-          },
-        );
-      } else {
-        player.clearLockScreenControls();
+    if (!currentSong) return;
+
+    MediaControl.updateMetadata({
+      title: currentSong.title,
+      artist: currentSong.artist,
+      album: currentSong.album || "Navidrome Album",
+      artwork: currentSong.artworkUrl
+        ? { uri: currentSong.artworkUrl }
+        : undefined,
+      duration: status.duration || currentSong.duration || 0,
+    });
+
+    MediaControl.enableMediaControls({
+      capabilities: [
+        Command.PLAY,
+        Command.PAUSE,
+        Command.NEXT_TRACK,
+        Command.PREVIOUS_TRACK,
+        Command.SEEK,
+      ],
+      compactCapabilities: [Command.PLAY, Command.PAUSE, Command.NEXT_TRACK],
+    }).catch((err) => console.error("Error setting media keys:", err));
+
+    // Catch lock screen command interaction events
+    const removeListener = MediaControl.addListener((event) => {
+      const { queue: freshQueue, currentIndex: freshIndex } = stateRef.current;
+
+      switch (event.command) {
+        case Command.PLAY:
+          player.play();
+          break;
+        case Command.PAUSE:
+          player.pause();
+          break;
+        case Command.NEXT_TRACK:
+          if (freshIndex < freshQueue.length - 1) {
+            loadSongAtIndex(freshIndex + 1, freshQueue);
+          }
+          break;
+        case Command.PREVIOUS_TRACK:
+          if (freshIndex > 0) {
+            loadSongAtIndex(freshIndex - 1, freshQueue);
+          }
+          break;
+        case Command.SEEK:
+          // Check if data exists and has the position property
+          if (event.data && typeof event.data.position === "number") {
+            player.seekTo(event.data.position);
+          } else if (typeof event.data === "number") {
+            player.seekTo(event.data);
+          }
+          break;
+        default:
+          break;
       }
+    });
+
+    return () => {
+      removeListener();
+    };
+  }, [currentSong, status.duration]);
+
+  useEffect(() => {
+    if (currentSong) {
+      const stateValue = status.playing
+        ? PlaybackState.PLAYING
+        : PlaybackState.PAUSED;
+      const speedRate = status.playing ? 1.0 : 0.0;
+
+      MediaControl.updatePlaybackState(
+        stateValue,
+        status.currentTime,
+        speedRate,
+      ).catch((e) => console.error("Lockscreen state sync failed:", e));
     }
-  }, [player, currentSong]);
+  }, [status.playing, status.currentTime]);
 
   async function getStreamUrl(songId: string): Promise<string | null> {
     try {
@@ -86,10 +154,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function loadSongAtIndex(index: number) {
-    if (index < 0 || index >= queue.length) return;
+  async function loadSongAtIndex(index: number, targetQueue = queue) {
+    if (index < 0 || index >= targetQueue.length) return;
 
-    const targetSong = queue[index];
+    const targetSong = targetQueue[index];
     const url = await getStreamUrl(targetSong.id);
     if (!url) return;
 
@@ -116,12 +184,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addToQueue = (song: Song) => {
-    setQueue((prev) => [...prev, song]);
-    // If nothing was playing, jump right into it
-    if (queue.length === 0) {
-      setCurrentIndex(0);
-      playSongNow(song);
-    }
+    setQueue((prev) => {
+      const updated = [...prev, song];
+      if (prev.length === 0) {
+        setCurrentIndex(0);
+        playSongNow(song);
+      }
+      return updated;
+    });
   };
 
   const playNext = () => {
