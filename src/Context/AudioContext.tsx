@@ -59,14 +59,35 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     stateRef.current = { queue, currentIndex };
   }, [queue, currentIndex]);
 
+  //Initialization of notification Widget with track skipping functionality
   useEffect(() => {
     setAudioModeAsync({
       playsInSilentMode: true,
       interruptionMode: "doNotMix",
       shouldPlayInBackground: true,
     }).catch((err) => console.error("Error setting audio mode:", err));
+
+    //Register Media controls only once
+    MediaControl.enableMediaControls({
+      capabilities: [
+        Command.PLAY,
+        Command.PAUSE,
+        Command.NEXT_TRACK,
+        Command.PREVIOUS_TRACK,
+        Command.SEEK,
+      ],
+      compactCapabilities: [Command.PLAY, Command.PAUSE, Command.NEXT_TRACK],
+    }).catch((err) => console.error("Error setting media keys:", err));
+
+    return () => {
+      // Disable controls when unmounted
+      MediaControl.disableMediaControls().catch((err) =>
+        console.error("Error disabling media controls on teardown:", err),
+      );
+    };
   }, []);
 
+  //Responsible for updating art and duration of song
   useEffect(() => {
     if (!currentSong) return;
 
@@ -78,23 +99,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         ? { uri: currentSong.artworkUrl }
         : undefined,
       duration: status.duration || currentSong.duration || 0,
-    });
-
-    MediaControl.enableMediaControls({
-      capabilities: [
-        Command.PLAY,
-        Command.PAUSE,
-        Command.NEXT_TRACK,
-        Command.PREVIOUS_TRACK,
-        Command.SEEK,
-      ],
-      compactCapabilities: [Command.PLAY, Command.PAUSE, Command.NEXT_TRACK],
-    }).catch((err) => console.error("Error setting media keys:", err));
+    }).catch((err) => console.error("Error updating metadata:", err));
   }, [currentSong, status.duration]);
 
+  // called when a change is detected in the player, to verify the issued command
   useEffect(() => {
-    if (!currentSong) return;
-
     const removeListener = MediaControl.addListener((event) => {
       const { queue: freshQueue, currentIndex: freshIndex } = stateRef.current;
 
@@ -130,8 +139,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     return () => {
       removeListener();
     };
-  }, [currentSong, player]);
+  }, [player]);
 
+  // Called constantly when song or playing state changes (pause/unpause)
   useEffect(() => {
     if (currentSong) {
       const stateValue = status.playing
@@ -145,7 +155,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         speedRate,
       ).catch((e) => console.error("Lockscreen state sync failed:", e));
     }
-  }, [status.playing, status.currentTime, currentSong]);
+  }, [status.playing, currentSong]);
 
   const getStreamUrl = async (songId: string): Promise<string | null> => {
     try {
@@ -201,7 +211,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setQueue((prev) => {
         const updated = [...prev, song];
         if (prev.length === 0) {
-          // Safe to call decoupled logic asynchronously
           setTimeout(() => playSongNow(song), 0);
         }
         return updated;
@@ -214,8 +223,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const { queue: q, currentIndex: idx } = stateRef.current;
     if (idx < q.length - 1) {
       loadSongAtIndex(idx + 1, q);
-    } else {
-      console.log("Queue complete.");
     }
   }, [loadSongAtIndex]);
 
@@ -267,7 +274,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     playNext,
   ]);
 
-  // Stabilize provider context value mapping object reference
   const contextValue = useMemo(
     () => ({
       currentSong,
