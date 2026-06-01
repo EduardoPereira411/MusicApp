@@ -27,9 +27,8 @@ const AudioContext = createContext<AudioContextType | undefined>(undefined);
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
-  const [streamUrl, setStreamUrl] = useState<string>("");
 
-  const player = useAudioPlayer(streamUrl);
+  const player = useAudioPlayer();
   const status = useAudioPlayerStatus(player);
 
   useEffect(() => {
@@ -68,8 +67,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const playNewSong = (song: Song, url: string) => {
     setCurrentSong(song);
-    setStreamUrl(url);
-    player.replace(url);
+
+    player.replace({
+      uri: url,
+    });
     player.play();
   };
 
