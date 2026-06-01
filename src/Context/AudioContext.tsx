@@ -55,12 +55,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (player) {
       if (currentSong) {
-        player.setActiveForLockScreen(true, {
-          title: currentSong.title,
-          artist: currentSong.artist,
-          albumTitle: currentSong.album || "Navidrome Album",
-          artworkUrl: currentSong.artworkUrl,
-        });
+        player.setActiveForLockScreen(
+          true,
+          {
+            title: currentSong.title,
+            artist: currentSong.artist,
+            albumTitle: currentSong.album || "Navidrome Album",
+            artworkUrl: currentSong.artworkUrl,
+          },
+          {
+            showSeekForward: true,
+            showSeekBackward: true,
+          },
+        );
       } else {
         player.clearLockScreenControls();
       }
