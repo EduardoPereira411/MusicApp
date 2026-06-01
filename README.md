@@ -27,3 +27,24 @@ eas login
 ```
 eas build --platform android --profile preview
 ```
+
+## Creating APK locally (no EAS queue)
+
+1. Setup project for android build
+
+```
+npx expo prebuild --clean
+```
+
+2. go into android folder and execute assembleRelease
+
+```
+cd android
+./gradlew assembleRelease
+```
+
+3. The generated file is in:
+
+```
+android/app/build/outputs/apk/release/app-release.apk
+```
