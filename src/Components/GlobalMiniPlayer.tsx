@@ -1,33 +1,65 @@
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudio } from "../Context/AudioContext";
+import Slider from "@react-native-community/slider";
 
 export default function GlobalMiniPlayer() {
-  const { currentSong, playing, togglePlayPause } = useAudio();
+  const {
+    currentSong,
+    playing,
+    togglePlayPause,
+    currentTime,
+    duration,
+    seekTo,
+  } = useAudio();
   const insets = useSafeAreaInsets();
 
   if (!currentSong) return null;
 
   const dynamicBottom = 49 + insets.bottom + 8;
 
+  const coverSource = currentSong.artworkUrl
+    ? { uri: currentSong.artworkUrl }
+    : require("../../assets/images/icon.png");
+
   return (
     <View style={[styles.miniPlayerContainer, { bottom: dynamicBottom }]}>
-      <View style={styles.songInfo}>
-        <Text style={styles.title} numberOfLines={1}>
-          {currentSong.title}
-        </Text>
-        <Text style={styles.artist} numberOfLines={1}>
-          {currentSong.artist}
-        </Text>
+      <View style={styles.topRow}>
+        <Image source={coverSource} style={styles.coverImage} />
+
+        <View style={styles.songInfo}>
+          <Text style={styles.title} numberOfLines={1}>
+            {currentSong.title}
+          </Text>
+          <Text style={styles.artist} numberOfLines={1}>
+            {currentSong.artist}
+          </Text>
+        </View>
+
+        <TouchableOpacity onPress={togglePlayPause} style={styles.playButton}>
+          <Ionicons
+            name={playing ? "pause-circle" : "play-circle"}
+            size={38}
+            color="#1DB954"
+          />
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity onPress={togglePlayPause} style={styles.playButton}>
-        <Ionicons
-          name={playing ? "pause-circle" : "play-circle"}
-          size={36}
-          color="#1DB954"
+
+      <View style={styles.sliderContainer}>
+        <Slider
+          style={styles.slider}
+          minimumValue={0}
+          maximumValue={duration || 1}
+          value={currentTime}
+          minimumTrackTintColor="#1DB954"
+          maximumTrackTintColor="#535353"
+          thumbTintColor="#1DB954"
+          onSlidingComplete={(value) => {
+            seekTo(value);
+          }}
         />
-      </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -38,11 +70,6 @@ const styles = StyleSheet.create({
     left: 8,
     right: 8,
     backgroundColor: "#1e1e1e",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#282828",
@@ -51,9 +78,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 4,
     elevation: 5,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+  },
+  coverImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 4,
+    backgroundColor: "#282828",
   },
   songInfo: {
     flex: 1,
+    marginLeft: 12,
     marginRight: 10,
   },
   title: {
@@ -66,6 +108,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   playButton: {
-    paddingLeft: 10,
+    paddingLeft: 6,
+  },
+  sliderContainer: {
+    width: "100%",
+    height: 20,
+    justifyContent: "center",
+    marginTop: 4,
+  },
+  slider: {
+    width: "100%",
+    height: 40,
   },
 });

@@ -21,6 +21,7 @@ interface AudioContextType {
   currentTime: number;
   playNewSong: (song: Song, streamUrl: string) => void;
   togglePlayPause: () => void;
+  seekTo: (seconds: number) => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -67,10 +68,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const playNewSong = (song: Song, url: string) => {
     setCurrentSong(song);
-
-    player.replace({
-      uri: url,
-    });
+    player.replace({ uri: url });
     player.play();
   };
 
@@ -79,6 +77,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       player.pause();
     } else {
       player.play();
+    }
+  };
+
+  const seekTo = (seconds: number) => {
+    if (player) {
+      player.seekTo(seconds);
     }
   };
 
@@ -91,6 +95,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         currentTime: status.currentTime,
         playNewSong,
         togglePlayPause,
+        seekTo,
       }}
     >
       {children}
