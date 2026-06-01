@@ -1,34 +1,63 @@
+import { useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudio } from "../Context/AudioContext";
+import { useAudioPlayerStatus, AudioPlayer } from "expo-audio";
 import Slider from "@react-native-community/slider";
+
+function MiniPlayerSlider({
+  player,
+  seekTo,
+}: {
+  player: AudioPlayer;
+  seekTo: (v: number) => void;
+}) {
+  const status = useAudioPlayerStatus(player);
+
+  return (
+    <View style={styles.sliderContainer}>
+      <Slider
+        style={styles.slider}
+        minimumValue={0}
+        maximumValue={status.duration || 1}
+        value={status.currentTime}
+        minimumTrackTintColor="#1DB954"
+        maximumTrackTintColor="#535353"
+        thumbTintColor="#1DB954"
+        onSlidingComplete={seekTo}
+      />
+    </View>
+  );
+}
 
 export default function GlobalMiniPlayer() {
   const {
     currentSong,
     playing,
     togglePlayPause,
-    currentTime,
-    duration,
     seekTo,
     playNext,
     playPrevious,
     queue,
     currentIndex,
+    player,
   } = useAudio();
+
   const insets = useSafeAreaInsets();
 
   if (!currentSong) return null;
 
   const dynamicBottom = 49 + insets.bottom + 8;
 
-  const coverSource = currentSong.artworkUrl
-    ? { uri: currentSong.artworkUrl }
-    : require("../../assets/images/icon.png");
+  const coverSource = useMemo(() => {
+    return currentSong.artworkUrl
+      ? { uri: currentSong.artworkUrl }
+      : require("../../assets/images/icon.png");
+  }, [currentSong.artworkUrl]);
 
   const hasNext = currentIndex < queue.length - 1;
-  const hasPrevious = currentIndex > 0 || currentTime > 5;
+  const hasPrevious = currentIndex > 0;
 
   return (
     <View style={[styles.miniPlayerContainer, { bottom: dynamicBottom }]}>
@@ -79,20 +108,7 @@ export default function GlobalMiniPlayer() {
         </View>
       </View>
 
-      <View style={styles.sliderContainer}>
-        <Slider
-          style={styles.slider}
-          minimumValue={0}
-          maximumValue={duration || 1}
-          value={currentTime}
-          minimumTrackTintColor="#1DB954"
-          maximumTrackTintColor="#535353"
-          thumbTintColor="#1DB954"
-          onSlidingComplete={(value) => {
-            seekTo(value);
-          }}
-        />
-      </View>
+      <MiniPlayerSlider player={player} seekTo={seekTo} />
     </View>
   );
 }

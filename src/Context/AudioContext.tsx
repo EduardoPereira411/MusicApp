@@ -4,11 +4,14 @@ import React, {
   useState,
   useEffect,
   useRef,
+  useCallback,
+  useMemo,
 } from "react";
 import {
   useAudioPlayer,
   useAudioPlayerStatus,
   setAudioModeAsync,
+  AudioPlayer,
 } from "expo-audio";
 import { authStorage, getSubsonicAuthParams } from "../Services/subsonicAuth";
 import MediaControl, { Command, PlaybackState } from "expo-media-control";
@@ -27,8 +30,7 @@ interface AudioContextType {
   queue: Song[];
   currentIndex: number;
   playing: boolean;
-  duration: number;
-  currentTime: number;
+  player: AudioPlayer;
   playSongNow: (song: Song) => void;
   addToQueue: (song: Song) => void;
   playNext: () => void;
@@ -46,10 +48,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const player = useAudioPlayer();
   const status = useAudioPlayerStatus(player);
 
-  const currentSong =
-    currentIndex >= 0 && currentIndex < queue.length
+  const currentSong = useMemo(() => {
+    return currentIndex >= 0 && currentIndex < queue.length
       ? queue[currentIndex]
       : null;
+  }, [currentIndex, queue]);
 
   const stateRef = useRef({ queue, currentIndex });
   useEffect(() => {
@@ -87,8 +90,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       ],
       compactCapabilities: [Command.PLAY, Command.PAUSE, Command.NEXT_TRACK],
     }).catch((err) => console.error("Error setting media keys:", err));
+  }, [currentSong, status.duration]);
 
-    // Catch lock screen command interaction events
+  useEffect(() => {
+    if (!currentSong) return;
+
     const removeListener = MediaControl.addListener((event) => {
       const { queue: freshQueue, currentIndex: freshIndex } = stateRef.current;
 
@@ -110,7 +116,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           }
           break;
         case Command.SEEK:
-          // Check if data exists and has the position property
           if (event.data && typeof event.data.position === "number") {
             player.seekTo(event.data.position);
           } else if (typeof event.data === "number") {
@@ -125,7 +130,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     return () => {
       removeListener();
     };
-  }, [currentSong, status.duration]);
+  }, [currentSong, player]);
 
   useEffect(() => {
     if (currentSong) {
@@ -140,9 +145,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         speedRate,
       ).catch((e) => console.error("Lockscreen state sync failed:", e));
     }
-  }, [status.playing, status.currentTime]);
+  }, [status.playing, status.currentTime, currentSong]);
 
-  async function getStreamUrl(songId: string): Promise<string | null> {
+  const getStreamUrl = async (songId: string): Promise<string | null> => {
     try {
       const creds = await authStorage.getCredentials();
       const params = await getSubsonicAuthParams();
@@ -152,77 +157,91 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       console.error("Error generating stream link:", e);
       return null;
     }
-  }
-
-  async function loadSongAtIndex(index: number, targetQueue = queue) {
-    if (index < 0 || index >= targetQueue.length) return;
-
-    const targetSong = targetQueue[index];
-    const url = await getStreamUrl(targetSong.id);
-    if (!url) return;
-
-    setCurrentIndex(index);
-    player.replace({ uri: url });
-    player.play();
-  }
-
-  const playSongNow = async (song: Song) => {
-    if (currentSong?.id === song.id) {
-      togglePlayPause();
-      return;
-    }
-
-    const url = await getStreamUrl(song.id);
-    if (!url) return;
-
-    const newQueue = [song];
-    setQueue(newQueue);
-    setCurrentIndex(0);
-
-    player.replace({ uri: url });
-    player.play();
   };
 
-  const addToQueue = (song: Song) => {
-    setQueue((prev) => {
-      const updated = [...prev, song];
-      if (prev.length === 0) {
-        setCurrentIndex(0);
-        playSongNow(song);
+  const loadSongAtIndex = useCallback(
+    async (index: number, targetQueue = stateRef.current.queue) => {
+      if (index < 0 || index >= targetQueue.length) return;
+
+      const targetSong = targetQueue[index];
+      const url = await getStreamUrl(targetSong.id);
+      if (!url) return;
+
+      setCurrentIndex(index);
+      player.replace({ uri: url });
+      player.play();
+    },
+    [player],
+  );
+
+  const playSongNow = useCallback(
+    async (song: Song) => {
+      if (
+        stateRef.current.queue[stateRef.current.currentIndex]?.id === song.id
+      ) {
+        if (player.playing) player.pause();
+        else player.play();
+        return;
       }
-      return updated;
-    });
-  };
 
-  const playNext = () => {
-    if (currentIndex < queue.length - 1) {
-      loadSongAtIndex(currentIndex + 1);
+      const url = await getStreamUrl(song.id);
+      if (!url) return;
+
+      setQueue([song]);
+      setCurrentIndex(0);
+
+      player.replace({ uri: url });
+      player.play();
+    },
+    [player],
+  );
+
+  const addToQueue = useCallback(
+    (song: Song) => {
+      setQueue((prev) => {
+        const updated = [...prev, song];
+        if (prev.length === 0) {
+          // Safe to call decoupled logic asynchronously
+          setTimeout(() => playSongNow(song), 0);
+        }
+        return updated;
+      });
+    },
+    [playSongNow],
+  );
+
+  const playNext = useCallback(() => {
+    const { queue: q, currentIndex: idx } = stateRef.current;
+    if (idx < q.length - 1) {
+      loadSongAtIndex(idx + 1, q);
     } else {
       console.log("Queue complete.");
     }
-  };
+  }, [loadSongAtIndex]);
 
-  const playPrevious = () => {
-    if (currentIndex > 0) {
-      loadSongAtIndex(currentIndex - 1);
+  const playPrevious = useCallback(() => {
+    const { currentIndex: idx, queue: q } = stateRef.current;
+    if (idx > 0) {
+      loadSongAtIndex(idx - 1, q);
     }
-  };
+  }, [loadSongAtIndex]);
 
-  const togglePlayPause = () => {
+  const togglePlayPause = useCallback(() => {
     if (player.playing) {
       player.pause();
     } else {
       player.play();
     }
-  };
+  }, [player]);
 
-  const seekTo = (seconds: number) => {
-    if (player) {
-      player.seekTo(seconds);
-    }
-  };
+  const seekTo = useCallback(
+    (seconds: number) => {
+      player?.seekTo(seconds);
+    },
+    [player],
+  );
 
-  // Monitor playback progression to auto-advance when a track hits its end
+  // Monitor playback progression to auto-advance
   useEffect(() => {
     if (
       currentSong &&
@@ -238,25 +257,48 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setQueue([]);
       }
     }
-  }, [status.playing, status.currentTime, status.duration]);
+  }, [
+    status.playing,
+    status.currentTime,
+    status.duration,
+    currentIndex,
+    queue.length,
+    currentSong,
+    playNext,
+  ]);
+
+  // Stabilize provider context value mapping object reference
+  const contextValue = useMemo(
+    () => ({
+      currentSong,
+      queue,
+      currentIndex,
+      playing: status.playing,
+      player,
+      playSongNow,
+      addToQueue,
+      playNext,
+      playPrevious,
+      togglePlayPause,
+      seekTo,
+    }),
+    [
+      currentSong,
+      queue,
+      currentIndex,
+      status.playing,
+      player,
+      playSongNow,
+      addToQueue,
+      playNext,
+      playPrevious,
+      togglePlayPause,
+      seekTo,
+    ],
+  );
 
   return (
-    <AudioContext.Provider
-      value={{
-        currentSong,
-        queue,
-        currentIndex,
-        playing: status.playing,
-        duration: status.duration,
-        currentTime: status.currentTime,
-        playSongNow,
-        addToQueue,
-        playNext,
-        playPrevious,
-        togglePlayPause,
-        seekTo,
-      }}
-    >
+    <AudioContext.Provider value={contextValue}>
       {children}
     </AudioContext.Provider>
   );
