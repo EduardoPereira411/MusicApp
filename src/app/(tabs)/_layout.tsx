@@ -47,6 +47,12 @@ export default function TabLayout() {
               ),
             }}
           />
+          <Tabs.Screen
+            name="playlist"
+            options={{
+              href: null,
+            }}
+          />
         </Tabs>
 
         <GlobalMiniPlayer />

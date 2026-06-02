@@ -17,13 +17,13 @@ import {
   checkSongInPlaylist,
   addTrackToPlaylist,
 } from "../Services/navidromeService";
+import { useRouter } from "expo-router";
 
 interface SongOptionsModalProps {
   visible: boolean;
   song: Song | null;
   onClose: () => void;
   onAddToQueue: (song: Song) => void;
-  onGoToAlbum: (albumId: string) => void;
 }
 
 export function SongOptionsModal({
@@ -31,8 +31,8 @@ export function SongOptionsModal({
   song,
   onClose,
   onAddToQueue,
-  onGoToAlbum,
 }: SongOptionsModalProps) {
+  const router = useRouter();
   const [viewState, setViewState] = useState<"menu" | "playlists">("menu");
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [loadingPlaylists, setLoadingPlaylists] = useState(false);
@@ -43,6 +43,20 @@ export function SongOptionsModal({
   }, [visible]);
 
   if (!song) return null;
+
+  const handleGoToAlbum = () => {
+    if (!song.albumId) return;
+
+    onClose();
+    router.push({
+      pathname: "/(tabs)/playlist",
+      params: {
+        id: song.albumId,
+        type: "album",
+        name: song.album || "Album",
+      },
+    });
+  };
 
   const handlePlaylistSelectClick = async () => {
     setViewState("playlists");
@@ -161,22 +175,14 @@ export function SongOptionsModal({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.optionRow}
-              onPress={() => {
-                if (song.albumId) {
-                  onGoToAlbum(song.albumId);
-                  onClose();
-                } else {
-                  Alert.alert(
-                    "Missing ID",
-                    "Album ID not found for this track.",
-                  );
-                }
-              }}
-            >
-              <Text style={styles.optionText}>💿 Go to Album</Text>
-            </TouchableOpacity>
+            {song.albumId && (
+              <TouchableOpacity
+                style={styles.optionRow}
+                onPress={handleGoToAlbum}
+              >
+                <Text style={styles.optionText}>💿 Go to Album</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={[styles.optionRow, styles.cancelRow]}
