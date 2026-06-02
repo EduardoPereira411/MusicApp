@@ -13,7 +13,10 @@ import {
   setAudioModeAsync,
   AudioPlayer,
 } from "expo-audio";
-import { authStorage, getSubsonicAuthParams } from "../Services/subsonicAuth";
+import {
+  authStorage,
+  getSubsonicAuthParams,
+} from "../Services/navidromeService";
 import MediaControl, { Command, PlaybackState } from "expo-media-control";
 
 interface Song {

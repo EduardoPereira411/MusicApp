@@ -8,7 +8,10 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
-import { authStorage, getSubsonicAuthParams } from "../Services/subsonicAuth";
+import {
+  authStorage,
+  getSubsonicAuthParams,
+} from "../Services/navidromeService";
 import { useAudio } from "@/Context/AudioContext";
 import { SongItem, Song } from "@/Components/SongItem";
 import { AlbumItem, Album } from "@/Components/AlbumItem";

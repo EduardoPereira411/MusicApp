@@ -9,7 +9,10 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { authStorage, getSubsonicAuthParams } from "../Services/subsonicAuth";
+import {
+  authStorage,
+  getSubsonicAuthParams,
+} from "../Services/navidromeService";
 
 export default function LoginScreen() {
   const router = useRouter();
