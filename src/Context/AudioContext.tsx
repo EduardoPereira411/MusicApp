@@ -13,11 +13,11 @@ import {
   setAudioModeAsync,
   AudioPlayer,
 } from "expo-audio";
-import {
-  authStorage,
-  getSubsonicAuthParams,
-} from "@/Services/navidromeService";
 import MediaControl, { Command, PlaybackState } from "expo-media-control";
+import {
+  getStreamUrl,
+  fetchThemeOrRandomQueue,
+} from "@/Services/navidromeService";
 
 interface Song {
   id: string;
@@ -62,7 +62,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     stateRef.current = { queue, currentIndex };
   }, [queue, currentIndex]);
 
-  //Initialization of notification Widget with track skipping functionality
+  // Initialization of OS background audio with track skipping functionality
   useEffect(() => {
     setAudioModeAsync({
       playsInSilentMode: true,
@@ -90,7 +90,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  //Responsible for updating art and duration of song
+  //Updating art and duration of song
   useEffect(() => {
     if (!currentSong) return;
 
@@ -105,7 +105,22 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }).catch((err) => console.error("Error updating metadata:", err));
   }, [currentSong, status.duration]);
 
-  // called when a change is detected in the player, to verify the issued command
+  const loadSongAtIndex = useCallback(
+    async (index: number, targetQueue = stateRef.current.queue) => {
+      if (index < 0 || index >= targetQueue.length) return;
+
+      const targetSong = targetQueue[index];
+      const url = await getStreamUrl(targetSong.id);
+      if (!url) return;
+
+      setCurrentIndex(index);
+      player.replace({ uri: url });
+      player.play();
+    },
+    [player],
+  );
+
+  // Lockscreen Event Listener
   useEffect(() => {
     const removeListener = MediaControl.addListener((event) => {
       const { queue: freshQueue, currentIndex: freshIndex } = stateRef.current;
@@ -139,12 +154,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => {
-      removeListener();
-    };
-  }, [player]);
+    return () => removeListener();
+  }, [player, loadSongAtIndex]);
 
-  // Called constantly when song or playing state changes (pause/unpause)
+  // Sync Playback State (activated when playback state or song changes)
   useEffect(() => {
     if (currentSong) {
       const stateValue = status.playing
@@ -159,77 +172,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       ).catch((e) => console.error("Lockscreen state sync failed:", e));
     }
   }, [status.playing, currentSong]);
-
-  const getStreamUrl = async (songId: string): Promise<string | null> => {
-    try {
-      const creds = await authStorage.getCredentials();
-      const params = await getSubsonicAuthParams();
-      if (!creds || !params) return null;
-      return `${creds.serverUrl}/rest/stream.view?${params}&id=${songId}`;
-    } catch (e) {
-      console.error("Error generating stream link:", e);
-      return null;
-    }
-  };
-
-  const loadSongAtIndex = useCallback(
-    async (index: number, targetQueue = stateRef.current.queue) => {
-      if (index < 0 || index >= targetQueue.length) return;
-
-      const targetSong = targetQueue[index];
-      const url = await getStreamUrl(targetSong.id);
-      if (!url) return;
-
-      setCurrentIndex(index);
-      player.replace({ uri: url });
-      player.play();
-    },
-    [player],
-  );
-
-  // Helper method to dynamically generate recommended queue tracks from Navidrome
-  const fetchThemeOrRandomQueue = async (baseSong: Song): Promise<Song[]> => {
-    try {
-      const creds = await authStorage.getCredentials();
-      const params = await getSubsonicAuthParams();
-      if (!creds || !params) return [];
-
-      let fetchedTracks: any[] = [];
-
-      // Getting similar songs request (disabled for now since similar songs are not configured on server)
-      //const similarResponse = await fetch(
-      //  `${creds.serverUrl}/rest/getSimilarSongs2.view?${params}&id=${baseSong.id}&count=25&f=json`,
-      //);
-      //const similarData = await similarResponse.json();
-      //fetchedTracks =
-      //  similarData["subsonic-response"]?.similarSongs?.song || [];
-
-      // Fetch random songs to build a queue
-      //if (fetchedTracks.length === 0) {
-      const randomResponse = await fetch(
-        `${creds.serverUrl}/rest/getRandomSongs.view?${params}&size=25&f=json`,
-      );
-      const randomData = await randomResponse.json();
-      fetchedTracks = randomData["subsonic-response"]?.randomSongs?.song || [];
-      //}
-
-      return fetchedTracks
-        .filter((track: any) => track.id !== baseSong.id) // Avoid duplicates of the active song
-        .map((track: any) => ({
-          id: track.id,
-          title: track.title,
-          artist: track.artist,
-          album: track.album,
-          duration: track.duration,
-          artworkUrl: track.coverArt
-            ? `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${track.coverArt}`
-            : undefined,
-        }));
-    } catch (error) {
-      console.error("Failed creating dynamic context queue:", error);
-      return [];
-    }
-  };
 
   const playSongNow = useCallback(
     async (song: Song) => {
@@ -300,7 +242,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     [player],
   );
 
-  // Monitor playback progression to auto-advance
+  // Auto-advance track handler
   useEffect(() => {
     if (
       currentSong &&

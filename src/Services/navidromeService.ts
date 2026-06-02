@@ -238,3 +238,64 @@ export async function fetchPlaylistOrAlbumDetails(
     throw error;
   }
 }
+
+/**
+ * Generates the full stream link for a given song ID
+ */
+export async function getStreamUrl(songId: string): Promise<string | null> {
+  try {
+    const creds = await authStorage.getCredentials();
+    const params = await getSubsonicAuthParams();
+    if (!creds || !params) return null;
+    return `${creds.serverUrl}/rest/stream.view?${params}&id=${songId}`;
+  } catch (e) {
+    console.error("Error generating stream link:", e);
+    return null;
+  }
+}
+
+/**
+ * Dynamically generates recommended queue tracks from Navidrome
+ */
+export async function fetchThemeOrRandomQueue(baseSong: Song): Promise<Song[]> {
+  try {
+    const creds = await authStorage.getCredentials();
+    const params = await getSubsonicAuthParams();
+    if (!creds || !params) return [];
+
+    let fetchedTracks: any[] = [];
+
+    // Getting similar songs request (disabled for now since similar songs are not configured on server)
+    //const similarResponse = await fetch(
+    //  `${creds.serverUrl}/rest/getSimilarSongs2.view?${params}&id=${baseSong.id}&count=25&f=json`,
+    //);
+    //const similarData = await similarResponse.json();
+    //fetchedTracks =
+    //  similarData["subsonic-response"]?.similarSongs?.song || [];
+
+    // Fetch random songs to build a queue
+    //if (fetchedTracks.length === 0) {
+    // Fetch random songs to build a queue
+    const randomResponse = await fetch(
+      `${creds.serverUrl}/rest/getRandomSongs.view?${params}&size=25&f=json`,
+    );
+    const randomData = await randomResponse.json();
+    fetchedTracks = randomData["subsonic-response"]?.randomSongs?.song || [];
+
+    return fetchedTracks
+      .filter((track: any) => track.id !== baseSong.id) // Avoid duplicates
+      .map((track: any) => ({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        duration: track.duration,
+        artworkUrl: track.coverArt
+          ? `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${track.coverArt}`
+          : undefined,
+      }));
+  } catch (error) {
+    console.error("Failed creating dynamic context queue:", error);
+    return [];
+  }
+}
