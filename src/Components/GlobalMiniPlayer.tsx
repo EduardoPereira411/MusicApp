@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudio } from "@/Context/AudioContext";
 import { useAudioPlayerStatus, AudioPlayer } from "expo-audio";
 import Slider from "@react-native-community/slider";
+import { QueueModal } from "./QueueModal"; // Import your new component
 
 function MiniPlayerSlider({
   player,
@@ -45,6 +46,7 @@ export default function GlobalMiniPlayer() {
   } = useAudio();
 
   const insets = useSafeAreaInsets();
+  const [queueVisible, setQueueVisible] = useState(false);
 
   if (!currentSong) return null;
 
@@ -60,56 +62,72 @@ export default function GlobalMiniPlayer() {
   const hasPrevious = currentIndex > 0;
 
   return (
-    <View style={[styles.miniPlayerContainer, { bottom: dynamicBottom }]}>
-      <View style={styles.topRow}>
-        <Image source={coverSource} style={styles.coverImage} />
+    <>
+      <View style={[styles.miniPlayerContainer, { bottom: dynamicBottom }]}>
+        <View style={styles.topRow}>
+          <TouchableOpacity
+            style={styles.metaClickableArea}
+            onPress={() => setQueueVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Image source={coverSource} style={styles.coverImage} />
 
-        <View style={styles.songInfo}>
-          <Text style={styles.title} numberOfLines={1}>
-            {currentSong.title}
-          </Text>
-          <Text style={styles.artist} numberOfLines={1}>
-            {currentSong.artist}
-          </Text>
+            <View style={styles.songInfo}>
+              <Text style={styles.title} numberOfLines={1}>
+                {currentSong.title}
+              </Text>
+              <Text style={styles.artist} numberOfLines={1}>
+                {currentSong.artist}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.controlsContainer}>
+            <TouchableOpacity
+              onPress={playPrevious}
+              disabled={!hasPrevious}
+              style={styles.controlButton}
+            >
+              <Ionicons
+                name="play-back"
+                size={24}
+                color={hasPrevious ? "#fff" : "#555"}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={togglePlayPause}
+              style={styles.playButton}
+            >
+              <Ionicons
+                name={playing ? "pause-circle" : "play-circle"}
+                size={38}
+                color="#1DB954"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={playNext}
+              disabled={!hasNext}
+              style={styles.controlButton}
+            >
+              <Ionicons
+                name="play-forward"
+                size={24}
+                color={hasNext ? "#fff" : "#555"}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.controlsContainer}>
-          <TouchableOpacity
-            onPress={playPrevious}
-            disabled={!hasPrevious}
-            style={styles.controlButton}
-          >
-            <Ionicons
-              name="play-back"
-              size={24}
-              color={hasPrevious ? "#fff" : "#555"}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={togglePlayPause} style={styles.playButton}>
-            <Ionicons
-              name={playing ? "pause-circle" : "play-circle"}
-              size={38}
-              color="#1DB954"
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={playNext}
-            disabled={!hasNext}
-            style={styles.controlButton}
-          >
-            <Ionicons
-              name="play-forward"
-              size={24}
-              color={hasNext ? "#fff" : "#555"}
-            />
-          </TouchableOpacity>
-        </View>
+        <MiniPlayerSlider player={player} seekTo={seekTo} />
       </View>
 
-      <MiniPlayerSlider player={player} seekTo={seekTo} />
-    </View>
+      <QueueModal
+        visible={queueVisible}
+        onClose={() => setQueueVisible(false)}
+      />
+    </>
   );
 }
 
@@ -135,6 +153,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
+  },
+  metaClickableArea: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
   },
   coverImage: {
     width: 44,

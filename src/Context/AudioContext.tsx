@@ -40,6 +40,8 @@ interface AudioContextType {
   playPrevious: () => void;
   togglePlayPause: () => void;
   seekTo: (seconds: number) => void;
+  removeFromQueue: (index: number) => void;
+  skipToQueueIndex: (index: number) => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -255,6 +257,47 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     [player],
   );
 
+  const removeFromQueue = useCallback(
+    (indexToRemove: number) => {
+      setQueue((prevQueue) => {
+        if (indexToRemove < 0 || indexToRemove >= prevQueue.length)
+          return prevQueue;
+        const updatedQueue = prevQueue.filter(
+          (_, idx) => idx !== indexToRemove,
+        );
+
+        // Correct the currentIndex pointers based on deletion
+        if (currentIndex === indexToRemove) {
+          if (updatedQueue.length === 0) {
+            setCurrentIndex(-1);
+            player.pause();
+          } else {
+            // Play next track or previous if deleted the last item
+            const nextIndex =
+              indexToRemove >= updatedQueue.length
+                ? updatedQueue.length - 1
+                : indexToRemove;
+            setTimeout(() => loadSongAtIndex(nextIndex, updatedQueue), 0);
+          }
+        } else if (currentIndex > indexToRemove) {
+          setCurrentIndex((prev) => prev - 1);
+        }
+        return updatedQueue;
+      });
+    },
+    [currentIndex, loadSongAtIndex, player],
+  );
+
+  const skipToQueueIndex = useCallback(
+    (index: number) => {
+      const { queue: currentQueue } = stateRef.current;
+      if (index >= 0 && index < currentQueue.length) {
+        loadSongAtIndex(index, currentQueue);
+      }
+    },
+    [loadSongAtIndex],
+  );
+
   // Auto-advance track handler
   useEffect(() => {
     if (
@@ -294,6 +337,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       playPrevious,
       togglePlayPause,
       seekTo,
+      removeFromQueue,
+      skipToQueueIndex,
     }),
     [
       currentSong,
@@ -307,6 +352,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       playPrevious,
       togglePlayPause,
       seekTo,
+      removeFromQueue,
+      skipToQueueIndex,
     ],
   );
 
