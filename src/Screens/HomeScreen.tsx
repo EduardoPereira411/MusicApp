@@ -238,7 +238,6 @@ export default function HomeScreen() {
         song={selectedSong}
         onClose={() => setIsModalVisible(false)}
         onAddToQueue={addToQueue}
-        onGoToAlbum={(albumId) => console.log("Navigating...", albumId)}
       />
     </View>
   );

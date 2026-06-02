@@ -190,7 +190,6 @@ export default function SearchScreen() {
         song={selectedSong}
         onClose={() => setIsModalVisible(false)}
         onAddToQueue={addToQueue}
-        onGoToAlbum={(albumId) => console.log("Navigating...", albumId)}
       />
     </View>
   );

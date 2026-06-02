@@ -76,7 +76,6 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Profile Header */}
       <View style={styles.profileHeader}>
         <View style={styles.avatarPlaceholder}>
           <Text style={styles.avatarText}>
@@ -92,10 +91,8 @@ export default function ProfileScreen() {
 
       <View style={styles.divider} />
 
-      {/* Playlists Title Section */}
       <Text style={styles.sectionHeader}>Your Playlists</Text>
 
-      {/* Playlists List */}
       <FlatList
         data={playlists}
         keyExtractor={(item) => item.id}
