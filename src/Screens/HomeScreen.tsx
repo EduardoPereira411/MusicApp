@@ -9,9 +9,10 @@ import {
   RefreshControl,
 } from "react-native";
 import { useAudio } from "@/Context/AudioContext";
-import { SongItem, Song } from "@/Components/SongItem";
-import { AlbumItem, Album } from "@/Components/AlbumItem";
-import { ArtistItem, Artist } from "@/Components/ArtistItem";
+import { Song, Album, Artist } from "@/Models/Models";
+import { SongItem } from "@/Components/SongItem";
+import { AlbumItem } from "@/Components/AlbumItem";
+import { ArtistItem } from "@/Components/ArtistItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import {
   fetchTracks,

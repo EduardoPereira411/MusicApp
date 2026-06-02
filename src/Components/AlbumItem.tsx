@@ -2,13 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-
-export interface Album {
-  id: string;
-  name: string;
-  artist: string;
-  artworkUrl?: string;
-}
+import { Album } from "@/Models/Models";
 
 interface AlbumItemProps {
   item: Album;

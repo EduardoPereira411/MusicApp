@@ -11,7 +11,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { fetchPlaylistOrAlbumDetails } from "@/Services/navidromeService";
 import { useAudio } from "@/Context/AudioContext";
-import { SongItem, Song } from "@/Components/SongItem";
+import { Song } from "@/Models/Models";
+import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 
 export default function PlaylistScreen() {

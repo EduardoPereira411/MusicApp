@@ -13,8 +13,9 @@ import {
   getSubsonicAuthParams,
 } from "@/Services/navidromeService";
 import { useAudio } from "@/Context/AudioContext";
-import { SongItem, Song } from "@/Components/SongItem";
-import { AlbumItem, Album } from "@/Components/AlbumItem";
+import { Song, Album } from "@/Models/Models";
+import { SongItem } from "@/Components/SongItem";
+import { AlbumItem } from "@/Components/AlbumItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 
 type SearchType = "tracks" | "albums";

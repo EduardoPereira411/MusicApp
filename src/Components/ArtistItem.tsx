@@ -1,11 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-
-export interface Artist {
-  id: string;
-  name: string;
-  albumCount?: number;
-}
+import { Artist } from "@/Models/Models";
 
 interface ArtistItemProps {
   item: Artist;

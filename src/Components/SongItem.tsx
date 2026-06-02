@@ -1,15 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Image } from "expo-image";
-
-export interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  album?: string;
-  albumId?: string;
-  artworkUrl?: string;
-}
+import { Song } from "@/Models/Models";
 
 interface SongItemProps {
   item: Song;

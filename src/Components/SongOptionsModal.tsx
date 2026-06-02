@@ -11,7 +11,7 @@ import {
   Alert,
 } from "react-native";
 import { Image } from "expo-image";
-import { Song } from "./SongItem";
+import { Song } from "@/Models/Models";
 import {
   fetchNavidromePlaylists,
   checkSongInPlaylist,

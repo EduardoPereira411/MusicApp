@@ -1,8 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import md5 from "md5";
-import { Song } from "@/Components/SongItem";
-import { Album } from "@/Components/AlbumItem";
-import { Artist } from "@/Components/ArtistItem";
+import { Song, Album, Artist } from "@/Models/Models";
 
 const KEYS = {
   SERVER_URL: "navidrome_server_url",
