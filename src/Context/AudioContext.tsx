@@ -34,7 +34,7 @@ interface AudioContextType {
   currentIndex: number;
   playing: boolean;
   player: AudioPlayer;
-  playSongNow: (song: Song) => void;
+  playSongNow: (song: Song) => Promise<void>;
   addToQueue: (song: Song) => void;
   playNext: () => void;
   playPrevious: () => void;
@@ -187,6 +187,50 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     [player],
   );
 
+  // Helper method to dynamically generate recommended queue tracks from Navidrome
+  const fetchThemeOrRandomQueue = async (baseSong: Song): Promise<Song[]> => {
+    try {
+      const creds = await authStorage.getCredentials();
+      const params = await getSubsonicAuthParams();
+      if (!creds || !params) return [];
+
+      let fetchedTracks: any[] = [];
+
+      // Getting similar songs request (disabled for now since similar songs are not configured on server)
+      //const similarResponse = await fetch(
+      //  `${creds.serverUrl}/rest/getSimilarSongs2.view?${params}&id=${baseSong.id}&count=25&f=json`,
+      //);
+      //const similarData = await similarResponse.json();
+      //fetchedTracks =
+      //  similarData["subsonic-response"]?.similarSongs?.song || [];
+
+      // Fetch random songs to build a queue
+      //if (fetchedTracks.length === 0) {
+      const randomResponse = await fetch(
+        `${creds.serverUrl}/rest/getRandomSongs.view?${params}&size=25&f=json`,
+      );
+      const randomData = await randomResponse.json();
+      fetchedTracks = randomData["subsonic-response"]?.randomSongs?.song || [];
+      //}
+
+      return fetchedTracks
+        .filter((track: any) => track.id !== baseSong.id) // Avoid duplicates of the active song
+        .map((track: any) => ({
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          album: track.album,
+          duration: track.duration,
+          artworkUrl: track.coverArt
+            ? `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${track.coverArt}`
+            : undefined,
+        }));
+    } catch (error) {
+      console.error("Failed creating dynamic context queue:", error);
+      return [];
+    }
+  };
+
   const playSongNow = useCallback(
     async (song: Song) => {
       if (
@@ -205,6 +249,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
       player.replace({ uri: url });
       player.play();
+
+      const proceduralTracks = await fetchThemeOrRandomQueue(song);
+      if (proceduralTracks.length > 0) {
+        setQueue([song, ...proceduralTracks]);
+      }
     },
     [player],
   );
