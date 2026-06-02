@@ -199,3 +199,44 @@ export async function fetchArtists(): Promise<Artist[]> {
     return [];
   }
 }
+
+export async function fetchPlaylistOrAlbumDetails(
+  id: string,
+  type: "playlist" | "album",
+  fallbackName?: string,
+): Promise<Song[]> {
+  try {
+    const creds = await authStorage.getCredentials();
+    const params = await getSubsonicAuthParams();
+    if (!creds || !params) return [];
+
+    const endpoint = type === "playlist" ? "getPlaylist.view" : "getAlbum.view";
+    const url = `${creds.serverUrl}/rest/${endpoint}?${params}&id=${id}&f=json`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const targetData = data["subsonic-response"]?.[type];
+    if (!targetData) return [];
+
+    const rawTracks = targetData.entry || targetData.song || [];
+    const tracksArray = Array.isArray(rawTracks) ? rawTracks : [rawTracks];
+
+    return tracksArray
+      .filter((track: any) => track && track.id)
+      .map((track: any) => ({
+        id: track.id,
+        title: track.title || "Unknown Title",
+        artist: track.artist || "Unknown Artist",
+        album: track.album || fallbackName || "",
+        albumId: track.albumId || id,
+        artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${track.coverArt || track.id}&size=150`,
+      }));
+  } catch (error) {
+    console.error(
+      `[navidromeService] Error fetching ${type} details for ID ${id}:`,
+      error,
+    );
+    throw error;
+  }
+}
