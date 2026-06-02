@@ -13,7 +13,7 @@ import { useRouter } from "expo-router";
 import {
   authStorage,
   fetchNavidromePlaylists,
-} from "../Services/navidromeService";
+} from "@/Services/navidromeService";
 
 export default function ProfileScreen() {
   const router = useRouter();

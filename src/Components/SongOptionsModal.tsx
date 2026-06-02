@@ -16,7 +16,7 @@ import {
   fetchNavidromePlaylists,
   checkSongInPlaylist,
   addTrackToPlaylist,
-} from "../Services/navidromeService";
+} from "@/Services/navidromeService";
 import { useRouter } from "expo-router";
 
 interface SongOptionsModalProps {

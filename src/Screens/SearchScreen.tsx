@@ -11,7 +11,7 @@ import {
 import {
   authStorage,
   getSubsonicAuthParams,
-} from "../Services/navidromeService";
+} from "@/Services/navidromeService";
 import { useAudio } from "@/Context/AudioContext";
 import { SongItem, Song } from "@/Components/SongItem";
 import { AlbumItem, Album } from "@/Components/AlbumItem";
@@ -173,12 +173,7 @@ export default function SearchScreen() {
                 );
               } else {
                 const albumItem = item as Album;
-                return (
-                  <AlbumItem
-                    item={albumItem}
-                    onPress={(id) => console.log("Navigate to Album ID:", id)}
-                  />
-                );
+                return <AlbumItem item={albumItem} />;
               }
             }}
           />

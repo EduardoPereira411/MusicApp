@@ -12,7 +12,7 @@ import { useRouter } from "expo-router";
 import {
   authStorage,
   getSubsonicAuthParams,
-} from "../Services/navidromeService";
+} from "@/Services/navidromeService";
 
 export default function LoginScreen() {
   const router = useRouter();

@@ -1,5 +1,8 @@
 import * as SecureStore from "expo-secure-store";
 import md5 from "md5";
+import { Song } from "@/Components/SongItem";
+import { Album } from "@/Components/AlbumItem";
+import { Artist } from "@/Components/ArtistItem";
 
 const KEYS = {
   SERVER_URL: "navidrome_server_url",
@@ -113,4 +116,86 @@ export async function addTrackToPlaylist(
   const updateData = await updateRes.json();
 
   return updateData["subsonic-response"]?.status === "ok";
+}
+
+export async function fetchTracks(): Promise<Song[]> {
+  try {
+    const creds = await authStorage.getCredentials();
+    const params = await getSubsonicAuthParams();
+    if (!creds || !params) return [];
+
+    const url = `${creds.serverUrl}/rest/getRandomSongs.view?${params}&size=20`;
+    const response = await fetch(url);
+    const data = await response.json();
+    const fetchedSongs: any[] =
+      data["subsonic-response"]?.randomSongs?.song || [];
+
+    return fetchedSongs.map((song) => ({
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      albumId: song.albumId,
+      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${song.coverArt || song.id}&size=300`,
+    }));
+  } catch (e) {
+    console.error("Failed fetching tracks:", e);
+    return [];
+  }
+}
+
+export async function fetchAlbums(): Promise<Album[]> {
+  try {
+    const creds = await authStorage.getCredentials();
+    const params = await getSubsonicAuthParams();
+    if (!creds || !params) return [];
+
+    const url = `${creds.serverUrl}/rest/getAlbumList2.view?${params}&type=random&size=20`;
+    const response = await fetch(url);
+    const data = await response.json();
+    const fetchedAlbums: any[] =
+      data["subsonic-response"]?.albumList2?.album || [];
+
+    return fetchedAlbums.map((album) => ({
+      id: album.id,
+      name: album.name,
+      artist: album.artist,
+      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
+    }));
+  } catch (e) {
+    console.error("Failed fetching albums:", e);
+    return [];
+  }
+}
+
+export async function fetchArtists(): Promise<Artist[]> {
+  try {
+    const creds = await authStorage.getCredentials();
+    const params = await getSubsonicAuthParams();
+    if (!creds || !params) return [];
+
+    const url = `${creds.serverUrl}/rest/getArtists.view?${params}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const indices: any[] = data["subsonic-response"]?.artists?.index || [];
+    const fetchedArtists: Artist[] = [];
+
+    indices.forEach((index) => {
+      if (index.artist) {
+        index.artist.forEach((art: any) => {
+          fetchedArtists.push({
+            id: art.id,
+            name: art.name,
+            albumCount: art.albumCount,
+          });
+        });
+      }
+    });
+
+    return fetchedArtists.slice(0, 30);
+  } catch (e) {
+    console.error("Failed fetching artists:", e);
+    return [];
+  }
 }

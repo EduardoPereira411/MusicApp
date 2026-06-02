@@ -8,15 +8,16 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
-import {
-  authStorage,
-  getSubsonicAuthParams,
-} from "../Services/navidromeService";
 import { useAudio } from "@/Context/AudioContext";
 import { SongItem, Song } from "@/Components/SongItem";
 import { AlbumItem, Album } from "@/Components/AlbumItem";
 import { ArtistItem, Artist } from "@/Components/ArtistItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
+import {
+  fetchTracks,
+  fetchAlbums,
+  fetchArtists,
+} from "@/Services/navidromeService";
 
 type SectionType = "tracks" | "albums" | "artists";
 
@@ -40,113 +41,51 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
+    async function fetchAllDataInitial() {
+      setInitialLoading(true);
+      const [tracksData, albumsData, artistsData] = await Promise.all([
+        fetchTracks(),
+        fetchAlbums(),
+        fetchArtists(),
+      ]);
+      setSongs(tracksData);
+      setAlbums(albumsData);
+      setArtists(artistsData);
+      setInitialLoading(false);
+    }
+
     fetchAllDataInitial();
   }, []);
 
-  async function fetchAllDataInitial() {
-    setInitialLoading(true);
-    await Promise.all([fetchTracks(), fetchAlbums(), fetchArtists()]);
-    setInitialLoading(false);
-  }
-
-  async function fetchTracks() {
-    try {
-      const creds = await authStorage.getCredentials();
-      const params = await getSubsonicAuthParams();
-      if (!creds || !params) return;
-
-      const url = `${creds.serverUrl}/rest/getRandomSongs.view?${params}&size=20`;
-      const response = await fetch(url);
-      const data = await response.json();
-      const fetchedSongs: any[] =
-        data["subsonic-response"]?.randomSongs?.song || [];
-
-      setSongs(
-        fetchedSongs.map((song) => ({
-          id: song.id,
-          title: song.title,
-          artist: song.artist,
-          album: song.album,
-          albumId: song.albumId,
-          artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${song.coverArt || song.id}&size=300`,
-        })),
-      );
-    } catch (e) {
-      console.error("Failed fetching tracks:", e);
-    }
-  }
-
-  async function fetchAlbums() {
-    try {
-      const creds = await authStorage.getCredentials();
-      const params = await getSubsonicAuthParams();
-      if (!creds || !params) return;
-
-      const url = `${creds.serverUrl}/rest/getAlbumList2.view?${params}&type=random&size=20`;
-      const response = await fetch(url);
-      const data = await response.json();
-      const fetchedAlbums: any[] =
-        data["subsonic-response"]?.albumList2?.album || [];
-
-      setAlbums(
-        fetchedAlbums.map((album) => ({
-          id: album.id,
-          name: album.name,
-          artist: album.artist,
-          artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
-        })),
-      );
-    } catch (e) {
-      console.error("Failed fetching albums:", e);
-    }
-  }
-
-  async function fetchArtists() {
-    try {
-      const creds = await authStorage.getCredentials();
-      const params = await getSubsonicAuthParams();
-      if (!creds || !params) return;
-
-      const url = `${creds.serverUrl}/rest/getArtists.view?${params}`;
-      const response = await fetch(url);
-      const data = await response.json();
-
-      const indices: any[] = data["subsonic-response"]?.artists?.index || [];
-      const fetchedArtists: Artist[] = [];
-      indices.forEach((index) => {
-        if (index.artist) {
-          index.artist.forEach((art: any) => {
-            fetchedArtists.push({
-              id: art.id,
-              name: art.name,
-              albumCount: art.albumCount,
-            });
-          });
-        }
-      });
-      setArtists(fetchedArtists.slice(0, 30));
-    } catch (e) {
-      console.error("Failed fetching artists:", e);
-    }
-  }
-
   async function handleRefresh() {
     setIsRefreshing(true);
-    if (activeSection === "tracks") await fetchTracks();
-    else if (activeSection === "albums") await fetchAlbums();
-    else if (activeSection === "artists") await fetchArtists();
+    if (activeSection === "tracks") {
+      setSongs(await fetchTracks());
+    } else if (activeSection === "albums") {
+      setAlbums(await fetchAlbums());
+    } else if (activeSection === "artists") {
+      setArtists(await fetchArtists());
+    }
     setIsRefreshing(false);
   }
 
-  const getListDataAndRenderer = () => {
+  const getListDataAndRenderer = (): {
+    data: Song[] | Album[] | Artist[];
+    emptyText: string;
+    renderItem: ({
+      item,
+    }: {
+      item: Song | Album | Artist;
+    }) => React.JSX.Element;
+  } => {
     switch (activeSection) {
       case "tracks":
         return {
           data: songs,
           emptyText: "No tracks found.",
-          renderItem: ({ item }: { item: any }) => (
+          renderItem: ({ item }) => (
             <SongItem
-              item={item}
+              item={item as Song}
               isCurrent={item.id === currentSong?.id}
               isPlaying={item.id === currentSong?.id && playing}
               onPlay={playSongNow}
@@ -158,20 +97,15 @@ export default function HomeScreen() {
         return {
           data: albums,
           emptyText: "No albums found.",
-          renderItem: ({ item }: { item: any }) => (
-            <AlbumItem
-              item={item}
-              onPress={(id) => console.log("Album:", id)}
-            />
-          ),
+          renderItem: ({ item }) => <AlbumItem item={item as Album} />,
         };
       case "artists":
         return {
           data: artists,
           emptyText: "No artists found.",
-          renderItem: ({ item }: { item: any }) => (
+          renderItem: ({ item }) => (
             <ArtistItem
-              item={item}
+              item={item as Artist}
               onPress={(id) => console.log("Artist:", id)}
             />
           ),
@@ -216,7 +150,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={{ flex: 1 }}>
-        <FlatList
+        <FlatList<Song | Album | Artist>
           data={listConfig.data}
           keyExtractor={(item) => item.id}
           renderItem={listConfig.renderItem}

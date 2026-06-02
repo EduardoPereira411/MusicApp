@@ -12,10 +12,10 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   authStorage,
   getSubsonicAuthParams,
-} from "../Services/navidromeService";
-import { useAudio } from "../Context/AudioContext";
-import { SongItem, Song } from "../Components/SongItem";
-import { SongOptionsModal } from "../Components/SongOptionsModal";
+} from "@/Services/navidromeService";
+import { useAudio } from "@/Context/AudioContext";
+import { SongItem, Song } from "@/Components/SongItem";
+import { SongOptionsModal } from "@/Components/SongOptionsModal";
 
 export default function PlaylistScreen() {
   const router = useRouter();

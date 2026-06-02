@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAudio } from "../Context/AudioContext";
+import { useAudio } from "@/Context/AudioContext";
 import { useAudioPlayerStatus, AudioPlayer } from "expo-audio";
 import Slider from "@react-native-community/slider";
 

@@ -16,7 +16,7 @@ import {
 import {
   authStorage,
   getSubsonicAuthParams,
-} from "../Services/navidromeService";
+} from "@/Services/navidromeService";
 import MediaControl, { Command, PlaybackState } from "expo-media-control";
 
 interface Song {
