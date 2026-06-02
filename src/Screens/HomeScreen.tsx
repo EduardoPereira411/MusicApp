@@ -13,6 +13,8 @@ import { useAudio } from "@/Context/AudioContext";
 import { SongItem, Song } from "@/Components/SongItem";
 import { AlbumItem, Album } from "@/Components/AlbumItem";
 import { ArtistItem, Artist } from "@/Components/ArtistItem";
+import { SongOptionsModal } from "@/Components/SongOptionsModal";
+import { Alert } from "react-native";
 
 type SectionType = "tracks" | "albums" | "artists";
 
@@ -25,7 +27,101 @@ export default function HomeScreen() {
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+
   const { currentSong, playing, playSongNow, addToQueue } = useAudio();
+
+  async function fetchNavidromePlaylists() {
+    try {
+      const creds = await authStorage.getCredentials();
+      const params = await getSubsonicAuthParams();
+      if (!creds || !params) return [];
+
+      const url = `${creds.serverUrl}/rest/getPlaylists.view?${params}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      const playlists = data["subsonic-response"]?.playlists?.playlist || [];
+      return Array.isArray(playlists) ? playlists : [playlists];
+    } catch (e) {
+      console.error("Failed to fetch playlists:", e);
+      return [];
+    }
+  }
+
+  async function addTrackToNavidromePlaylist(
+    song: Song,
+    playlistId: string,
+    playlistName: string,
+  ) {
+    try {
+      const creds = await authStorage.getCredentials();
+      const params = await getSubsonicAuthParams();
+      if (!creds || !params) return;
+
+      // Checking if song is already present on playlist
+      const checkUrl = `${creds.serverUrl}/rest/getPlaylist.view?${params}&id=${playlistId}`;
+      const checkRes = await fetch(checkUrl);
+      const checkData = await checkRes.json();
+
+      const existingTracks =
+        checkData["subsonic-response"]?.playlist?.entry || [];
+      const tracksArray = Array.isArray(existingTracks)
+        ? existingTracks
+        : [existingTracks];
+
+      const isAlreadyInPlaylist = tracksArray.some(
+        (track: any) => track.id === song.id,
+      );
+
+      const proceedWithAdd = async () => {
+        const updateUrl = `${creds.serverUrl}/rest/updatePlaylist.view?${params}&playlistId=${playlistId}&songIdToAdd=${song.id}`;
+        const updateRes = await fetch(updateUrl);
+        const updateData = await updateRes.json();
+
+        if (updateData["subsonic-response"]?.status === "ok") {
+          Alert.alert("Success", `Added "${song.title}" to "${playlistName}".`);
+        } else {
+          Alert.alert("Error", "Could not update playlist on the server.");
+        }
+      };
+
+      // f already in playlist prompt user if he want's to add it anyway
+      if (isAlreadyInPlaylist) {
+        Alert.alert(
+          "Already in Playlist",
+          `"${song.title}" is already in "${playlistName}". Do you want to add it anyway?`,
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+            },
+            {
+              text: "Add Anyway",
+              onPress: async () => {
+                await proceedWithAdd();
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      await proceedWithAdd();
+    } catch (e) {
+      console.error("Error updating playlist:", e);
+      Alert.alert(
+        "Error",
+        "An unexpected error occurred while communicating with Navidrome.",
+      );
+    }
+  }
+
+  const handleSongOptions = (song: Song) => {
+    setSelectedSong(song);
+    setIsModalVisible(true);
+  };
 
   useEffect(() => {
     fetchAllDataInitial();
@@ -55,6 +151,7 @@ export default function HomeScreen() {
           title: song.title,
           artist: song.artist,
           album: song.album,
+          albumId: song.albumId,
           artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${song.coverArt || song.id}&size=300`,
         })),
       );
@@ -137,7 +234,7 @@ export default function HomeScreen() {
               isCurrent={item.id === currentSong?.id}
               isPlaying={item.id === currentSong?.id && playing}
               onPlay={playSongNow}
-              onAddToQueue={addToQueue}
+              onOptionsPress={handleSongOptions}
             />
           ),
         };
@@ -220,6 +317,17 @@ export default function HomeScreen() {
           }
         />
       </View>
+      <SongOptionsModal
+        visible={isModalVisible}
+        song={selectedSong}
+        onClose={() => setIsModalVisible(false)}
+        onAddToQueue={addToQueue}
+        onGoToAlbum={(albumId) =>
+          console.log("Navigating to Album via ID:", albumId)
+        }
+        fetchPlaylists={fetchNavidromePlaylists}
+        onAddToPlaylist={addTrackToNavidromePlaylist}
+      />
     </View>
   );
 }

@@ -7,6 +7,7 @@ export interface Song {
   title: string;
   artist: string;
   album?: string;
+  albumId?: string;
   artworkUrl?: string;
 }
 
@@ -15,11 +16,11 @@ interface SongItemProps {
   isCurrent: boolean;
   isPlaying: boolean;
   onPlay: (song: Song) => void;
-  onAddToQueue: (song: Song) => void;
+  onOptionsPress: (song: Song) => void;
 }
 
 export const SongItem = React.memo(
-  ({ item, isCurrent, isPlaying, onPlay, onAddToQueue }: SongItemProps) => {
+  ({ item, isCurrent, isPlaying, onPlay, onOptionsPress }: SongItemProps) => {
     return (
       <View style={[styles.itemCard, isCurrent && styles.activeCard]}>
         <TouchableOpacity
@@ -47,10 +48,10 @@ export const SongItem = React.memo(
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.queueButton}
-          onPress={() => onAddToQueue(item)}
+          style={styles.optionsButton}
+          onPress={() => onOptionsPress(item)}
         >
-          <Text style={styles.queueText}>+ QUEUE</Text>
+          <Text style={styles.optionsText}>⋮</Text>
         </TouchableOpacity>
       </View>
     );
@@ -105,13 +106,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     paddingHorizontal: 8,
   },
-  queueButton: {
-    paddingLeft: 12,
-    paddingVertical: 8,
+  optionsButton: {
+    paddingLeft: 16,
+    paddingVertical: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  queueText: {
-    color: "#1DB954",
-    fontSize: 12,
+  optionsText: {
+    color: "#b3b3b3",
+    fontSize: 22,
     fontWeight: "bold",
   },
 });
