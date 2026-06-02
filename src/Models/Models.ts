@@ -5,6 +5,8 @@ export interface Song {
   album?: string;
   albumId?: string;
   artworkUrl?: string;
+  duration?: number;
+  clientQueueId?: string;
 }
 
 export interface Album {

@@ -18,15 +18,7 @@ import {
   getStreamUrl,
   fetchThemeOrRandomQueue,
 } from "@/Services/navidromeService";
-
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  album?: string;
-  duration?: number;
-  artworkUrl?: string;
-}
+import { Song } from "@/Models/Models";
 
 interface AudioContextType {
   currentSong: Song | null;
