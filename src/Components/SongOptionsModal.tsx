@@ -8,9 +8,15 @@ import {
   TouchableWithoutFeedback,
   FlatList,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { Song } from "./SongItem";
+import {
+  fetchNavidromePlaylists,
+  checkSongInPlaylist,
+  addTrackToPlaylist,
+} from "../Services/navidromeService";
 
 interface SongOptionsModalProps {
   visible: boolean;
@@ -18,12 +24,6 @@ interface SongOptionsModalProps {
   onClose: () => void;
   onAddToQueue: (song: Song) => void;
   onGoToAlbum: (albumId: string) => void;
-  fetchPlaylists: () => Promise<any[]>;
-  onAddToPlaylist: (
-    song: Song,
-    playlistId: string,
-    playlistName: string,
-  ) => Promise<void>;
 }
 
 export function SongOptionsModal({
@@ -32,8 +32,6 @@ export function SongOptionsModal({
   onClose,
   onAddToQueue,
   onGoToAlbum,
-  fetchPlaylists,
-  onAddToPlaylist,
 }: SongOptionsModalProps) {
   const [viewState, setViewState] = useState<"menu" | "playlists">("menu");
   const [playlists, setPlaylists] = useState<any[]>([]);
@@ -49,9 +47,67 @@ export function SongOptionsModal({
   const handlePlaylistSelectClick = async () => {
     setViewState("playlists");
     setLoadingPlaylists(true);
-    const list = await fetchPlaylists();
-    setPlaylists(list);
-    setLoadingPlaylists(false);
+    try {
+      const list = await fetchNavidromePlaylists();
+      setPlaylists(list);
+    } catch (e) {
+      Alert.alert("Error", "Could not fetch playlists from the server.");
+    } finally {
+      setLoadingPlaylists(false);
+    }
+  };
+
+  const executeAddProcess = async (
+    playlistId: string,
+    playlistName: string,
+  ) => {
+    try {
+      const success = await addTrackToPlaylist(playlistId, song.id);
+      if (success) {
+        Alert.alert("Success", `Added "${song.title}" to "${playlistName}".`);
+        onClose();
+      } else {
+        Alert.alert("Error", "Could not update playlist on the server.");
+      }
+    } catch (e) {
+      Alert.alert("Error", "An error occurred while adding the track.");
+    }
+  };
+
+  const handleAddToPlaylistPress = async (
+    playlistId: string,
+    playlistName: string,
+  ) => {
+    try {
+      const isAlreadyInPlaylist = await checkSongInPlaylist(
+        playlistId,
+        song.id,
+      );
+
+      if (isAlreadyInPlaylist) {
+        Alert.alert(
+          "Already in Playlist",
+          `"${song.title}" is already in "${playlistName}". Do you want to add it anyway?`,
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+            },
+            {
+              text: "Add Anyway",
+              onPress: async () => {
+                await executeAddProcess(playlistId, playlistName);
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      await executeAddProcess(playlistId, playlistName);
+    } catch (e) {
+      Alert.alert("Error", "Could not verify playlist status.");
+    }
   };
 
   return (
@@ -112,7 +168,10 @@ export function SongOptionsModal({
                   onGoToAlbum(song.albumId);
                   onClose();
                 } else {
-                  alert("Album ID not found for this track.");
+                  Alert.alert(
+                    "Missing ID",
+                    "Album ID not found for this track.",
+                  );
                 }
               }}
             >
@@ -158,10 +217,7 @@ export function SongOptionsModal({
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={styles.optionRow}
-                    onPress={async () => {
-                      await onAddToPlaylist(song, item.id, item.name);
-                      onClose();
-                    }}
+                    onPress={() => handleAddToPlaylistPress(item.id, item.name)}
                   >
                     <Text style={styles.optionText}>📁 {item.name}</Text>
                   </TouchableOpacity>

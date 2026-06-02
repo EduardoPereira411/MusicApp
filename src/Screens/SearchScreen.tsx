@@ -7,7 +7,6 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { authStorage, getSubsonicAuthParams } from "../Services/subsonicAuth";
 import { useAudio } from "@/Context/AudioContext";
@@ -89,60 +88,6 @@ export default function SearchScreen() {
       console.error("Search failed:", e);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function fetchNavidromePlaylists() {
-    try {
-      const creds = await authStorage.getCredentials();
-      const params = await getSubsonicAuthParams();
-      if (!creds || !params) return [];
-      const url = `${creds.serverUrl}/rest/getPlaylists.view?${params}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      const playlists = data["subsonic-response"]?.playlists?.playlist || [];
-      return Array.isArray(playlists) ? playlists : [playlists];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  async function addTrackToNavidromePlaylist(
-    song: Song,
-    playlistId: string,
-    playlistName: string,
-  ) {
-    try {
-      const creds = await authStorage.getCredentials();
-      const params = await getSubsonicAuthParams();
-      if (!creds || !params) return;
-
-      const checkUrl = `${creds.serverUrl}/rest/getPlaylist.view?${params}&id=${playlistId}`;
-      const checkRes = await fetch(checkUrl);
-      const checkData = await checkRes.json();
-      const existingTracks =
-        checkData["subsonic-response"]?.playlist?.entry || [];
-      const tracksArray = Array.isArray(existingTracks)
-        ? existingTracks
-        : [existingTracks];
-
-      if (tracksArray.some((track: any) => track.id === song.id)) {
-        Alert.alert(
-          "Already in Playlist",
-          `"${song.title}" is already in "${playlistName}".`,
-        );
-        return;
-      }
-
-      const updateUrl = `${creds.serverUrl}/rest/updatePlaylist.view?${params}&playlistId=${playlistId}&songIdToAdd=${song.id}`;
-      const updateRes = await fetch(updateUrl);
-      const updateData = await updateRes.json();
-
-      if (updateData["subsonic-response"]?.status === "ok") {
-        Alert.alert("Success", `Added "${song.title}" to "${playlistName}".`);
-      }
-    } catch (e) {
-      console.error(e);
     }
   }
 
@@ -242,11 +187,7 @@ export default function SearchScreen() {
         song={selectedSong}
         onClose={() => setIsModalVisible(false)}
         onAddToQueue={addToQueue}
-        onGoToAlbum={(albumId) =>
-          console.log("Navigating to Album via ID:", albumId)
-        }
-        fetchPlaylists={fetchNavidromePlaylists}
-        onAddToPlaylist={addTrackToNavidromePlaylist}
+        onGoToAlbum={(albumId) => console.log("Navigating...", albumId)}
       />
     </View>
   );
