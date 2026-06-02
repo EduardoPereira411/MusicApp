@@ -42,6 +42,7 @@ interface AudioContextType {
   seekTo: (seconds: number) => void;
   removeFromQueue: (index: number) => void;
   skipToQueueIndex: (index: number) => void;
+  updateQueueOrder: (newQueue: Song[]) => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -298,6 +299,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     [loadSongAtIndex],
   );
 
+  const updateQueueOrder = useCallback((newQueue: Song[]) => {
+    setQueue(newQueue);
+  }, []);
   // Auto-advance track handler
   useEffect(() => {
     if (
@@ -339,6 +343,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       seekTo,
       removeFromQueue,
       skipToQueueIndex,
+      updateQueueOrder,
     }),
     [
       currentSong,
@@ -354,6 +359,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       seekTo,
       removeFromQueue,
       skipToQueueIndex,
+      updateQueueOrder,
     ],
   );
 
