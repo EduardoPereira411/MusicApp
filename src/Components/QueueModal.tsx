@@ -5,10 +5,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudio } from "@/Context/AudioContext";
 import { Image } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import DraggableFlatList, {
-  ScaleDecorator,
-  RenderItemParams,
-} from "react-native-draggable-flatlist";
+import DraggableFlatList from "react-native-draggable-flatlist";
+import { QueueTrack } from "@/Components/QueueTrack"; // Adjust paths accordingly
 
 interface QueueModalProps {
   visible: boolean;
@@ -35,12 +33,10 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
   }, [queue, currentIndex]);
 
   const handleDragEnd = ({ data }: { data: typeof upcomingQueueData }) => {
-    // Keep everything up to and including current track unchanged, then append newly ordered upcoming items
     const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
     const reorderedUpcoming = data.map(
       ({ absoluteIndex, ...songProps }) => songProps,
     );
-
     updateQueueOrder([...unchangedPastAndCurrent, ...reorderedUpcoming]);
   };
 
@@ -110,62 +106,15 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
             ListEmptyComponent={
               <Text style={styles.emptyText}>No upcoming songs in queue</Text>
             }
-            renderItem={({
-              item,
-              drag,
-              isActive,
-            }: RenderItemParams<(typeof upcomingQueueData)[0]>) => {
-              return (
-                <ScaleDecorator>
-                  <View
-                    style={[styles.trackRow, isActive && styles.activeDragRow]}
-                  >
-                    <TouchableOpacity
-                      onLongPress={drag}
-                      delayLongPress={100}
-                      style={styles.dragHandle}
-                    >
-                      <Ionicons name="menu" size={20} color="#555" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.trackDetails}
-                      onPress={() => skipToQueueIndex(item.absoluteIndex)}
-                    >
-                      {item.artworkUrl ? (
-                        <Image
-                          source={{ uri: item.artworkUrl }}
-                          style={styles.artwork}
-                        />
-                      ) : (
-                        <View
-                          style={[styles.artwork, styles.fallbackArtwork]}
-                        />
-                      )}
-                      <View style={styles.textContainer}>
-                        <Text style={styles.title} numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                        <Text style={styles.artist} numberOfLines={1}>
-                          {item.artist}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.removeButton}
-                      onPress={() => removeFromQueue(item.absoluteIndex)}
-                    >
-                      <Ionicons
-                        name="trash-outline"
-                        size={20}
-                        color="#ff4d4d"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </ScaleDecorator>
-              );
-            }}
+            renderItem={({ item, drag, isActive }) => (
+              <QueueTrack
+                item={item}
+                drag={drag}
+                isActive={isActive}
+                onTrackPress={skipToQueueIndex}
+                onRemovePress={removeFromQueue}
+              />
+            )}
           />
         </View>
       </GestureHandlerRootView>
@@ -241,16 +190,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 12,
   },
-  activeDragRow: {
-    backgroundColor: "#333333",
-    opacity: 0.9,
-  },
-  dragHandle: {
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   trackDetails: {
     flex: 1,
     flexDirection: "row",
@@ -284,8 +223,5 @@ const styles = StyleSheet.create({
   },
   playingIndicator: {
     paddingRight: 6,
-  },
-  removeButton: {
-    padding: 10,
   },
 });
