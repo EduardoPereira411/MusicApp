@@ -34,7 +34,7 @@ interface AudioContextType {
   currentIndex: number;
   playing: boolean;
   player: AudioPlayer;
-  playSongNow: (song: Song) => Promise<void>;
+  playSongNow: (song: Song, contextSongs?: Song[]) => Promise<void>;
   addToQueue: (song: Song) => void;
   playNext: () => void;
   playPrevious: () => void;
@@ -174,7 +174,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [status.playing, currentSong]);
 
   const playSongNow = useCallback(
-    async (song: Song) => {
+    async (song: Song, contextSongs?: Song[]) => {
       if (
         stateRef.current.queue[stateRef.current.currentIndex]?.id === song.id
       ) {
@@ -186,15 +186,28 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       const url = await getStreamUrl(song.id);
       if (!url) return;
 
-      setQueue([song]);
-      setCurrentIndex(0);
+      if (contextSongs && contextSongs.length > 0) {
+        const idx = contextSongs.findIndex((s) => s.id === song.id);
+        if (idx !== -1) {
+          setQueue(contextSongs);
+          setCurrentIndex(idx);
+        } else {
+          setQueue([song, ...contextSongs]);
+          setCurrentIndex(0);
+        }
+      } else {
+        setQueue([song]);
+        setCurrentIndex(0);
+      }
 
       player.replace({ uri: url });
       player.play();
 
-      const proceduralTracks = await fetchThemeOrRandomQueue(song);
-      if (proceduralTracks.length > 0) {
-        setQueue([song, ...proceduralTracks]);
+      if (!contextSongs) {
+        const proceduralTracks = await fetchThemeOrRandomQueue(song);
+        if (proceduralTracks.length > 0) {
+          setQueue([song, ...proceduralTracks]);
+        }
       }
     },
     [player],

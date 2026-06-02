@@ -26,6 +26,7 @@ export default function PlaylistScreen() {
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isShuffle, setIsShuffle] = useState<boolean>(false);
 
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
@@ -84,6 +85,16 @@ export default function PlaylistScreen() {
             {name || "Details"}
           </Text>
         </View>
+        <TouchableOpacity
+          style={styles.shuffleButton}
+          onPress={() => setIsShuffle(!isShuffle)}
+        >
+          <Ionicons
+            name="shuffle"
+            size={24}
+            color={isShuffle ? "#1DB954" : "#fff"}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Tracks Listing */}
@@ -103,7 +114,17 @@ export default function PlaylistScreen() {
               item={item}
               isCurrent={isCurrent}
               isPlaying={isCurrent && playing}
-              onPlay={playSongNow}
+              onPlay={() => {
+                if (isShuffle) {
+                  const remainingSongs = songs.filter((s) => s.id !== item.id);
+                  const shuffledRemaining = [...remainingSongs].sort(
+                    () => Math.random() - 0.5,
+                  );
+                  playSongNow(item, [item, ...shuffledRemaining]);
+                } else {
+                  playSongNow(item, songs);
+                }
+              }}
               onOptionsPress={handleSongOptions}
             />
           );
@@ -157,8 +178,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
   },
+  shuffleButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
   listContainer: {
-    paddingBottom: 130, // Pushes elements safely over the GlobalMiniPlayer bounding box layout
+    paddingBottom: 130,
   },
   emptyText: {
     color: "#b3b3b3",
