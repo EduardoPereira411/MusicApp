@@ -19,7 +19,13 @@ export function useAudioEngine() {
   const player = useAudioPlayer();
   const status = useAudioPlayerStatus(player);
 
-  const masterQueueRef = useRef<Song[]>([]);
+  const internalQueueRef = useRef<{
+    userQueue: Song[];
+    contextQueue: Song[];
+  }>({
+    userQueue: [],
+    contextQueue: [],
+  });
 
   const currentSong = useMemo(() => {
     return currentIndex >= 0 && currentIndex < queue.length
@@ -77,30 +83,29 @@ export function useAudioEngine() {
 
   /**
    * LOOK-AHEAD AUTOMATION EFFECT
-   * Monitors position and dynamically expands the state queue when approaching the end.
+   * Seamlessly builds chunks using user entries first, then album lists, then radio fallbacks
    */
   useEffect(() => {
     if (currentIndex === -1 || queue.length === 0) return;
 
     const songsRemaining = queue.length - 1 - currentIndex;
-    console.log("triggered");
-    // Trigger threshold: When 5 or fewer tracks are left in the visible queue chunk
+
     if (songsRemaining <= 5) {
-      // Contextual Tracks (Playlist/Album contexts)
-      if (masterQueueRef.current.length > queue.length) {
-        const nextBatch = masterQueueRef.current.slice(
-          queue.length,
-          queue.length + 10,
-        );
+      const storage = internalQueueRef.current;
+      const fullPool = [...storage.userQueue, ...storage.contextQueue];
+
+      if (fullPool.length > queue.length) {
+        const nextBatch = fullPool.slice(queue.length, queue.length + 10);
         setQueue((prev) => [...prev, ...nextBatch]);
       }
 
-      // Procedural/Infinite Radio Generation (HomeScreen single-clicks)
-      else if (masterQueueRef.current.length === 0) {
+      // Procedural/Infinite Radio Generation
+      if (fullPool.length <= queue.length) {
         const lastSong = queue[queue.length - 1];
 
         fetchThemeOrRandomQueue(lastSong, 10).then((nextTracks) => {
           if (nextTracks.length > 0) {
+            internalQueueRef.current.contextQueue.push(...nextTracks);
             setQueue((prev) => [...prev, ...nextTracks]);
           }
         });
@@ -189,27 +194,21 @@ export function useAudioEngine() {
       const url = await getStreamUrl(song.id);
       if (!url) return;
 
-      let initialQueueSlice: Song[] = [];
+      // Wipe stale explicit queue allocations
+      internalQueueRef.current.userQueue = [];
 
       if (contextSongs && contextSongs.length > 0) {
-        masterQueueRef.current = contextSongs;
-
         const idx = contextSongs.findIndex((s) => s.id === song.id);
-        if (idx !== -1) {
-          initialQueueSlice = contextSongs.slice(idx, idx + 10);
-          setQueue(initialQueueSlice);
-          setCurrentIndex(0);
-        } else {
-          initialQueueSlice = [song, ...contextSongs.slice(0, 9)];
-          setQueue(initialQueueSlice);
-          setCurrentIndex(0);
-        }
+        const relativeContext =
+          idx !== -1 ? contextSongs.slice(idx) : contextSongs;
+
+        internalQueueRef.current.contextQueue = relativeContext;
+        setQueue(relativeContext.slice(0, 10));
+        setCurrentIndex(0);
       } else {
-        // Individual selection out of context (HomeScreen dashboards)
-        masterQueueRef.current = [];
+        internalQueueRef.current.contextQueue = [];
         setQueue([song]);
         setCurrentIndex(0);
-        // Look-ahead effect handles initial population automatically
       }
 
       player.replace({ uri: url });
@@ -220,19 +219,26 @@ export function useAudioEngine() {
 
   const addToQueue = useCallback(
     (song: Song) => {
-      if (masterQueueRef.current.length > 0) {
-        masterQueueRef.current.push(song);
-      }
+      const storage = internalQueueRef.current;
 
       setQueue((prev) => {
-        const updated = [...prev, song];
         if (prev.length === 0) {
+          storage.userQueue.push(song);
           setTimeout(() => playSongNow(song), 0);
+          return [song];
         }
+
+        const userItemsAhead = storage.userQueue.length;
+        const targetInsertionIndex = currentIndex + 1 + userItemsAhead;
+
+        storage.userQueue.push(song);
+
+        const updated = [...prev];
+        updated.splice(targetInsertionIndex, 0, song);
         return updated;
       });
     },
-    [playSongNow],
+    [currentIndex, playSongNow],
   );
 
   const playNext = useCallback(() => {
@@ -250,11 +256,8 @@ export function useAudioEngine() {
   }, [loadSongAtIndex]);
 
   const togglePlayPause = useCallback(() => {
-    if (player.playing) {
-      player.pause();
-    } else {
-      player.play();
-    }
+    if (player.playing) player.pause();
+    else player.play();
   }, [player]);
 
   const seekTo = useCallback(
@@ -266,7 +269,6 @@ export function useAudioEngine() {
           ? PlaybackState.PLAYING
           : PlaybackState.PAUSED;
         const speedRate = status.playing ? 1.0 : 0.0;
-
         MediaControl.updatePlaybackState(stateValue, seconds, speedRate).catch(
           (e) => console.error("Lockscreen state sync failed on seek:", e),
         );
@@ -280,12 +282,19 @@ export function useAudioEngine() {
       setQueue((prevQueue) => {
         if (indexToRemove < 0 || indexToRemove >= prevQueue.length)
           return prevQueue;
+
         const updatedQueue = prevQueue.filter(
           (_, idx) => idx !== indexToRemove,
         );
+        const storage = internalQueueRef.current;
 
-        if (masterQueueRef.current.length > indexToRemove) {
-          masterQueueRef.current.splice(indexToRemove, 1);
+        if (indexToRemove < storage.userQueue.length) {
+          storage.userQueue.splice(indexToRemove, 1);
+        } else {
+          const adjustedContextIdx = indexToRemove - storage.userQueue.length;
+          if (adjustedContextIdx < storage.contextQueue.length) {
+            storage.contextQueue.splice(adjustedContextIdx, 1);
+          }
         }
 
         if (currentIndex === indexToRemove) {
@@ -320,14 +329,15 @@ export function useAudioEngine() {
 
   const updateQueueOrder = useCallback((newQueue: Song[]) => {
     setQueue(newQueue);
-    masterQueueRef.current = [...newQueue];
+    internalQueueRef.current.contextQueue = [...newQueue];
+    internalQueueRef.current.userQueue = [];
   }, []);
 
   const logoutCleanUp = useCallback(() => {
     try {
       setQueue([]);
       setCurrentIndex(-1);
-      masterQueueRef.current = [];
+      internalQueueRef.current = { userQueue: [], contextQueue: [] };
       player.replace("");
       player.pause();
       MediaControl.updateMetadata({
@@ -358,10 +368,9 @@ export function useAudioEngine() {
       if (freshIndex < freshQueue.length - 1) {
         loadSongAtIndex(freshIndex + 1, freshQueue);
       } else {
-        // Finished everything inside context
         setCurrentIndex(-1);
         setQueue([]);
-        masterQueueRef.current = [];
+        internalQueueRef.current = { userQueue: [], contextQueue: [] };
       }
     }
   }, [
