@@ -7,6 +7,7 @@ export interface Song {
   artworkUrl?: string;
   duration?: number;
   clientQueueId?: string;
+  trackNumber?: number;
 }
 
 export interface Album {

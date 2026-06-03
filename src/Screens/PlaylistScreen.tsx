@@ -107,11 +107,13 @@ export default function PlaylistScreen() {
             This context contains no playable items.
           </Text>
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const isCurrent = currentSong?.id === item.id;
           return (
             <SongItem
               item={item}
+              index={index}
+              showTrackNumber={true}
               isCurrent={isCurrent}
               isPlaying={isCurrent && playing}
               onPlay={() => {
@@ -183,7 +185,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   listContainer: {
-    paddingBottom: 130,
+    paddingBottom: 200,
   },
   emptyText: {
     color: "#b3b3b3",

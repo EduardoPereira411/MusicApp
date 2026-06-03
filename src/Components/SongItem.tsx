@@ -9,16 +9,37 @@ interface SongItemProps {
   isPlaying: boolean;
   onPlay: (song: Song) => void;
   onOptionsPress: (song: Song) => void;
+  showTrackNumber?: boolean;
+  index?: number;
 }
 
 export const SongItem = React.memo(
-  ({ item, isCurrent, isPlaying, onPlay, onOptionsPress }: SongItemProps) => {
+  ({
+    item,
+    isCurrent,
+    isPlaying,
+    onPlay,
+    onOptionsPress,
+    showTrackNumber = false,
+    index,
+  }: SongItemProps) => {
+    const displayTrackNumber =
+      item.trackNumber ?? (index !== undefined ? index + 1 : null);
+
     return (
       <View style={[styles.itemCard, isCurrent && styles.activeCard]}>
         <TouchableOpacity
           style={styles.touchableArea}
           onPress={() => onPlay(item)}
         >
+          {showTrackNumber && displayTrackNumber !== null ? (
+            <Text
+              style={[styles.trackNumberText, isCurrent && styles.activeText]}
+            >
+              {displayTrackNumber}
+            </Text>
+          ) : null}
+
           <Image
             source={{ uri: item.artworkUrl }}
             style={styles.cardArt}
@@ -108,5 +129,12 @@ const styles = StyleSheet.create({
     color: "#b3b3b3",
     fontSize: 22,
     fontWeight: "bold",
+  },
+  trackNumberText: {
+    color: "#b3b3b3",
+    fontSize: 14,
+    width: 28,
+    textAlign: "center",
+    marginRight: 8,
   },
 });
