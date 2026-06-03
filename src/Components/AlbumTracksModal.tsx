@@ -10,7 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { DownloadSongItem } from "./DownloadSongItem";
+import { DownloadSongItem } from "@/Components/DownloadSongItem";
 import { downloadService } from "@/Services/downloadService";
 
 interface AlbumTracksModalProps {

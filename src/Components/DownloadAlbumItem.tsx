@@ -10,16 +10,7 @@ import {
 } from "react-native";
 import { AlbumTracksModal } from "@/Components/AlbumTracksModal";
 import { downloadService } from "@/Services/downloadService";
-
-export interface DownloadAlbumMetadata {
-  album_name: string;
-  album_id: string;
-  artist: string;
-  release?: string;
-  album_cover?: string;
-  album_type?: string;
-  is_explicit?: boolean;
-}
+import { DownloadAlbumMetadata } from "@/Models/Models";
 
 interface DownloadAlbumItemProps {
   item: DownloadAlbumMetadata;

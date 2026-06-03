@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudio } from "@/Context/AudioContext";
 import { useAudioPlayerStatus, AudioPlayer } from "expo-audio";
 import Slider from "@react-native-community/slider";
-import { QueueModal } from "./QueueModal"; // Import your new component
+import { QueueModal } from "@/Components/QueueModal";
 
 function MiniPlayerSlider({
   player,

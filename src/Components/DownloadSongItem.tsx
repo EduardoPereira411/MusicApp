@@ -9,18 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { downloadService } from "@/Services/downloadService";
-
-export interface DownloadTrackMetadata {
-  song_name: string;
-  artist: string;
-  album_name?: string;
-  track_number?: string;
-  release?: string;
-  album_cover?: string;
-  download_url: string;
-  song_duration?: number;
-  source: string;
-}
+import { DownloadTrackMetadata } from "@/Models/Models";
 
 interface DownloadSongItemProps {
   item: DownloadTrackMetadata;
