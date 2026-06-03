@@ -7,20 +7,30 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
   authStorage,
   getSubsonicAuthParams,
 } from "@/Services/navidromeService";
+import { downloadAuthStorage } from "@/Services/downloadService";
 
 export default function LoginScreen() {
   const router = useRouter();
+
+  // Navidrome settings
   const [serverUrl, setServerUrl] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
 
+  // Download API settings
+  const [showDownloadConfig, setShowDownloadConfig] = useState(false);
+  const [dlBaseUrl, setDlBaseUrl] = useState("");
+  const [dlUsername, setDlUsername] = useState("");
+  const [dlPassword, setDlPassword] = useState("");
+
+  const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleCancel = () => {
@@ -31,7 +41,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!serverUrl || !username || !password) {
-      Alert.alert("Error", "Please fill in all configuration fields.");
+      Alert.alert("Error", "Please fill in all core Navidrome fields.");
       return;
     }
 
@@ -55,16 +65,6 @@ export default function LoginScreen() {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error(
-            "Server or Subsonic API endpoint not found (404). Check your URL.",
-          );
-        }
-        if (response.status >= 500) {
-          throw new Error(
-            `Server error (${response.status}). Try again later.`,
-          );
-        }
         throw new Error(`Connection rejected with status: ${response.status}`);
       }
 
@@ -80,14 +80,22 @@ export default function LoginScreen() {
       const subsonicResponse = data["subsonic-response"];
 
       if (subsonicResponse && subsonicResponse.status === "ok") {
-        Alert.alert("Success", "Connected to Navidrome server!");
+        if (showDownloadConfig && dlBaseUrl) {
+          await downloadAuthStorage.saveCredentials({
+            baseUrl: dlBaseUrl,
+            user: dlUsername,
+            pass: dlPassword,
+          });
+        } else if (!showDownloadConfig) {
+          await downloadAuthStorage.clearCredentials();
+        }
+
+        Alert.alert("Success", "Configuration applied successfully!");
         router.replace("/(tabs)");
-      } else if (subsonicResponse && subsonicResponse.error) {
-        throw new Error(
-          subsonicResponse.error.message || "Authentication failed.",
-        );
       } else {
-        throw new Error("Invalid endpoint response schema.");
+        throw new Error(
+          subsonicResponse?.error?.message || "Authentication failed.",
+        );
       }
     } catch (error: any) {
       clearTimeout(timeoutId);
@@ -96,14 +104,10 @@ export default function LoginScreen() {
       if (error.name === "AbortError") {
         Alert.alert(
           "Request Stopped",
-          "The connection timed out or was cancelled by the user.",
+          "The connection timed out or was cancelled.",
         );
       } else {
-        Alert.alert(
-          "Connection Failed",
-          error.message ||
-            "Could not connect to the server. Check your URL or network connection.",
-        );
+        Alert.alert("Connection Failed", error.message || "Could not connect.");
       }
     } finally {
       setLoading(false);
@@ -112,9 +116,10 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Navidrome Subsonic Client</Text>
 
+      <Text style={styles.sectionHeader}>Navidrome Settings</Text>
       <TextInput
         style={styles.input}
         placeholder="Server URL (e.g., https://music.myhost.com)"
@@ -126,7 +131,6 @@ export default function LoginScreen() {
         keyboardType="url"
         editable={!loading}
       />
-
       <TextInput
         style={styles.input}
         placeholder="Username"
@@ -137,7 +141,6 @@ export default function LoginScreen() {
         autoCorrect={false}
         editable={!loading}
       />
-
       <TextInput
         style={styles.input}
         placeholder="Password"
@@ -149,6 +152,54 @@ export default function LoginScreen() {
         autoCorrect={false}
         editable={!loading}
       />
+
+      <TouchableOpacity
+        style={styles.toggleRow}
+        onPress={() => setShowDownloadConfig(!showDownloadConfig)}
+      >
+        <Text style={styles.toggleText}>
+          {showDownloadConfig
+            ? "▼ Hide Download Proxy API (Optional)"
+            : "▶ Configure Download Proxy API (Optional)"}
+        </Text>
+      </TouchableOpacity>
+
+      {showDownloadConfig && (
+        <View style={styles.optionalContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Proxy Base URL (https://proxy-domain.com)"
+            placeholderTextColor="#888"
+            value={dlBaseUrl}
+            onChangeText={setDlBaseUrl}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            editable={!loading}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Proxy Username (Optional)"
+            placeholderTextColor="#888"
+            value={dlUsername}
+            onChangeText={setDlUsername}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Proxy Password (Optional)"
+            placeholderTextColor="#888"
+            secureTextEntry
+            value={dlPassword}
+            onChangeText={setDlPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+          />
+        </View>
+      )}
 
       {!loading ? (
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
@@ -166,7 +217,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -181,8 +232,31 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     color: "#fff",
-    marginBottom: 30,
+    marginBottom: 25,
     textAlign: "center",
+  },
+  sectionHeader: {
+    color: "#e91e63",
+    fontSize: 14,
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  toggleRow: {
+    paddingVertical: 15,
+    marginTop: 10,
+  },
+  toggleText: {
+    color: "#bbb",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  optionalContainer: {
+    backgroundColor: "#1a1a1a",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
   },
   input: {
     backgroundColor: "#1e1e1e",
@@ -197,7 +271,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 15,
   },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
   loadingContainer: {
