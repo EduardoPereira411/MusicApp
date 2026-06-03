@@ -49,7 +49,7 @@ export function SongOptionsModal({
 
     onClose();
     router.push({
-      pathname: "/(tabs)/playlist",
+      pathname: "/playlist",
       params: {
         id: song.albumId,
         type: "album",

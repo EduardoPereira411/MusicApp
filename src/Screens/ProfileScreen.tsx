@@ -258,7 +258,7 @@ export default function ProfileScreen() {
             style={styles.playlistCard}
             onPress={() => {
               router.push({
-                pathname: "/(tabs)/playlist",
+                pathname: "/playlist",
                 params: { id: item.id, type: "playlist", name: item.name },
               });
             }}

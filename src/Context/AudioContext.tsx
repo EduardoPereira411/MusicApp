@@ -35,6 +35,7 @@ interface AudioContextType {
   removeFromQueue: (index: number) => void;
   skipToQueueIndex: (index: number) => void;
   updateQueueOrder: (newQueue: Song[]) => void;
+  logoutCleanUp: () => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -294,6 +295,29 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const updateQueueOrder = useCallback((newQueue: Song[]) => {
     setQueue(newQueue);
   }, []);
+
+  const logoutCleanUp = useCallback(() => {
+    try {
+      setQueue([]);
+      setCurrentIndex(-1);
+      player.replace("");
+      player.pause();
+      MediaControl.updateMetadata({
+        title: "",
+        artist: "",
+        album: "",
+        artwork: undefined,
+        duration: 0,
+      }).catch((err) => console.error("Error clearing metadata:", err));
+
+      MediaControl.updatePlaybackState(PlaybackState.PAUSED, 0, 0.0).catch(
+        (e) => console.error("Error resetting OS playback state:", e),
+      );
+    } catch (error) {
+      console.error("Error executing layout audio teardown:", error);
+    }
+  }, [player]);
+
   // Auto-advance track handler
   useEffect(() => {
     if (
@@ -336,6 +360,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       removeFromQueue,
       skipToQueueIndex,
       updateQueueOrder,
+      logoutCleanUp,
     }),
     [
       currentSong,
@@ -352,6 +377,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       removeFromQueue,
       skipToQueueIndex,
       updateQueueOrder,
+      logoutCleanUp,
     ],
   );
 

@@ -1,6 +1,10 @@
-import { Stack } from "expo-router";
-import { LogBox } from "react-native";
-// Ignore Media COntrol Logs
+import { useEffect, useState } from "react";
+import { LogBox, View, ActivityIndicator } from "react-native";
+import { Stack, useSegments, useRouter } from "expo-router";
+import { AudioProvider, useAudio } from "@/Context/AudioContext";
+import GlobalMiniPlayer from "@/Components/GlobalMiniPlayer";
+import { authStorage } from "@/Services/navidromeService";
+
 LogBox.ignoreLogs(["Dispatching media control event"]);
 const originalLog = console.log;
 console.log = (...args) => {
@@ -19,11 +23,80 @@ console.log = (...args) => {
   originalLog(...args);
 };
 
-export default function RootLayout() {
+function InnerRootLayout() {
+  const segments = useSegments();
+  const router = useRouter();
+  const { logoutCleanUp } = useAudio();
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+
+  const isLoginScreen = segments[0] === "login";
+
+  // Authentication Routing Guard
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const creds = await authStorage.getCredentials();
+        const isLoggedIn = !!creds?.username;
+
+        if (!isLoggedIn && !isLoginScreen) {
+          router.replace("/login");
+        } else if (isLoggedIn && isLoginScreen) {
+          router.replace("/(tabs)");
+        }
+      } catch (e) {
+        console.error("Auth initialization check failed:", e);
+      } finally {
+        setIsAuthChecked(true);
+      }
+    }
+    checkAuth();
+  }, [segments, isLoginScreen, router]);
+
+  // Completely teardown player context and OS controls when on the login screen
+  useEffect(() => {
+    if (isLoginScreen) {
+      logoutCleanUp();
+    }
+  }, [isLoginScreen, logoutCleanUp]);
+
+  if (!isAuthChecked) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#1DB954" />
+      </View>
+    );
+  }
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="login" />
-      <Stack.Screen name="(tabs)" />
-    </Stack>
+    <View style={styles.container}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="playlist" />
+      </Stack>
+
+      {!isLoginScreen && <GlobalMiniPlayer />}
+    </View>
   );
 }
+
+export default function RootLayout() {
+  return (
+    <AudioProvider>
+      <InnerRootLayout />
+    </AudioProvider>
+  );
+}
+
+const styles = {
+  container: {
+    flex: 1,
+    backgroundColor: "#121212",
+  },
+  centerContainer: {
+    flex: 1,
+    backgroundColor: "#121212",
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+  },
+};

@@ -13,7 +13,7 @@ export const AlbumItem = React.memo(({ item }: AlbumItemProps) => {
 
   const handlePress = () => {
     router.push({
-      pathname: "/(tabs)/playlist",
+      pathname: "/playlist",
       params: {
         id: item.id,
         type: "album",
