@@ -18,6 +18,7 @@ import { SongItem } from "@/Components/SongItem";
 import { AlbumItem } from "@/Components/AlbumItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { SearchBar } from "@/Components/SearchBar";
 
 type SearchType = "tracks" | "albums";
 
@@ -123,18 +124,11 @@ export default function SearchScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Custom Search Bar Bar */}
-      <View style={styles.searchBarContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Artists, songs, or albums"
-          placeholderTextColor="#888"
-          value={query}
-          onChangeText={setQuery}
-          clearButtonMode="while-editing"
-          autoCorrect={false}
-        />
-      </View>
+      <SearchBar
+        placeholder="Artists, songs, or albums"
+        value={query}
+        onChangeText={setQuery}
+      />
 
       <View style={styles.tabBar}>
         {(["tracks", "albums"] as SearchType[]).map((tab) => (

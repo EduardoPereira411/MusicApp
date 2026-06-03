@@ -9,9 +9,10 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { downloadService } from "@/Services/downloadService"; // Adjust path based on your structure
+import { downloadService } from "@/Services/downloadService";
 import { DownloadSongItem } from "@/Components/DownloadSongItem";
 import { DownloadAlbumItem } from "@/Components/DownloadAlbumItem";
+import { SearchBar } from "@/Components/SearchBar";
 
 type SearchType = "tracks" | "albums";
 
@@ -63,20 +64,12 @@ export default function DownloadSearchScreen() {
         Search & import tracks directly into your server
       </Text>
 
-      {/* Search Input */}
-      <View style={styles.searchBarContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search YouTube Music..."
-          placeholderTextColor="#888"
-          value={query}
-          onChangeText={setQuery}
-          clearButtonMode="while-editing"
-          autoCorrect={false}
-        />
-      </View>
+      <SearchBar
+        placeholder="Search YouTube Music..."
+        value={query}
+        onChangeText={setQuery}
+      />
 
-      {/* Tabs */}
       <View style={styles.tabBar}>
         {(["tracks", "albums"] as SearchType[]).map((tab) => (
           <TouchableOpacity
@@ -103,7 +96,6 @@ export default function DownloadSearchScreen() {
         ))}
       </View>
 
-      {/* Results view */}
       <View style={{ flex: 1 }}>
         {loading ? (
           <View style={styles.centerContainer}>
