@@ -118,11 +118,17 @@ export default function PlaylistScreen() {
               isPlaying={isCurrent && playing}
               onPlay={() => {
                 if (isShuffle) {
-                  const remainingSongs = songs.filter((s) => s.id !== item.id);
-                  const shuffledRemaining = [...remainingSongs].sort(
-                    () => Math.random() - 0.5,
+                  const contextCopy = [...songs].filter(
+                    (s) => s.id !== item.id,
                   );
-                  playSongNow(item, [item, ...shuffledRemaining]);
+                  for (let i = contextCopy.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [contextCopy[i], contextCopy[j]] = [
+                      contextCopy[j],
+                      contextCopy[i],
+                    ];
+                  }
+                  playSongNow(item, [item, ...contextCopy]);
                 } else {
                   playSongNow(item, songs);
                 }

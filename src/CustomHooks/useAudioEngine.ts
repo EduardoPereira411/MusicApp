@@ -19,6 +19,8 @@ export function useAudioEngine() {
   const player = useAudioPlayer();
   const status = useAudioPlayerStatus(player);
 
+  const masterQueueRef = useRef<Song[]>([]);
+
   const currentSong = useMemo(() => {
     return currentIndex >= 0 && currentIndex < queue.length
       ? queue[currentIndex]
@@ -72,6 +74,39 @@ export function useAudioEngine() {
       duration: status.duration || currentSong.duration || 0,
     }).catch((err) => console.error("Error updating metadata:", err));
   }, [currentSong, status.duration]);
+
+  /**
+   * LOOK-AHEAD AUTOMATION EFFECT
+   * Monitors position and dynamically expands the state queue when approaching the end.
+   */
+  useEffect(() => {
+    if (currentIndex === -1 || queue.length === 0) return;
+
+    const songsRemaining = queue.length - 1 - currentIndex;
+    console.log("triggered");
+    // Trigger threshold: When 5 or fewer tracks are left in the visible queue chunk
+    if (songsRemaining <= 5) {
+      // Contextual Tracks (Playlist/Album contexts)
+      if (masterQueueRef.current.length > queue.length) {
+        const nextBatch = masterQueueRef.current.slice(
+          queue.length,
+          queue.length + 10,
+        );
+        setQueue((prev) => [...prev, ...nextBatch]);
+      }
+
+      // Procedural/Infinite Radio Generation (HomeScreen single-clicks)
+      else if (masterQueueRef.current.length === 0) {
+        const lastSong = queue[queue.length - 1];
+
+        fetchThemeOrRandomQueue(lastSong, 10).then((nextTracks) => {
+          if (nextTracks.length > 0) {
+            setQueue((prev) => [...prev, ...nextTracks]);
+          }
+        });
+      }
+    }
+  }, [currentIndex, queue.length]);
 
   const loadSongAtIndex = useCallback(
     async (index: number, targetQueue = stateRef.current.queue) => {
@@ -154,35 +189,41 @@ export function useAudioEngine() {
       const url = await getStreamUrl(song.id);
       if (!url) return;
 
+      let initialQueueSlice: Song[] = [];
+
       if (contextSongs && contextSongs.length > 0) {
+        masterQueueRef.current = contextSongs;
+
         const idx = contextSongs.findIndex((s) => s.id === song.id);
         if (idx !== -1) {
-          setQueue(contextSongs);
-          setCurrentIndex(idx);
+          initialQueueSlice = contextSongs.slice(idx, idx + 10);
+          setQueue(initialQueueSlice);
+          setCurrentIndex(0);
         } else {
-          setQueue([song, ...contextSongs]);
+          initialQueueSlice = [song, ...contextSongs.slice(0, 9)];
+          setQueue(initialQueueSlice);
           setCurrentIndex(0);
         }
       } else {
+        // Individual selection out of context (HomeScreen dashboards)
+        masterQueueRef.current = [];
         setQueue([song]);
         setCurrentIndex(0);
+        // Look-ahead effect handles initial population automatically
       }
 
       player.replace({ uri: url });
       player.play();
-
-      if (!contextSongs) {
-        const proceduralTracks = await fetchThemeOrRandomQueue(song);
-        if (proceduralTracks.length > 0) {
-          setQueue([song, ...proceduralTracks]);
-        }
-      }
     },
     [player],
   );
 
   const addToQueue = useCallback(
     (song: Song) => {
+      if (masterQueueRef.current.length > 0) {
+        masterQueueRef.current.push(song);
+      }
+
       setQueue((prev) => {
         const updated = [...prev, song];
         if (prev.length === 0) {
@@ -243,13 +284,15 @@ export function useAudioEngine() {
           (_, idx) => idx !== indexToRemove,
         );
 
-        // Correct the currentIndex pointers based on deletion
+        if (masterQueueRef.current.length > indexToRemove) {
+          masterQueueRef.current.splice(indexToRemove, 1);
+        }
+
         if (currentIndex === indexToRemove) {
           if (updatedQueue.length === 0) {
             setCurrentIndex(-1);
             player.pause();
           } else {
-            // Play next track or previous if deleted the last item
             const nextIndex =
               indexToRemove >= updatedQueue.length
                 ? updatedQueue.length - 1
@@ -277,12 +320,14 @@ export function useAudioEngine() {
 
   const updateQueueOrder = useCallback((newQueue: Song[]) => {
     setQueue(newQueue);
+    masterQueueRef.current = [...newQueue];
   }, []);
 
   const logoutCleanUp = useCallback(() => {
     try {
       setQueue([]);
       setCurrentIndex(-1);
+      masterQueueRef.current = [];
       player.replace("");
       player.pause();
       MediaControl.updateMetadata({
@@ -309,22 +354,22 @@ export function useAudioEngine() {
       status.currentTime > 0 &&
       status.currentTime >= (status.duration || 1)
     ) {
-      if (currentIndex < queue.length - 1) {
-        playNext();
+      const { queue: freshQueue, currentIndex: freshIndex } = stateRef.current;
+      if (freshIndex < freshQueue.length - 1) {
+        loadSongAtIndex(freshIndex + 1, freshQueue);
       } else {
-        // Clear out all queue when last song is finished
+        // Finished everything inside context
         setCurrentIndex(-1);
         setQueue([]);
+        masterQueueRef.current = [];
       }
     }
   }, [
     status.playing,
     status.currentTime,
     status.duration,
-    currentIndex,
-    queue.length,
     currentSong,
-    playNext,
+    loadSongAtIndex,
   ]);
 
   return {

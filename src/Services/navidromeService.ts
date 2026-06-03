@@ -257,7 +257,10 @@ export async function getStreamUrl(songId: string): Promise<string | null> {
 /**
  * Dynamically generates recommended queue tracks from Navidrome
  */
-export async function fetchThemeOrRandomQueue(baseSong: Song): Promise<Song[]> {
+export async function fetchThemeOrRandomQueue(
+  baseSong: Song,
+  size: number = 25,
+): Promise<Song[]> {
   try {
     const creds = await authStorage.getCredentials();
     const params = await getSubsonicAuthParams();
@@ -277,13 +280,13 @@ export async function fetchThemeOrRandomQueue(baseSong: Song): Promise<Song[]> {
     //if (fetchedTracks.length === 0) {
     // Fetch random songs to build a queue
     const randomResponse = await fetch(
-      `${creds.serverUrl}/rest/getRandomSongs.view?${params}&size=25&f=json`,
+      `${creds.serverUrl}/rest/getRandomSongs.view?${params}&size=${size}&f=json`,
     );
     const randomData = await randomResponse.json();
     fetchedTracks = randomData["subsonic-response"]?.randomSongs?.song || [];
 
     return fetchedTracks
-      .filter((track: any) => track.id !== baseSong.id) // Avoid duplicates
+      .filter((track: any) => track.id !== baseSong.id) // Avoid duplicate songs
       .map((track: any) => ({
         id: track.id,
         title: track.title,
