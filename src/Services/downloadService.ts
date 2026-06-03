@@ -59,7 +59,11 @@ async function getHeaders(): Promise<{
 }
 
 export const downloadService = {
-  async searchSongs(query: string) {
+  /**
+   * POST /song_search
+   * Search for songs on YTMusic
+   */
+  async searchSongs(query: string): Promise<any[]> {
     try {
       const config = await getHeaders();
       if (!config) return [];
@@ -78,7 +82,34 @@ export const downloadService = {
     }
   },
 
-  async searchAlbums(query: string) {
+  /**
+   * POST /video_search
+   * Search for videos/music videos on YTMusic
+   */
+  async searchVideos(query: string): Promise<any[]> {
+    try {
+      const config = await getHeaders();
+      if (!config) return [];
+
+      const response = await fetch(`${config.baseUrl}/video_search`, {
+        method: "POST",
+        headers: config.headers,
+        body: JSON.stringify({ query }),
+      });
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      const data = await response.json();
+      return data.results || [];
+    } catch (error) {
+      console.error("Failed downloading video search results:", error);
+      return [];
+    }
+  },
+
+  /**
+   * POST /album_search
+   * Search for albums on YTMusic
+   */
+  async searchAlbums(query: string): Promise<any[]> {
     try {
       const config = await getHeaders();
       if (!config) return [];
@@ -97,7 +128,38 @@ export const downloadService = {
     }
   },
 
-  async downloadTrack(track: any) {
+  /**
+   * POST /album_tracks
+   * Fetches metadata for items within an album or dispatches a full album download.
+   */
+  async getAlbumTracks(
+    browseId: string,
+    download: boolean = false,
+  ): Promise<any | null> {
+    try {
+      const config = await getHeaders();
+      if (!config) return null;
+
+      const response = await fetch(`${config.baseUrl}/album_tracks`, {
+        method: "POST",
+        headers: config.headers,
+        body: JSON.stringify({ browseId, download }),
+      });
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error(`Failed executing /album_tracks for ${browseId}:`, error);
+      return null;
+    }
+  },
+
+  /**
+   * POST /download
+   * Triggers a single track download process.
+   */
+  async downloadTrack(
+    track: any,
+  ): Promise<{ status: string; task_id: string } | null> {
     try {
       const config = await getHeaders();
       if (!config) return null;
@@ -108,14 +170,25 @@ export const downloadService = {
         body: JSON.stringify(track),
       });
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      return await response.json();
+      return await response.json(); // Returns { status: "accepted", task_id: "..." }
     } catch (error) {
       console.error("Failed to trigger track download:", error);
       return null;
     }
   },
 
-  async getTaskProgress(taskId: string) {
+  /**
+   * GET /tasks/<task_id>
+   * Polls progress metrics for active download pipelines.
+   */
+  async getTaskProgress(taskId: string): Promise<{
+    task_id: string;
+    album: string;
+    status: string;
+    progress: string;
+    percent_complete: number;
+    summary: any[];
+  } | null> {
     try {
       const config = await getHeaders();
       if (!config) return null;

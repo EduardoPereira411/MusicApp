@@ -17,10 +17,12 @@ import { Song, Album } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { AlbumItem } from "@/Components/AlbumItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 type SearchType = "tracks" | "albums";
 
 export default function SearchScreen() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<SearchType>("tracks");
   const [songs, setSongs] = useState<Song[]>([]);
@@ -102,7 +104,24 @@ export default function SearchScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Search</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
+        <Text style={styles.header}>Search</Text>
+        <TouchableOpacity
+          style={{ backgroundColor: "#282828", padding: 8, borderRadius: 20 }}
+          onPress={() => router.push("/download-search")}
+        >
+          <Text style={{ color: "#00A3FF", fontWeight: "bold", fontSize: 13 }}>
+            Go to Downloader
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Custom Search Bar Bar */}
       <View style={styles.searchBarContainer}>

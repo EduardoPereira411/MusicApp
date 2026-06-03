@@ -131,100 +131,6 @@ export default function ProfileScreen() {
     ]);
   }
 
-  const renderHeader = () => (
-    <View>
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarText}>
-            {username ? username.charAt(0).toUpperCase() : "U"}
-          </Text>
-        </View>
-        <Text style={styles.username}>{username || "User Profile"}</Text>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Log Out</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.divider} />
-
-      <TouchableOpacity
-        style={styles.toggleRow}
-        onPress={() => setShowDlConfig(!showDlConfig)}
-      >
-        <Text style={styles.toggleText}>
-          {showDlConfig
-            ? "▼ Hide Download Proxy Setup"
-            : "▶ Manage Download Proxy API"}
-        </Text>
-      </TouchableOpacity>
-
-      {showDlConfig && (
-        <View style={styles.configContainer}>
-          <Text style={styles.configLabel}>Base URL</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="https://your-proxy-domain.com"
-            placeholderTextColor="#888"
-            value={dlBaseUrl}
-            onChangeText={setDlBaseUrl}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-          />
-
-          <Text style={styles.configLabel}>Username (Basic Auth)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Optional proxy access list user"
-            placeholderTextColor="#888"
-            value={dlUsername}
-            onChangeText={setDlUsername}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          <Text style={styles.configLabel}>Password (Basic Auth)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Optional proxy access list password"
-            placeholderTextColor="#888"
-            secureTextEntry
-            value={dlPassword}
-            onChangeText={setDlPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.saveButton]}
-              onPress={handleSaveDownloadConfig}
-              disabled={isSavingDl}
-            >
-              {isSavingDl ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.actionButtonText}>Save Proxy</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, styles.clearButton]}
-              onPress={handleClearDownloadConfig}
-            >
-              <Text style={styles.clearButtonText}>Clear Proxy</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      <View style={styles.divider} />
-
-      <Text style={styles.sectionHeader}>Your Playlists</Text>
-    </View>
-  );
-
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -239,7 +145,102 @@ export default function ProfileScreen() {
         data={playlists}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={
+          <View>
+            <View style={styles.profileHeader}>
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarText}>
+                  {username ? username.charAt(0).toUpperCase() : "U"}
+                </Text>
+              </View>
+              <Text style={styles.username}>{username || "User Profile"}</Text>
+
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={handleLogout}
+              >
+                <Text style={styles.logoutText}>Log Out</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.toggleRow}
+              onPress={() => setShowDlConfig(!showDlConfig)}
+            >
+              <Text style={styles.toggleText}>
+                {showDlConfig
+                  ? "▼ Hide Download Proxy Setup"
+                  : "▶ Manage Download Proxy API"}
+              </Text>
+            </TouchableOpacity>
+
+            {showDlConfig && (
+              <View style={styles.configContainer}>
+                <Text style={styles.configLabel}>Base URL</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="https://your-proxy-domain.com"
+                  placeholderTextColor="#888"
+                  value={dlBaseUrl}
+                  onChangeText={setDlBaseUrl}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                />
+
+                <Text style={styles.configLabel}>Username (Basic Auth)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Optional proxy access list user"
+                  placeholderTextColor="#888"
+                  value={dlUsername}
+                  onChangeText={setDlUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                <Text style={styles.configLabel}>Password (Basic Auth)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Optional proxy access list password"
+                  placeholderTextColor="#888"
+                  secureTextEntry
+                  value={dlPassword}
+                  onChangeText={setDlPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.saveButton]}
+                    onPress={handleSaveDownloadConfig}
+                    disabled={isSavingDl}
+                  >
+                    {isSavingDl ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.actionButtonText}>Save Proxy</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.clearButton]}
+                    onPress={handleClearDownloadConfig}
+                  >
+                    <Text style={styles.clearButtonText}>Clear Proxy</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.divider} />
+
+            <Text style={styles.sectionHeader}>Your Playlists</Text>
+          </View>
+        }
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -273,7 +274,7 @@ export default function ProfileScreen() {
                 {item.songCount || 0} tracks
               </Text>
             </View>
-            <Text style={styles.arrowIcon}>〉</Text>
+            <Text style={styles.arrowIcon}>〉</Text>
           </TouchableOpacity>
         )}
       />
