@@ -53,7 +53,8 @@
         }
       ],
       "expo-image",
-      "expo-media-control"
+      "expo-media-control",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,12 +1,19 @@
-import React, { useMemo } from "react";
-import { Modal, View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useMemo, useCallback } from "react";
+import {
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudio } from "@/Context/AudioContext";
 import { Image } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import DraggableFlatList from "react-native-draggable-flatlist";
-import { QueueTrack } from "@/Components/QueueTrack"; // Adjust paths accordingly
+import Sortable from "react-native-sortables";
+import { QueueTrack } from "@/Components/QueueTrack";
 
 interface QueueModalProps {
   visible: boolean;
@@ -32,13 +39,17 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
     }));
   }, [queue, currentIndex]);
 
-  const handleDragEnd = ({ data }: { data: typeof upcomingQueueData }) => {
-    const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
-    const reorderedUpcoming = data.map(
-      ({ absoluteIndex, ...songProps }) => songProps,
-    );
-    updateQueueOrder([...unchangedPastAndCurrent, ...reorderedUpcoming]);
-  };
+  const handleDragEnd = useCallback(
+    ({ data }: { data: typeof upcomingQueueData }) => {
+      const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
+      const reorderedUpcoming = data.map(
+        ({ absoluteIndex, ...songProps }) => songProps,
+      );
+
+      updateQueueOrder([...unchangedPastAndCurrent, ...reorderedUpcoming]);
+    },
+    [queue, currentIndex, updateQueueOrder],
+  );
 
   return (
     <Modal
@@ -58,64 +69,68 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
             <View style={styles.headerSpacer} />
           </View>
 
-          {currentSong && (
-            <View style={styles.nowPlayingSection}>
-              <Text style={styles.sectionTitle}>Now Playing</Text>
-              <View style={[styles.trackRow, styles.playingRow]}>
-                <View style={styles.trackDetails}>
-                  {currentSong.artworkUrl ? (
-                    <Image
-                      source={{ uri: currentSong.artworkUrl }}
-                      style={styles.artwork}
-                    />
-                  ) : (
-                    <View style={[styles.artwork, styles.fallbackArtwork]} />
-                  )}
-                  <View style={styles.textContainer}>
-                    <Text
-                      style={[styles.title, styles.playingText]}
-                      numberOfLines={1}
-                    >
-                      {currentSong.title}
-                    </Text>
-                    <Text style={styles.artist} numberOfLines={1}>
-                      {currentSong.artist}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.playingIndicator}>
-                  <Ionicons name="musical-notes" size={18} color="#1DB954" />
-                </View>
-              </View>
-            </View>
-          )}
-
-          <View style={styles.upcomingHeaderContainer}>
-            <Text style={styles.sectionTitle}>Next Up</Text>
-          </View>
-
-          <DraggableFlatList
-            data={upcomingQueueData}
-            onDragEnd={handleDragEnd}
-            keyExtractor={(item) => `${item.id}-${item.absoluteIndex}`}
-            containerStyle={{ flex: 1 }}
+          <ScrollView
             contentContainerStyle={[
-              styles.listContent,
+              styles.scrollContent,
               { paddingBottom: insets.bottom + 20 },
             ]}
-            ListEmptyComponent={
+            showsVerticalScrollIndicator={false}
+          >
+            {currentSong && (
+              <View style={styles.nowPlayingSection}>
+                <Text style={styles.sectionTitle}>Now Playing</Text>
+                <View style={[styles.trackRow, styles.playingRow]}>
+                  <View style={styles.trackDetails}>
+                    {currentSong.artworkUrl ? (
+                      <Image
+                        source={{ uri: currentSong.artworkUrl }}
+                        style={styles.artwork}
+                      />
+                    ) : (
+                      <View style={[styles.artwork, styles.fallbackArtwork]} />
+                    )}
+                    <View style={styles.textContainer}>
+                      <Text
+                        style={[styles.title, styles.playingText]}
+                        numberOfLines={1}
+                      >
+                        {currentSong.title}
+                      </Text>
+                      <Text style={styles.artist} numberOfLines={1}>
+                        {currentSong.artist}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.playingIndicator}>
+                    <Ionicons name="musical-notes" size={18} color="#1DB954" />
+                  </View>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.upcomingHeaderContainer}>
+              <Text style={styles.sectionTitle}>Next Up</Text>
+            </View>
+
+            {upcomingQueueData.length === 0 ? (
               <Text style={styles.emptyText}>No upcoming songs in queue</Text>
-            }
-            renderItem={({ item, drag, isActive }) => (
-              <QueueTrack
-                item={item}
-                drag={drag}
-                isActive={isActive}
-                onTrackPress={skipToQueueIndex}
-                onRemovePress={removeFromQueue}
+            ) : (
+              <Sortable.Grid
+                columns={1}
+                data={upcomingQueueData}
+                keyExtractor={(item) => `${item.id}-${item.absoluteIndex}`}
+                onDragEnd={handleDragEnd}
+                rowGap={0}
+                renderItem={({ item }) => (
+                  <QueueTrack
+                    item={item}
+                    onTrackPress={skipToQueueIndex}
+                    onRemovePress={removeFromQueue}
+                  />
+                )}
               />
             )}
-          />
+          </ScrollView>
         </View>
       </GestureHandlerRootView>
     </Modal>
@@ -127,6 +142,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#121212",
   },
+  scrollContent: {
+    paddingHorizontal: 16,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -135,6 +153,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#282828",
+    marginBottom: 4,
   },
   closeButton: {
     padding: 4,
@@ -148,14 +167,12 @@ const styles = StyleSheet.create({
     width: 28,
   },
   nowPlayingSection: {
-    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
   },
   upcomingHeaderContainer: {
-    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 4,
+    paddingBottom: 8,
   },
   sectionTitle: {
     color: "#b3b3b3",
@@ -164,10 +181,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 8,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
   },
   emptyText: {
     color: "#555",

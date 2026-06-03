@@ -1,5 +1,4 @@
 # Features to implement
 
 - IMplement functionality to getting similar songs, instead of random ones
-- Figure out why when changing songs in queue, the cards between them flicker
-- Figure out why the queue tracks all rerender after reordering the track
+- Make queue modal faster, and improve framerate when dragging elements in list in first start
