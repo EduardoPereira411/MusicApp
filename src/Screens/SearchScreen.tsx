@@ -183,6 +183,7 @@ export default function SearchScreen() {
                     isPlaying={songItem.id === currentSong?.id && playing}
                     onPlay={playSongNow}
                     onOptionsPress={handleSongOptions}
+                    onSwipeLeftToRight={addToQueue}
                   />
                 );
               } else {

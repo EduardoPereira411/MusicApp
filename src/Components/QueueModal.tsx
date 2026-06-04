@@ -147,12 +147,6 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
                   <Text style={styles.sectionTitle}>
                     Autoplay Recommendations
                   </Text>
-                  <Ionicons
-                    name="sparkles"
-                    size={14}
-                    color="#1DB954"
-                    style={{ marginLeft: 6 }}
-                  />
                 </View>
                 <Sortable.Grid
                   columns={1}
