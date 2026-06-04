@@ -105,8 +105,12 @@ export function useAudioEngine() {
 
         fetchThemeOrRandomQueue(lastSong, 10).then((nextTracks) => {
           if (nextTracks.length > 0) {
-            internalQueueRef.current.contextQueue.push(...nextTracks);
-            setQueue((prev) => [...prev, ...nextTracks]);
+            const flaggedTracks = nextTracks.map((track) => ({
+              ...track,
+              origin: "auto" as const,
+            }));
+            internalQueueRef.current.contextQueue.push(...flaggedTracks);
+            setQueue((prev) => [...prev, ...flaggedTracks]);
           }
         });
       }
@@ -197,17 +201,23 @@ export function useAudioEngine() {
       // Wipe stale explicit queue allocations
       internalQueueRef.current.userQueue = [];
 
+      const userTracks = [{ ...song, origin: "user" as const }];
       if (contextSongs && contextSongs.length > 0) {
         const idx = contextSongs.findIndex((s) => s.id === song.id);
         const relativeContext =
           idx !== -1 ? contextSongs.slice(idx) : contextSongs;
 
-        internalQueueRef.current.contextQueue = relativeContext;
-        setQueue(relativeContext.slice(0, 10));
+        const flaggedContext = relativeContext.map((s) => ({
+          ...s,
+          origin: "user" as const,
+        }));
+
+        internalQueueRef.current.contextQueue = flaggedContext;
+        setQueue(flaggedContext.slice(0, 10));
         setCurrentIndex(0);
       } else {
         internalQueueRef.current.contextQueue = [];
-        setQueue([song]);
+        setQueue(userTracks);
         setCurrentIndex(0);
       }
 
@@ -221,6 +231,8 @@ export function useAudioEngine() {
     (song: Song) => {
       const storage = internalQueueRef.current;
 
+      const flaggedSong = { ...song, origin: "user" as const };
+      storage.userQueue.push(flaggedSong);
       setQueue((prev) => {
         if (prev.length === 0) {
           storage.userQueue.push(song);
@@ -234,7 +246,7 @@ export function useAudioEngine() {
         storage.userQueue.push(song);
 
         const updated = [...prev];
-        updated.splice(targetInsertionIndex, 0, song);
+        updated.splice(targetInsertionIndex, 0, flaggedSong);
         return updated;
       });
     },

@@ -31,19 +31,33 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
   } = useAudio();
   const insets = useSafeAreaInsets();
 
-  const upcomingQueueData = useMemo(() => {
-    if (currentIndex < 0) return [];
-    return queue.slice(currentIndex + 1).map((item, localIdx) => ({
-      ...item,
-      absoluteIndex: currentIndex + 1 + localIdx,
-    }));
+  const { userUpcoming, autoUpcoming } = useMemo(() => {
+    if (currentIndex < 0) return { userUpcoming: [], autoUpcoming: [] };
+
+    const userUpcoming: any[] = [];
+    const autoUpcoming: any[] = [];
+
+    queue.slice(currentIndex + 1).forEach((item: any, localIdx) => {
+      const trackWithIndex = {
+        ...item,
+        absoluteIndex: currentIndex + 1 + localIdx,
+      };
+
+      if (item.origin === "auto") {
+        autoUpcoming.push(trackWithIndex);
+      } else {
+        userUpcoming.push(trackWithIndex);
+      }
+    });
+
+    return { userUpcoming, autoUpcoming };
   }, [queue, currentIndex]);
 
   const handleDragEnd = useCallback(
-    ({ data }: { data: typeof upcomingQueueData }) => {
+    ({ data }: { data: any[] }) => {
       const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
       const reorderedUpcoming = data.map(
-        ({ absoluteIndex, ...songProps }) => songProps,
+        ({ absoluteIndex, origin, ...songProps }) => songProps,
       );
 
       updateQueueOrder([...unchangedPastAndCurrent, ...reorderedUpcoming]);
@@ -108,27 +122,56 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
               </View>
             )}
 
-            <View style={styles.upcomingHeaderContainer}>
-              <Text style={styles.sectionTitle}>Next Up</Text>
-            </View>
+            {userUpcoming.length > 0 && (
+              <View style={styles.sectionBlock}>
+                <Text style={styles.sectionTitle}>Added by You</Text>
+                <Sortable.Grid
+                  columns={1}
+                  data={userUpcoming}
+                  keyExtractor={(item) => `${item.id}-${item.absoluteIndex}`}
+                  onDragEnd={handleDragEnd}
+                  renderItem={({ item }) => (
+                    <QueueTrack
+                      item={item}
+                      onTrackPress={skipToQueueIndex}
+                      onRemovePress={removeFromQueue}
+                    />
+                  )}
+                />
+              </View>
+            )}
 
-            {upcomingQueueData.length === 0 ? (
-              <Text style={styles.emptyText}>No upcoming songs in queue</Text>
-            ) : (
-              <Sortable.Grid
-                columns={1}
-                data={upcomingQueueData}
-                keyExtractor={(item) => `${item.id}-${item.absoluteIndex}`}
-                onDragEnd={handleDragEnd}
-                rowGap={0}
-                renderItem={({ item }) => (
-                  <QueueTrack
-                    item={item}
-                    onTrackPress={skipToQueueIndex}
-                    onRemovePress={removeFromQueue}
+            {autoUpcoming.length > 0 && (
+              <View style={[styles.sectionBlock, { marginTop: 16 }]}>
+                <View style={styles.autoHeaderRow}>
+                  <Text style={styles.sectionTitle}>
+                    Autoplay Recommendations
+                  </Text>
+                  <Ionicons
+                    name="sparkles"
+                    size={14}
+                    color="#1DB954"
+                    style={{ marginLeft: 6 }}
                   />
-                )}
-              />
+                </View>
+                <Sortable.Grid
+                  columns={1}
+                  data={autoUpcoming}
+                  keyExtractor={(item) => `${item.id}-${item.absoluteIndex}`}
+                  onDragEnd={handleDragEnd}
+                  renderItem={({ item }) => (
+                    <QueueTrack
+                      item={item}
+                      onTrackPress={skipToQueueIndex}
+                      onRemovePress={removeFromQueue}
+                    />
+                  )}
+                />
+              </View>
+            )}
+
+            {userUpcoming.length === 0 && autoUpcoming.length === 0 && (
+              <Text style={styles.emptyText}>No upcoming songs in queue</Text>
             )}
           </ScrollView>
         </View>
@@ -236,5 +279,13 @@ const styles = StyleSheet.create({
   },
   playingIndicator: {
     paddingRight: 6,
+  },
+  autoHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  sectionBlock: {
+    marginBottom: 8,
   },
 });
