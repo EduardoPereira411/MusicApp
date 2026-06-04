@@ -26,9 +26,9 @@ export interface Album {
 export interface SharedCollectionData {
   id: string;
   name: string;
-  type: "album" | "playlist";
+  type: "album" | "playlist" | "artist";
   subtitle?: string;
-  songCount?: number;
+  subItemCount?: number;
   artworkUrl?: string;
 }
 

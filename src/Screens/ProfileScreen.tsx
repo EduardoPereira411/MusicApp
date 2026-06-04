@@ -136,7 +136,7 @@ export default function ProfileScreen() {
       id: pl.id,
       name: pl.name,
       type: "playlist",
-      subtitle: pl.owner || "Unknown Owner",
+      subtitle: pl.subtitle || "Unknown Owner",
       songCount: pl.songCount || 0,
     }));
   }, [playlists]);

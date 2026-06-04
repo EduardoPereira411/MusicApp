@@ -17,10 +17,9 @@ import { SongOptionsModal } from "@/Components/SongOptionsModal";
 
 export default function PlaylistScreen() {
   const router = useRouter();
-  // Consume parameters passed by router
   const { id, type, name } = useLocalSearchParams<{
     id: string;
-    type: "playlist" | "album";
+    type: "playlist" | "album" | "artist";
     name: string;
   }>();
 
@@ -43,7 +42,12 @@ export default function PlaylistScreen() {
 
     setLoading(true);
     try {
-      const mappedSongs = await fetchPlaylistOrAlbumDetails(id, type, name);
+      // NOTE: Ensure your backend fetchPlaylistOrAlbumDetails handle case transformations for "artist" if needed
+      const mappedSongs = await fetchPlaylistOrAlbumDetails(
+        id,
+        type === "artist" ? "album" : type,
+        name,
+      );
       setSongs(mappedSongs);
     } catch (error) {
       console.error(
@@ -100,6 +104,19 @@ export default function PlaylistScreen() {
     [],
   );
 
+  const getHeaderLabel = () => {
+    switch (type) {
+      case "playlist":
+        return "PLAYLIST";
+      case "album":
+        return "ALBUM";
+      case "artist":
+        return "ARTIST CATALOG";
+      default:
+        return "COLLECTION";
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -118,9 +135,7 @@ export default function PlaylistScreen() {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.contentTypeLabel}>
-            {type === "playlist" ? "PLAYLIST" : "ALBUM"}
-          </Text>
+          <Text style={styles.contentTypeLabel}>{getHeaderLabel()}</Text>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {name || "Details"}
           </Text>

@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import md5 from "md5";
-import { Song, Album, Artist } from "@/Models/Models";
+import { Song, SharedCollectionData } from "@/Models/Models";
 
 const KEYS = {
   SERVER_URL: "navidrome_server_url",
@@ -62,7 +62,9 @@ export async function getSubsonicAuthParams(): Promise<string | null> {
   return params.toString();
 }
 
-export async function fetchNavidromePlaylists() {
+export async function fetchNavidromePlaylists(): Promise<
+  SharedCollectionData[]
+> {
   try {
     const creds = await authStorage.getCredentials();
     const params = await getSubsonicAuthParams();
@@ -73,7 +75,16 @@ export async function fetchNavidromePlaylists() {
     const data = await response.json();
 
     const playlists = data["subsonic-response"]?.playlists?.playlist || [];
-    return Array.isArray(playlists) ? playlists : [playlists];
+    const playlistsArray = Array.isArray(playlists) ? playlists : [playlists];
+
+    return playlistsArray.map((playlist: any) => ({
+      id: playlist.id,
+      name: playlist.name,
+      type: "playlist",
+      subtitle: `By ${playlist.owner || "Unknown"}`,
+      subItemCount: playlist.songCount,
+      artworkUrl: "",
+    }));
   } catch (e) {
     console.error("Failed to fetch playlists:", e);
     throw e;
@@ -141,7 +152,7 @@ export async function fetchTracks(): Promise<Song[]> {
   }
 }
 
-export async function fetchAlbums(): Promise<Album[]> {
+export async function fetchAlbums(): Promise<SharedCollectionData[]> {
   try {
     const creds = await authStorage.getCredentials();
     const params = await getSubsonicAuthParams();
@@ -156,8 +167,9 @@ export async function fetchAlbums(): Promise<Album[]> {
     return fetchedAlbums.map((album) => ({
       id: album.id,
       name: album.name,
-      artist: album.artist,
-      songCount: album.songCount,
+      type: "album",
+      subtitle: album.artist,
+      subItemCount: album.songCount,
       artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
     }));
   } catch (e) {
@@ -168,7 +180,7 @@ export async function fetchAlbums(): Promise<Album[]> {
 
 export async function searchAll(
   query: string,
-): Promise<{ songs: Song[]; albums: Album[] }> {
+): Promise<{ songs: Song[]; albums: SharedCollectionData[] }> {
   try {
     const creds = await authStorage.getCredentials();
     const params = await getSubsonicAuthParams();
@@ -194,13 +206,14 @@ export async function searchAll(
 
     // Parse Albums
     const fetchedAlbums: any[] = searchResult?.album || [];
-    const albums = (
+    const albums: SharedCollectionData[] = (
       Array.isArray(fetchedAlbums) ? fetchedAlbums : [fetchedAlbums]
     ).map((album) => ({
       id: album.id,
       name: album.name,
-      artist: album.artist,
-      songCount: album.songCount,
+      type: "album",
+      subtitle: album.artist,
+      subItemCount: album.songCount,
       artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
     }));
 
@@ -211,7 +224,7 @@ export async function searchAll(
   }
 }
 
-export async function fetchArtists(): Promise<Artist[]> {
+export async function fetchArtists(): Promise<SharedCollectionData[]> {
   try {
     const creds = await authStorage.getCredentials();
     const params = await getSubsonicAuthParams();
@@ -222,7 +235,7 @@ export async function fetchArtists(): Promise<Artist[]> {
     const data = await response.json();
 
     const indices: any[] = data["subsonic-response"]?.artists?.index || [];
-    const fetchedArtists: Artist[] = [];
+    const fetchedArtists: SharedCollectionData[] = [];
 
     indices.forEach((index) => {
       if (index.artist) {
@@ -230,7 +243,9 @@ export async function fetchArtists(): Promise<Artist[]> {
           fetchedArtists.push({
             id: art.id,
             name: art.name,
-            albumCount: art.albumCount,
+            type: "artist",
+            subItemCount: art.albumCount,
+            subtitle: `${art.albumCount || 0} Albums`,
           });
         });
       }

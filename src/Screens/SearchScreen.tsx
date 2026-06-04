@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { searchAll } from "@/Services/navidromeService";
 import { useAudio } from "@/Context/AudioContext";
-import { Song, Album, SharedCollectionData } from "@/Models/Models";
+import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { useRouter } from "expo-router";
@@ -23,7 +23,7 @@ export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<SearchType>("tracks");
   const [songs, setSongs] = useState<Song[]>([]);
-  const [albums, setAlbums] = useState<Album[]>([]);
+  const [albums, setAlbums] = useState<SharedCollectionData[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -62,7 +62,7 @@ export default function SearchScreen() {
   }, []);
 
   const renderSearchItem = useCallback(
-    ({ item }: { item: Song | Album }) => {
+    ({ item }: { item: Song | SharedCollectionData }) => {
       if (activeTab === "tracks") {
         const songItem = item as Song;
         const isCurrent = songItem.id === currentSong?.id;
@@ -77,18 +77,7 @@ export default function SearchScreen() {
           />
         );
       } else {
-        const albumItem = item as Album;
-
-        const transformedAlbum: SharedCollectionData = {
-          id: albumItem.id,
-          name: albumItem.name,
-          type: "album",
-          subtitle: albumItem.artist,
-          artworkUrl: albumItem.artworkUrl,
-          songCount: albumItem.songCount,
-        };
-
-        return <MediaCollectionItem item={transformedAlbum} />;
+        return <MediaCollectionItem item={item as SharedCollectionData} />;
       }
     },
     [
@@ -105,7 +94,10 @@ export default function SearchScreen() {
     return activeTab === "tracks" ? songs : albums;
   }, [activeTab, songs, albums]);
 
-  const keyExtractor = useCallback((item: Song | Album) => item.id, []);
+  const keyExtractor = useCallback(
+    (item: Song | SharedCollectionData) => item.id,
+    [],
+  );
 
   return (
     <View style={styles.container}>
@@ -162,7 +154,7 @@ export default function SearchScreen() {
             <ActivityIndicator size="large" color="#1DB954" />
           </View>
         ) : (
-          <FlatList<Song | Album>
+          <FlatList<Song | SharedCollectionData>
             data={listConfig}
             keyExtractor={keyExtractor}
             renderItem={renderSearchItem}

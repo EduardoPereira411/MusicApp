@@ -9,9 +9,8 @@ import {
   RefreshControl,
 } from "react-native";
 import { useAudio } from "@/Context/AudioContext";
-import { Song, Album, Artist } from "@/Models/Models";
+import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
-import { ArtistItem } from "@/Components/ArtistItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 import {
@@ -19,15 +18,14 @@ import {
   fetchAlbums,
   fetchArtists,
 } from "@/Services/navidromeService";
-import { SharedCollectionData } from "@/Models/Models";
 
 type SectionType = "tracks" | "albums" | "artists";
 
 export default function HomeScreen() {
   const [activeSection, setActiveSection] = useState<SectionType>("tracks");
   const [songs, setSongs] = useState<Song[]>([]);
-  const [albums, setAlbums] = useState<Album[]>([]);
-  const [artists, setArtists] = useState<Artist[]>([]);
+  const [albums, setAlbums] = useState<SharedCollectionData[]>([]);
+  const [artists, setArtists] = useState<SharedCollectionData[]>([]);
 
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -72,45 +70,22 @@ export default function HomeScreen() {
   }
 
   const renderSongItem = useCallback(
-    ({ item }: { item: Song | Album | Artist }) => {
-      switch (activeSection) {
-        case "tracks": {
-          const songItem = item as Song;
-          const isCurrent = songItem.id === currentSong?.id;
-          return (
-            <SongItem
-              item={songItem}
-              isCurrent={isCurrent}
-              isPlaying={isCurrent && playing}
-              onPlay={playSongNow}
-              onOptionsPress={handleSongOptions}
-              onSwipeLeftToRight={addToQueue}
-            />
-          );
-        }
-        case "albums": {
-          const albumItem = item as Album;
-
-          const transformedAlbum: SharedCollectionData = {
-            id: albumItem.id,
-            name: albumItem.name,
-            type: "album",
-            subtitle: albumItem.artist,
-            artworkUrl: albumItem.artworkUrl,
-            songCount: albumItem.songCount,
-          };
-
-          return <MediaCollectionItem item={transformedAlbum} />;
-        }
-        case "artists":
-          return (
-            <ArtistItem
-              item={item as Artist}
-              onPress={(id) => console.log("Artist:", id)}
-            />
-          );
-        default:
-          return null;
+    ({ item }: { item: Song | SharedCollectionData }) => {
+      if (activeSection === "tracks") {
+        const songItem = item as Song;
+        const isCurrent = songItem.id === currentSong?.id;
+        return (
+          <SongItem
+            item={songItem}
+            isCurrent={isCurrent}
+            isPlaying={isCurrent && playing}
+            onPlay={playSongNow}
+            onOptionsPress={handleSongOptions}
+            onSwipeLeftToRight={addToQueue}
+          />
+        );
+      } else {
+        return <MediaCollectionItem item={item as SharedCollectionData} />;
       }
     },
     [
@@ -135,7 +110,7 @@ export default function HomeScreen() {
   }, [activeSection, songs, albums, artists]);
 
   const keyExtractor = useCallback(
-    (item: Song | Album | Artist) => item.id,
+    (item: Song | SharedCollectionData) => item.id,
     [],
   );
 
@@ -174,7 +149,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={{ flex: 1 }}>
-        <FlatList<Song | Album | Artist>
+        <FlatList<Song | SharedCollectionData>
           data={listConfig.data}
           keyExtractor={keyExtractor}
           renderItem={renderSongItem}

@@ -11,6 +11,7 @@ interface MediaCollectionItemProps {
 export const MediaCollectionItem = React.memo(
   ({ item }: MediaCollectionItemProps) => {
     const router = useRouter();
+    const isArtist = item.type === "artist";
 
     const handlePress = () => {
       router.push({
@@ -30,10 +31,22 @@ export const MediaCollectionItem = React.memo(
         {hasArt ? (
           <Image
             source={{ uri: item.artworkUrl }}
-            style={styles.cardArt}
+            style={[styles.cardArt, isArtist && styles.artistAvatar]}
             contentFit="cover"
             transition={200}
           />
+        ) : isArtist ? (
+          <View
+            style={[
+              styles.cardArt,
+              styles.artistAvatar,
+              styles.avatarPlaceholder,
+            ]}
+          >
+            <Text style={styles.avatarText}>
+              {item.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
         ) : (
           <View style={[styles.cardArt, styles.iconPlaceholder]}>
             <Text style={styles.placeholderIcon}>📁</Text>
@@ -46,18 +59,31 @@ export const MediaCollectionItem = React.memo(
           </Text>
 
           <View style={styles.subTextRow}>
-            {!!item.subtitle && (
+            {!!item.subtitle && !isArtist && (
               <Text style={styles.subText} numberOfLines={1}>
                 {item.subtitle}
               </Text>
             )}
-            {item.subtitle && item.songCount !== undefined && (
-              <Text style={styles.bulletDivider}>•</Text>
-            )}
-            {item.songCount !== undefined && (
+
+            {!!item.subtitle &&
+              !isArtist &&
+              item.subItemCount !== undefined && (
+                <Text style={styles.bulletDivider}>•</Text>
+              )}
+
+            {item.subItemCount !== undefined ? (
               <Text style={styles.subText}>
-                {item.songCount} {item.songCount === 1 ? "track" : "tracks"}
+                {item.subItemCount}{" "}
+                {isArtist
+                  ? item.subItemCount === 1
+                    ? "album"
+                    : "albums"
+                  : item.subItemCount === 1
+                    ? "track"
+                    : "tracks"}
               </Text>
+            ) : (
+              isArtist && <Text style={styles.subText}>Artist</Text>
             )}
           </View>
         </View>
@@ -83,6 +109,19 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: "#282828",
     marginRight: 14,
+  },
+  artistAvatar: {
+    borderRadius: 27.5,
+  },
+  avatarPlaceholder: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#444",
+  },
+  avatarText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
   },
   iconPlaceholder: {
     justifyContent: "center",
