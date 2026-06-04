@@ -9,10 +9,10 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [visible, setVisible] = useState(false);
-  const [message, setMessage] = useState("");
+  const [toastData, setToastData] = useState({ message: "", id: 0 });
 
   const showToast = useCallback((msg: string) => {
-    setMessage(msg);
+    setToastData({ message: msg, id: Date.now() });
     setVisible(true);
   }, []);
 
@@ -25,7 +25,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <ToastNotification
         visible={visible}
-        message={message}
+        message={toastData.message}
+        toastId={toastData.id}
         onDismiss={handleDismiss}
       />
     </ToastContext.Provider>

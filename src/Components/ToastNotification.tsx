@@ -6,38 +6,58 @@ import { Ionicons } from "@expo/vector-icons";
 interface ToastNotificationProps {
   visible: boolean;
   message: string;
+  toastId: number;
   onDismiss: () => void;
 }
 
 export function ToastNotification({
   visible,
   message,
+  toastId,
   onDismiss,
 }: ToastNotificationProps) {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(-100)).current;
 
   useEffect(() => {
-    if (visible) {
+    if (!visible) return;
+
+    // Check the current position of the toast
+    // @ts-ignore - __getValue() is internal but completely safe for reading native driver values
+    const currentY = slideAnim.__getValue();
+
+    if (currentY <= -100) {
       Animated.spring(slideAnim, {
         toValue: insets.top + 12,
         useNativeDriver: true,
         bounciness: 6,
+        speed: 12,
       }).start();
-
-      const timer = setTimeout(() => {
+    } else {
+      Animated.sequence([
         Animated.timing(slideAnim, {
-          toValue: -100,
-          duration: 250,
+          toValue: insets.top - 10,
+          duration: 90,
           useNativeDriver: true,
-        }).start(() => onDismiss());
-      }, 2500);
-
-      return () => clearTimeout(timer);
+        }),
+        Animated.spring(slideAnim, {
+          toValue: insets.top + 12,
+          useNativeDriver: true,
+          bounciness: 8,
+          speed: 14,
+        }),
+      ]).start();
     }
-  }, [visible, slideAnim, insets.top, onDismiss]);
+    const timer = setTimeout(() => {
+      Animated.timing(slideAnim, {
+        toValue: -100,
+        duration: 220,
+        useNativeDriver: true,
+      }).start(() => onDismiss());
+    }, 2000);
 
-  if (!visible) return null;
+    return () => clearTimeout(timer);
+  }, [visible, toastId, insets.top, slideAnim, onDismiss]);
 
   return (
     <Animated.View
