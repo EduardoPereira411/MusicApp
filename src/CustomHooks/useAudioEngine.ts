@@ -11,6 +11,7 @@ import {
   fetchThemeOrRandomQueue,
 } from "@/Services/navidromeService";
 import { Song } from "@/Models/Models";
+import { useToast } from "@/Context/ToastContext";
 
 export function useAudioEngine() {
   const [queue, setQueue] = useState<Song[]>([]);
@@ -18,6 +19,7 @@ export function useAudioEngine() {
 
   const player = useAudioPlayer();
   const status = useAudioPlayerStatus(player);
+  const { showToast } = useToast();
 
   const internalQueueRef = useRef<{
     userQueue: Song[];
@@ -249,8 +251,10 @@ export function useAudioEngine() {
         updated.splice(targetInsertionIndex, 0, flaggedSong);
         return updated;
       });
+
+      showToast(`Added "${song.title}" to queue`);
     },
-    [currentIndex, playSongNow],
+    [currentIndex, playSongNow, showToast],
   );
 
   const playNext = useCallback(() => {

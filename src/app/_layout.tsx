@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { LogBox, View, ActivityIndicator, StyleSheet } from "react-native";
 import { Stack, useSegments, useRouter } from "expo-router";
 import { AudioProvider, useAudio } from "@/Context/AudioContext";
+import { ToastProvider } from "@/Context/ToastContext";
 import GlobalMiniPlayer from "@/Components/GlobalMiniPlayer";
 import { authStorage } from "@/Services/navidromeService";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -84,9 +85,11 @@ function InnerRootLayout() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AudioProvider>
-        <InnerRootLayout />
-      </AudioProvider>
+      <ToastProvider>
+        <AudioProvider>
+          <InnerRootLayout />
+        </AudioProvider>
+      </ToastProvider>
     </GestureHandlerRootView>
   );
 }
