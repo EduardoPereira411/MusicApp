@@ -9,11 +9,12 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { fetchPlaylistOrAlbumDetails } from "@/Services/navidromeService";
+import { fetchCollectionDetails } from "@/Services/navidromeService";
 import { useAudio } from "@/Context/AudioContext";
-import { Song } from "@/Models/Models";
+import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
+import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 
 export default function PlaylistScreen() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function PlaylistScreen() {
   }>();
 
   const [songs, setSongs] = useState<Song[]>([]);
+  const [collections, setCollections] = useState<SharedCollectionData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
 
@@ -42,13 +44,14 @@ export default function PlaylistScreen() {
 
     setLoading(true);
     try {
-      // NOTE: Ensure your backend fetchPlaylistOrAlbumDetails handle case transformations for "artist" if needed
-      const mappedSongs = await fetchPlaylistOrAlbumDetails(
-        id,
-        type === "artist" ? "album" : type,
-        name,
-      );
-      setSongs(mappedSongs);
+      const result = await fetchCollectionDetails(id, type, name);
+      if (type === "artist") {
+        setCollections(result.collections || []);
+        setSongs([]);
+      } else {
+        setSongs(result.songs || []);
+        setCollections([]);
+      }
     } catch (error) {
       console.error(
         `[PlaylistScreen] UI Error rendering ${type} details:`,
@@ -80,27 +83,39 @@ export default function PlaylistScreen() {
     [isShuffle, songs, playSongNow],
   );
 
-  const renderSongItem = useCallback(
-    ({ item, index }: { item: Song; index: number }) => {
-      const isCurrent = currentSong?.id === item.id;
-      return (
-        <SongItem
-          item={item}
-          index={index}
-          showTrackNumber={true}
-          isCurrent={isCurrent}
-          isPlaying={isCurrent && playing}
-          onOptionsPress={handleSongOptions}
-          onSwipeLeftToRight={addToQueue}
-          onPlay={handlePlaySong}
-        />
-      );
+  const renderListItem = useCallback(
+    ({ item, index }: { item: Song | SharedCollectionData; index: number }) => {
+      if (type === "artist") {
+        return <MediaCollectionItem item={item as SharedCollectionData} />;
+      } else {
+        const trackItem = item as Song;
+        const isCurrent = currentSong?.id === trackItem.id;
+        return (
+          <SongItem
+            item={trackItem}
+            index={index}
+            showTrackNumber={true}
+            isCurrent={isCurrent}
+            isPlaying={isCurrent && playing}
+            onOptionsPress={handleSongOptions}
+            onSwipeLeftToRight={addToQueue}
+            onPlay={handlePlaySong}
+          />
+        );
+      }
     },
-    [currentSong?.id, playing, handleSongOptions, addToQueue, handlePlaySong],
+    [
+      type,
+      currentSong?.id,
+      playing,
+      handleSongOptions,
+      addToQueue,
+      handlePlaySong,
+    ],
   );
 
   const keyExtractor = useCallback(
-    (item: Song, index: number) => `${item.id}-${index}`,
+    (item: Song | SharedCollectionData, index: number) => `${item.id}-${index}`,
     [],
   );
 
@@ -111,7 +126,7 @@ export default function PlaylistScreen() {
       case "album":
         return "ALBUM";
       case "artist":
-        return "ARTIST CATALOG";
+        return "ARTIST DISCOGRAPHY";
       default:
         return "COLLECTION";
     }
@@ -140,30 +155,35 @@ export default function PlaylistScreen() {
             {name || "Details"}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.shuffleButton}
-          onPress={() => setIsShuffle(!isShuffle)}
-        >
-          <Ionicons
-            name="shuffle"
-            size={24}
-            color={isShuffle ? "#1DB954" : "#fff"}
-          />
-        </TouchableOpacity>
+
+        {type !== "artist" && (
+          <TouchableOpacity
+            style={styles.shuffleButton}
+            onPress={() => setIsShuffle(!isShuffle)}
+          >
+            <Ionicons
+              name="shuffle"
+              size={24}
+              color={isShuffle ? "#1DB954" : "#fff"}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
-      <FlatList
-        data={songs}
+      <FlatList<Song | SharedCollectionData>
+        data={type === "artist" ? collections : songs}
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContainer}
-        renderItem={renderSongItem}
+        renderItem={renderListItem}
         initialNumToRender={12}
         maxToRenderPerBatch={10}
         windowSize={5}
         removeClippedSubviews={true}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
-            This context contains no playable items.
+            {type === "artist"
+              ? "This artist has no cataloged albums."
+              : "This context contains no playable items."}
           </Text>
         }
       />

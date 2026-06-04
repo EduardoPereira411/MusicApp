@@ -258,15 +258,38 @@ export async function fetchArtists(): Promise<SharedCollectionData[]> {
   }
 }
 
-export async function fetchPlaylistOrAlbumDetails(
+export async function fetchCollectionDetails(
   id: string,
-  type: "playlist" | "album",
+  type: "playlist" | "album" | "artist",
   fallbackName?: string,
-): Promise<Song[]> {
+): Promise<{ songs?: Song[]; collections?: SharedCollectionData[] }> {
   try {
     const creds = await authStorage.getCredentials();
     const params = await getSubsonicAuthParams();
-    if (!creds || !params) return [];
+    if (!creds || !params) return {};
+
+    if (type === "artist") {
+      const url = `${creds.serverUrl}/rest/getArtist.view?${params}&id=${id}&f=json`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      const artistData = data["subsonic-response"]?.artist;
+      if (!artistData) return { collections: [] };
+
+      const rawAlbums = artistData.album || [];
+      const albumsArray = Array.isArray(rawAlbums) ? rawAlbums : [rawAlbums];
+
+      const albums: SharedCollectionData[] = albumsArray.map((album: any) => ({
+        id: album.id,
+        name: album.name,
+        type: "album",
+        subtitle: album.artist || fallbackName,
+        subItemCount: album.songCount,
+        artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
+      }));
+
+      return { collections: albums };
+    }
 
     const endpoint = type === "playlist" ? "getPlaylist.view" : "getAlbum.view";
     const url = `${creds.serverUrl}/rest/${endpoint}?${params}&id=${id}&f=json`;
@@ -275,12 +298,12 @@ export async function fetchPlaylistOrAlbumDetails(
     const data = await response.json();
 
     const targetData = data["subsonic-response"]?.[type];
-    if (!targetData) return [];
+    if (!targetData) return { songs: [] };
 
     const rawTracks = targetData.entry || targetData.song || [];
     const tracksArray = Array.isArray(rawTracks) ? rawTracks : [rawTracks];
 
-    return tracksArray
+    const songs: Song[] = tracksArray
       .filter((track: any) => track && track.id)
       .map((track: any) => ({
         id: track.id,
@@ -290,9 +313,11 @@ export async function fetchPlaylistOrAlbumDetails(
         albumId: track.albumId || id,
         artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${track.coverArt || track.id}&size=150`,
       }));
+
+    return { songs };
   } catch (error) {
     console.error(
-      `[navidromeService] Error fetching ${type} details for ID ${id}:`,
+      `[navidromeService] Error fetching collection details for ${type} with ID ${id}:`,
       error,
     );
     throw error;
