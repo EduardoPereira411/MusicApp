@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { LogBox, View, ActivityIndicator } from "react-native";
+import { LogBox, View, ActivityIndicator, StyleSheet } from "react-native";
 import { Stack, useSegments, useRouter } from "expo-router";
 import { AudioProvider, useAudio } from "@/Context/AudioContext";
 import GlobalMiniPlayer from "@/Components/GlobalMiniPlayer";
 import { authStorage } from "@/Services/navidromeService";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 LogBox.ignoreLogs(["Dispatching media control event"]);
 const originalLog = console.log;
@@ -82,13 +83,15 @@ function InnerRootLayout() {
 
 export default function RootLayout() {
   return (
-    <AudioProvider>
-      <InnerRootLayout />
-    </AudioProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AudioProvider>
+        <InnerRootLayout />
+      </AudioProvider>
+    </GestureHandlerRootView>
   );
 }
 
-const styles = {
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#121212",
@@ -96,7 +99,7 @@ const styles = {
   centerContainer: {
     flex: 1,
     backgroundColor: "#121212",
-    justifyContent: "center" as const,
-    alignItems: "center" as const,
+    justifyContent: "center",
+    alignItems: "center",
   },
-};
+});

@@ -116,6 +116,8 @@ export default function PlaylistScreen() {
               showTrackNumber={true}
               isCurrent={isCurrent}
               isPlaying={isCurrent && playing}
+              onOptionsPress={handleSongOptions}
+              onSwipeLeftToRight={addToQueue}
               onPlay={() => {
                 if (isShuffle) {
                   const contextCopy = [...songs].filter(
@@ -133,7 +135,6 @@ export default function PlaylistScreen() {
                   playSongNow(item, songs);
                 }
               }}
-              onOptionsPress={handleSongOptions}
             />
           );
         }}

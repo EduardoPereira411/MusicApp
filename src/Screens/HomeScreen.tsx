@@ -91,6 +91,7 @@ export default function HomeScreen() {
               isPlaying={item.id === currentSong?.id && playing}
               onPlay={playSongNow}
               onOptionsPress={handleSongOptions}
+              onSwipeLeftToRight={addToQueue}
             />
           ),
         };

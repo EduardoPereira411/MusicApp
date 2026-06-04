@@ -2,6 +2,14 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { Song } from "@/Models/Models";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
+import { Ionicons } from "@expo/vector-icons";
 
 interface SongItemProps {
   item: Song;
@@ -9,9 +17,12 @@ interface SongItemProps {
   isPlaying: boolean;
   onPlay: (song: Song) => void;
   onOptionsPress: (song: Song) => void;
+  onSwipeLeftToRight?: (song: Song) => void;
   showTrackNumber?: boolean;
   index?: number;
 }
+
+const SWIPE_THRESHOLD = 80;
 
 export const SongItem = React.memo(
   ({
@@ -20,63 +31,154 @@ export const SongItem = React.memo(
     isPlaying,
     onPlay,
     onOptionsPress,
+    onSwipeLeftToRight,
     showTrackNumber = false,
     index,
   }: SongItemProps) => {
     const displayTrackNumber =
       item.trackNumber ?? (index !== undefined ? index + 1 : null);
 
+    const translateX = useSharedValue(0);
+    const isGreen = useSharedValue(false);
+
+    const panGesture = Gesture.Pan()
+      .activeOffsetX([-10, 10])
+      .onUpdate((event) => {
+        if (event.translationX > 0) {
+          translateX.value = event.translationX;
+          isGreen.value = event.translationX > SWIPE_THRESHOLD;
+        }
+      })
+      .onEnd(() => {
+        if (translateX.value > SWIPE_THRESHOLD) {
+          isGreen.value = true;
+          if (onSwipeLeftToRight) {
+            scheduleOnRN(onSwipeLeftToRight, item);
+          }
+        }
+
+        translateX.value = withSpring(
+          0,
+          { mass: 1, damping: 40, stiffness: 150 },
+          (finished) => {
+            if (finished) {
+              isGreen.value = false;
+            }
+          },
+        );
+      });
+
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ translateX: translateX.value }],
+    }));
+
+    const backgroundAnimatedStyle = useAnimatedStyle(() => ({
+      backgroundColor: isGreen.value ? "#1DB954" : "#282828",
+      opacity: translateX.value > 10 ? 1 : 0,
+    }));
+
     return (
-      <View style={[styles.itemCard, isCurrent && styles.activeCard]}>
-        <TouchableOpacity
-          style={styles.touchableArea}
-          onPress={() => onPlay(item)}
-        >
-          {showTrackNumber && displayTrackNumber !== null ? (
-            <Text
-              style={[styles.trackNumberText, isCurrent && styles.activeText]}
-            >
-              {displayTrackNumber}
-            </Text>
-          ) : null}
+      <GestureDetector gesture={panGesture}>
+        <View style={styles.swipeContainer}>
+          <Animated.View
+            style={[styles.swipeBackground, backgroundAnimatedStyle]}
+          >
+            <Text style={styles.swipeBackgroundText}>➕ Queue</Text>
+          </Animated.View>
 
-          <Image
-            source={{ uri: item.artworkUrl }}
-            style={styles.cardArt}
-            contentFit="cover"
-            transition={200}
-          />
-          <View style={styles.infoContainer}>
-            <Text
-              style={[styles.mainText, isCurrent && styles.activeText]}
-              numberOfLines={1}
+          <Animated.View
+            style={[
+              styles.itemCard,
+              isCurrent && styles.activeCard,
+              animatedStyle,
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.touchableArea}
+              onPress={() => onPlay(item)}
             >
-              {item.title}
-            </Text>
-            <Text style={styles.subText} numberOfLines={1}>
-              {item.artist} {item.album ? `• ${item.album}` : ""}
-            </Text>
-          </View>
-          <Text style={styles.actionStatus}>{isPlaying ? "⏸" : "▶"}</Text>
-        </TouchableOpacity>
+              {showTrackNumber && displayTrackNumber !== null && (
+                <Text
+                  style={[
+                    styles.trackNumberText,
+                    isCurrent && styles.activeText,
+                  ]}
+                >
+                  {displayTrackNumber}
+                </Text>
+              )}
 
-        <TouchableOpacity
-          style={styles.optionsButton}
-          onPress={() => onOptionsPress(item)}
-        >
-          <Text style={styles.optionsText}>⋮</Text>
-        </TouchableOpacity>
-      </View>
+              <Image
+                source={{
+                  uri: item.artworkUrl,
+                  width: 110,
+                  height: 110,
+                }}
+                style={styles.cardArt}
+                contentFit="cover"
+                transition={200}
+                recyclingKey={item.artworkUrl}
+              />
+
+              <View style={styles.infoContainer}>
+                <Text
+                  style={[styles.mainText, isCurrent && styles.activeText]}
+                  numberOfLines={1}
+                >
+                  {item.title}
+                </Text>
+                <Text style={styles.subText} numberOfLines={1}>
+                  {item.artist} {item.album ? `• ${item.album}` : ""}
+                </Text>
+              </View>
+
+              <View style={styles.actionStatusContainer}>
+                <Ionicons
+                  name={isPlaying ? "pause-circle" : "play-circle"}
+                  size={28}
+                  color={"#1DB954"}
+                />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.optionsButton}
+              onPress={() => onOptionsPress(item)}
+            >
+              <Text style={styles.optionsText}>⋮</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </GestureDetector>
     );
   },
 );
 
 const styles = StyleSheet.create({
+  actionStatusContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+  swipeContainer: {
+    position: "relative",
+    marginBottom: 12,
+  },
+  swipeBackground: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 8,
+    justifyContent: "center",
+    paddingLeft: 20,
+  },
+  swipeBackgroundText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
   itemCard: {
     backgroundColor: "#1e1e1e",
     padding: 12,
     borderRadius: 8,
-    marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
   },
