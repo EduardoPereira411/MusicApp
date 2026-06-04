@@ -166,6 +166,7 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
       visible={visible}
       animationType="slide"
       presentationStyle="fullScreen"
+      onRequestClose={onClose}
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View
