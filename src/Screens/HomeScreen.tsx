@@ -11,14 +11,15 @@ import {
 import { useAudio } from "@/Context/AudioContext";
 import { Song, Album, Artist } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
-import { AlbumItem } from "@/Components/AlbumItem";
 import { ArtistItem } from "@/Components/ArtistItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
+import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 import {
   fetchTracks,
   fetchAlbums,
   fetchArtists,
 } from "@/Services/navidromeService";
+import { SharedCollectionData } from "@/Models/Models";
 
 type SectionType = "tracks" | "albums" | "artists";
 
@@ -87,8 +88,20 @@ export default function HomeScreen() {
             />
           );
         }
-        case "albums":
-          return <AlbumItem item={item as Album} />;
+        case "albums": {
+          const albumItem = item as Album;
+
+          const transformedAlbum: SharedCollectionData = {
+            id: albumItem.id,
+            name: albumItem.name,
+            type: "album",
+            subtitle: albumItem.artist,
+            artworkUrl: albumItem.artworkUrl,
+            songCount: albumItem.songCount,
+          };
+
+          return <MediaCollectionItem item={transformedAlbum} />;
+        }
         case "artists":
           return (
             <ArtistItem
