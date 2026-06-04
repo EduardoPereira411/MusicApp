@@ -10,6 +10,10 @@ export interface Song {
   trackNumber?: number;
 }
 
+export type QueueSong = Song & {
+  origin?: "user" | "auto";
+};
+
 export interface Album {
   id: string;
   name: string;

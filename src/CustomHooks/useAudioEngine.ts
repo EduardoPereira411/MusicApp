@@ -10,11 +10,11 @@ import {
   getStreamUrl,
   fetchThemeOrRandomQueue,
 } from "@/Services/navidromeService";
-import { Song } from "@/Models/Models";
+import { Song, QueueSong } from "@/Models/Models";
 import { useToast } from "@/Context/ToastContext";
 
 export function useAudioEngine() {
-  const [queue, setQueue] = useState<Song[]>([]);
+  const [queue, setQueue] = useState<QueueSong[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
 
   const player = useAudioPlayer();
@@ -22,8 +22,8 @@ export function useAudioEngine() {
   const { showToast } = useToast();
 
   const internalQueueRef = useRef<{
-    userQueue: Song[];
-    contextQueue: Song[];
+    userQueue: QueueSong[];
+    contextQueue: QueueSong[];
   }>({
     userQueue: [],
     contextQueue: [],
@@ -35,7 +35,10 @@ export function useAudioEngine() {
       : null;
   }, [currentIndex, queue]);
 
-  const stateRef = useRef({ queue, currentIndex });
+  const stateRef = useRef<{ queue: QueueSong[]; currentIndex: number }>({
+    queue,
+    currentIndex,
+  });
   useEffect(() => {
     stateRef.current = { queue, currentIndex };
   }, [queue, currentIndex]);
@@ -232,23 +235,31 @@ export function useAudioEngine() {
   const addToQueue = useCallback(
     (song: Song) => {
       const storage = internalQueueRef.current;
+      const flaggedSong: QueueSong = { ...song, origin: "user" };
 
-      const flaggedSong = { ...song, origin: "user" as const };
       storage.userQueue.push(flaggedSong);
+
       setQueue((prev) => {
         if (prev.length === 0) {
-          storage.userQueue.push(song);
-          setTimeout(() => playSongNow(song), 0);
-          return [song];
+          setTimeout(() => playSongNow(flaggedSong), 0);
+          return [flaggedSong];
         }
 
-        const userItemsAhead = storage.userQueue.length;
-        const targetInsertionIndex = currentIndex + 1 + userItemsAhead;
-
-        storage.userQueue.push(song);
-
         const updated = [...prev];
-        updated.splice(targetInsertionIndex, 0, flaggedSong);
+
+        let insertionIndex = -1;
+        for (let i = currentIndex + 1; i < updated.length; i++) {
+          if (updated[i].origin === "auto") {
+            insertionIndex = i;
+            break;
+          }
+        }
+
+        if (insertionIndex === -1) {
+          insertionIndex = updated.length;
+        }
+
+        updated.splice(insertionIndex, 0, flaggedSong);
         return updated;
       });
 
