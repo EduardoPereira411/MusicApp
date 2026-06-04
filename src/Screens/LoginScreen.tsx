@@ -8,8 +8,12 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Platform,
+  Keyboard,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+
 import {
   authStorage,
   getSubsonicAuthParams,
@@ -32,6 +36,24 @@ export default function LoginScreen() {
 
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const keyboardShowListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => setKeyboardHeight(e.endCoordinates.height),
+    );
+    const keyboardHideListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setKeyboardHeight(0),
+    );
+
+    return () => {
+      keyboardShowListener.remove();
+      keyboardHideListener.remove();
+    };
+  }, []);
 
   const handleCancel = () => {
     if (abortControllerRef.current) {
@@ -135,117 +157,136 @@ export default function LoginScreen() {
   }, []);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Navidrome Subsonic Client</Text>
-
-      <Text style={styles.sectionHeader}>Navidrome Settings</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Server URL (e.g., https://music.myhost.com)"
-        placeholderTextColor="#888"
-        value={serverUrl}
-        onChangeText={setServerUrl}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="url"
-        editable={!loading}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        placeholderTextColor="#888"
-        value={username}
-        onChangeText={setUsername}
-        autoCapitalize="none"
-        autoCorrect={false}
-        editable={!loading}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor="#888"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        autoCapitalize="none"
-        autoCorrect={false}
-        editable={!loading}
-      />
-
-      <TouchableOpacity
-        style={styles.toggleRow}
-        onPress={() => setShowDownloadConfig(!showDownloadConfig)}
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 },
+        ]}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.toggleText}>
-          {showDownloadConfig
-            ? "▼ Hide Download Proxy API (Optional)"
-            : "▶ Configure Download Proxy API (Optional)"}
-        </Text>
-      </TouchableOpacity>
+        <Text style={styles.title}>Navidrome Subsonic Client</Text>
 
-      {showDownloadConfig && (
-        <View style={styles.optionalContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Proxy Base URL (https://proxy-domain.com)"
-            placeholderTextColor="#888"
-            value={dlBaseUrl}
-            onChangeText={setDlBaseUrl}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            editable={!loading}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Proxy Username (Optional)"
-            placeholderTextColor="#888"
-            value={dlUsername}
-            onChangeText={setDlUsername}
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!loading}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Proxy Password (Optional)"
-            placeholderTextColor="#888"
-            secureTextEntry
-            value={dlPassword}
-            onChangeText={setDlPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!loading}
-          />
-        </View>
-      )}
+        <Text style={styles.sectionHeader}>Navidrome Settings</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Server URL (e.g., https://music.myhost.com)"
+          placeholderTextColor="#888"
+          value={serverUrl}
+          onChangeText={setServerUrl}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          editable={!loading}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Username"
+          placeholderTextColor="#888"
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!loading}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor="#888"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!loading}
+        />
 
-      {!loading ? (
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Connect</Text>
+        <TouchableOpacity
+          style={styles.toggleRow}
+          onPress={() => setShowDownloadConfig(!showDownloadConfig)}
+        >
+          <Text style={styles.toggleText}>
+            {showDownloadConfig
+              ? "▼ Hide Download Proxy API (Optional)"
+              : "▶ Configure Download Proxy API (Optional)"}
+          </Text>
         </TouchableOpacity>
-      ) : (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator
-            size="small"
-            color="#fff"
-            style={{ marginBottom: 12 }}
-          />
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-            <Text style={styles.cancelButtonText}>Cancel Connection</Text>
+
+        {showDownloadConfig && (
+          <View style={styles.optionalContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Proxy Base URL (https://proxy-domain.com)"
+              placeholderTextColor="#888"
+              value={dlBaseUrl}
+              onChangeText={setDlBaseUrl}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              editable={!loading}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Proxy Username (Optional)"
+              placeholderTextColor="#888"
+              value={dlUsername}
+              onChangeText={setDlUsername}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!loading}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Proxy Password (Optional)"
+              placeholderTextColor="#888"
+              secureTextEntry
+              value={dlPassword}
+              onChangeText={setDlPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!loading}
+            />
+          </View>
+        )}
+
+        {!loading ? (
+          <TouchableOpacity style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>Connect</Text>
           </TouchableOpacity>
-        </View>
-      )}
-    </ScrollView>
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator
+              size="small"
+              color="#fff"
+              style={{ marginBottom: 12 }}
+            />
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={handleCancel}
+            >
+              <Text style={styles.cancelButtonText}>Cancel Connection</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    justifyContent: "center",
-    padding: 20,
     backgroundColor: "#121212",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   title: {
     fontSize: 24,
