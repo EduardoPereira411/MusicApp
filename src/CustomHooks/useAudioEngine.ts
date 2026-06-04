@@ -95,7 +95,7 @@ export function useAudioEngine() {
 
     const songsRemaining = queue.length - 1 - currentIndex;
 
-    if (songsRemaining <= 5) {
+    if (songsRemaining <= 2) {
       const storage = internalQueueRef.current;
       const fullPool = [...storage.userQueue, ...storage.contextQueue];
 
@@ -108,7 +108,7 @@ export function useAudioEngine() {
       if (fullPool.length <= queue.length) {
         const lastSong = queue[queue.length - 1];
 
-        fetchThemeOrRandomQueue(lastSong, 10).then((nextTracks) => {
+        fetchThemeOrRandomQueue(lastSong, 5).then((nextTracks) => {
           if (nextTracks.length > 0) {
             const flaggedTracks = nextTracks.map((track) => ({
               ...track,

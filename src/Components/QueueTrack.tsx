@@ -26,7 +26,14 @@ export const QueueTrack = React.memo(function QueueTrack({
         onPress={() => onTrackPress(item.absoluteIndex)}
       >
         {item.artworkUrl ? (
-          <Image source={{ uri: item.artworkUrl }} style={styles.artwork} />
+          <Image
+            source={{
+              uri: item.artworkUrl,
+              width: 90,
+              height: 90,
+            }}
+            style={styles.artwork}
+          />
         ) : (
           <View style={[styles.artwork, styles.fallbackArtwork]} />
         )}
