@@ -10,52 +10,57 @@ interface QueueTrackProps {
   onRemovePress: (index: number) => void;
 }
 
-export const QueueTrack = React.memo(function QueueTrack({
-  item,
-  onTrackPress,
-  onRemovePress,
-}: QueueTrackProps) {
-  return (
-    <View style={styles.trackRow}>
-      <View style={styles.dragHandle}>
-        <Ionicons name="menu" size={20} color="#555" />
-      </View>
+export const QueueTrack = React.memo(
+  function QueueTrack({ item, onTrackPress, onRemovePress }: QueueTrackProps) {
+    const { absoluteIndex, artworkUrl, title, artist } = item;
 
-      <TouchableOpacity
-        style={styles.trackDetails}
-        onPress={() => onTrackPress(item.absoluteIndex)}
-      >
-        {item.artworkUrl ? (
-          <Image
-            source={{
-              uri: item.artworkUrl,
-              width: 90,
-              height: 90,
-            }}
-            style={styles.artwork}
-          />
-        ) : (
-          <View style={[styles.artwork, styles.fallbackArtwork]} />
-        )}
-        <View style={styles.textContainer}>
-          <Text style={styles.title} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={styles.artist} numberOfLines={1}>
-            {item.artist}
-          </Text>
+    return (
+      <View style={styles.trackRow}>
+        <View style={styles.dragHandle}>
+          <Ionicons name="menu" size={20} color="#555" />
         </View>
-      </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => onRemovePress(item.absoluteIndex)}
-      >
-        <Ionicons name="trash-outline" size={20} color="#ff4d4d" />
-      </TouchableOpacity>
-    </View>
-  );
-});
+        <TouchableOpacity
+          style={styles.trackDetails}
+          onPress={() => onTrackPress(absoluteIndex)}
+        >
+          {artworkUrl ? (
+            <Image
+              source={{ uri: artworkUrl }}
+              style={styles.artwork}
+              cachePolicy="disk"
+            />
+          ) : (
+            <View style={[styles.artwork, styles.fallbackArtwork]} />
+          )}
+          <View style={styles.textContainer}>
+            <Text style={styles.title} numberOfLines={1}>
+              {title}
+            </Text>
+            <Text style={styles.artist} numberOfLines={1}>
+              {artist}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.removeButton}
+          onPress={() => onRemovePress(absoluteIndex)}
+        >
+          <Ionicons name="trash-outline" size={20} color="#ff4d4d" />
+        </TouchableOpacity>
+      </View>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.item.id === nextProps.item.id &&
+      prevProps.item.absoluteIndex === nextProps.item.absoluteIndex &&
+      prevProps.onTrackPress === nextProps.onTrackPress &&
+      prevProps.onRemovePress === nextProps.onRemovePress
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   trackRow: {
@@ -66,6 +71,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     borderRadius: 8,
     marginBottom: 8,
+    height: 64,
   },
   dragHandle: {
     paddingHorizontal: 10,

@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
+import React, { useMemo, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudio } from "@/Context/AudioContext";
@@ -7,7 +8,7 @@ import { useAudioPlayerStatus, AudioPlayer } from "expo-audio";
 import Slider from "@react-native-community/slider";
 import { QueueModal } from "@/Components/QueueModal";
 
-function MiniPlayerSlider({
+const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
   player,
   seekTo,
 }: {
@@ -30,7 +31,7 @@ function MiniPlayerSlider({
       />
     </View>
   );
-}
+});
 
 export default function GlobalMiniPlayer() {
   const {
@@ -70,7 +71,11 @@ export default function GlobalMiniPlayer() {
             onPress={() => setQueueVisible(true)}
             activeOpacity={0.7}
           >
-            <Image source={coverSource} style={styles.coverImage} />
+            <Image
+              source={coverSource}
+              style={styles.coverImage}
+              cachePolicy="disk"
+            />
 
             <View style={styles.songInfo}>
               <Text style={styles.title} numberOfLines={1}>

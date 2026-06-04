@@ -1,4 +1,3 @@
-// hooks/useAudioEngine.ts
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   useAudioPlayer,
@@ -12,6 +11,10 @@ import {
 } from "@/Services/navidromeService";
 import { Song, QueueSong } from "@/Models/Models";
 import { useToast } from "@/Context/ToastContext";
+
+const generateUniqueId = (): string => {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
 
 export function useAudioEngine() {
   const [queue, setQueue] = useState<QueueSong[]>([]);
@@ -113,6 +116,7 @@ export function useAudioEngine() {
             const flaggedTracks = nextTracks.map((track) => ({
               ...track,
               origin: "auto" as const,
+              clientQueueId: generateUniqueId(),
             }));
             internalQueueRef.current.contextQueue.push(...flaggedTracks);
             setQueue((prev) => [...prev, ...flaggedTracks]);
@@ -203,10 +207,12 @@ export function useAudioEngine() {
       const url = await getStreamUrl(song.id);
       if (!url) return;
 
-      // Wipe stale explicit queue allocations
       internalQueueRef.current.userQueue = [];
 
-      const userTracks = [{ ...song, origin: "user" as const }];
+      const userTracks: QueueSong[] = [
+        { ...song, origin: "user" as const, clientQueueId: generateUniqueId() },
+      ];
+
       if (contextSongs && contextSongs.length > 0) {
         const idx = contextSongs.findIndex((s) => s.id === song.id);
         const relativeContext =
@@ -215,6 +221,7 @@ export function useAudioEngine() {
         const flaggedContext = relativeContext.map((s) => ({
           ...s,
           origin: "user" as const,
+          clientQueueId: generateUniqueId(),
         }));
 
         internalQueueRef.current.contextQueue = flaggedContext;
@@ -235,7 +242,11 @@ export function useAudioEngine() {
   const addToQueue = useCallback(
     (song: Song) => {
       const storage = internalQueueRef.current;
-      const flaggedSong: QueueSong = { ...song, origin: "user" };
+      const flaggedSong: QueueSong = {
+        ...song,
+        origin: "user",
+        clientQueueId: generateUniqueId(),
+      };
 
       storage.userQueue.push(flaggedSong);
 
@@ -354,7 +365,7 @@ export function useAudioEngine() {
     [loadSongAtIndex],
   );
 
-  const updateQueueOrder = useCallback((newQueue: Song[]) => {
+  const updateQueueOrder = useCallback((newQueue: QueueSong[]) => {
     setQueue(newQueue);
     internalQueueRef.current.contextQueue = [...newQueue];
     internalQueueRef.current.userQueue = [];

@@ -12,6 +12,7 @@ export interface Song {
 
 export type QueueSong = Song & {
   origin?: "user" | "auto";
+  clientQueueId: string;
 };
 
 export interface Album {

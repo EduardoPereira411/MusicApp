@@ -34,8 +34,8 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
   const { userUpcoming, autoUpcoming } = useMemo(() => {
     if (currentIndex < 0) return { userUpcoming: [], autoUpcoming: [] };
 
-    const userUpcoming: any[] = [];
-    const autoUpcoming: any[] = [];
+    const userList: any[] = [];
+    const autoList: any[] = [];
 
     queue.slice(currentIndex + 1).forEach((item: any, localIdx) => {
       const trackWithIndex = {
@@ -44,26 +44,42 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
       };
 
       if (item.origin === "auto") {
-        autoUpcoming.push(trackWithIndex);
+        autoList.push(trackWithIndex);
       } else {
-        userUpcoming.push(trackWithIndex);
+        userList.push(trackWithIndex);
       }
     });
 
-    return { userUpcoming, autoUpcoming };
+    return { userUpcoming: userList, autoUpcoming: autoList };
   }, [queue, currentIndex]);
+
+  const handleTrackPress = useCallback(
+    (idx: number) => {
+      skipToQueueIndex(idx);
+    },
+    [skipToQueueIndex],
+  );
+
+  const handleRemovePress = useCallback(
+    (idx: number) => {
+      removeFromQueue(idx);
+    },
+    [removeFromQueue],
+  );
 
   const handleDragEnd = useCallback(
     ({ data }: { data: any[] }) => {
       const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
       const reorderedUpcoming = data.map(
-        ({ absoluteIndex, origin, ...songProps }) => songProps,
+        ({ absoluteIndex, ...songProps }) => songProps,
       );
 
       updateQueueOrder([...unchangedPastAndCurrent, ...reorderedUpcoming]);
     },
     [queue, currentIndex, updateQueueOrder],
   );
+
+  if (!visible) return null;
 
   return (
     <Modal
@@ -128,13 +144,13 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
                 <Sortable.Grid
                   columns={1}
                   data={userUpcoming}
-                  keyExtractor={(item) => `${item.id}-${item.absoluteIndex}`}
+                  keyExtractor={(item) => item.clientQueueId}
                   onDragEnd={handleDragEnd}
                   renderItem={({ item }) => (
                     <QueueTrack
                       item={item}
-                      onTrackPress={skipToQueueIndex}
-                      onRemovePress={removeFromQueue}
+                      onTrackPress={handleTrackPress}
+                      onRemovePress={handleRemovePress}
                     />
                   )}
                 />
@@ -151,13 +167,13 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
                 <Sortable.Grid
                   columns={1}
                   data={autoUpcoming}
-                  keyExtractor={(item) => `${item.id}-${item.absoluteIndex}`}
+                  keyExtractor={(item) => item.clientQueueId}
                   onDragEnd={handleDragEnd}
                   renderItem={({ item }) => (
                     <QueueTrack
                       item={item}
-                      onTrackPress={skipToQueueIndex}
-                      onRemovePress={removeFromQueue}
+                      onTrackPress={handleTrackPress}
+                      onRemovePress={handleRemovePress}
                     />
                   )}
                 />
