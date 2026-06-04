@@ -32,7 +32,6 @@ export const downloadAuthStorage = {
   },
 
   async clearCredentials() {
-    await SecureStore.deleteItemAsync(DOWNLOAD_KEYS.BASE_URL);
     await SecureStore.deleteItemAsync(DOWNLOAD_KEYS.USER);
     await SecureStore.deleteItemAsync(DOWNLOAD_KEYS.PASS);
   },

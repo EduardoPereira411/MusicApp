@@ -34,7 +34,6 @@ export const authStorage = {
   },
 
   async clearCredentials() {
-    await SecureStore.deleteItemAsync(KEYS.SERVER_URL);
     await SecureStore.deleteItemAsync(KEYS.USERNAME);
     await SecureStore.deleteItemAsync(KEYS.PASSWORD);
   },
