@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -114,6 +114,25 @@ export default function LoginScreen() {
       abortControllerRef.current = null;
     }
   };
+
+  useEffect(() => {
+    async function loadSavedServer() {
+      try {
+        const navidromeCreds = await authStorage.getCredentials();
+        const downloadServerCreds = await downloadAuthStorage.getCredentials();
+        if (navidromeCreds?.serverUrl) {
+          setServerUrl(navidromeCreds.serverUrl);
+        }
+        if (downloadServerCreds?.baseUrl) {
+          setDlBaseUrl(downloadServerCreds.baseUrl);
+          setShowDownloadConfig(true);
+        }
+      } catch (error) {
+        console.error("Failed to load saved server URL:", error);
+      }
+    }
+    loadSavedServer();
+  }, []);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

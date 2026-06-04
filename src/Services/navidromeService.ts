@@ -26,10 +26,10 @@ export const authStorage = {
 
   async getCredentials(): Promise<Credentials | null> {
     const serverUrl = await SecureStore.getItemAsync(KEYS.SERVER_URL);
-    const username = await SecureStore.getItemAsync(KEYS.USERNAME);
-    const password = await SecureStore.getItemAsync(KEYS.PASSWORD);
+    const username = (await SecureStore.getItemAsync(KEYS.USERNAME)) || "";
+    const password = (await SecureStore.getItemAsync(KEYS.PASSWORD)) || "";
 
-    if (!serverUrl || !username || !password) return null;
+    if (!serverUrl) return null;
     return { serverUrl, username, password };
   },
 
