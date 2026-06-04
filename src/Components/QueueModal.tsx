@@ -38,15 +38,13 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
     const autoList: any[] = [];
 
     queue.slice(currentIndex + 1).forEach((item: any, localIdx) => {
-      const trackWithIndex = {
-        ...item,
-        absoluteIndex: currentIndex + 1 + localIdx,
-      };
+      const absoluteIndex = currentIndex + 1 + localIdx;
+      item.absoluteIndex = absoluteIndex;
 
       if (item.origin === "auto") {
-        autoList.push(trackWithIndex);
+        autoList.push(item);
       } else {
-        userList.push(trackWithIndex);
+        userList.push(item);
       }
     });
 
@@ -78,6 +76,19 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
     },
     [queue, currentIndex, updateQueueOrder],
   );
+
+  const renderQueueTrack = useCallback(
+    ({ item }: { item: any }) => (
+      <QueueTrack
+        item={item}
+        onTrackPress={handleTrackPress}
+        onRemovePress={handleRemovePress}
+      />
+    ),
+    [handleTrackPress, handleRemovePress],
+  );
+
+  const keyExtractor = useCallback((item: any) => item.clientQueueId, []);
 
   if (!visible) return null;
 
@@ -144,15 +155,9 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
                 <Sortable.Grid
                   columns={1}
                   data={userUpcoming}
-                  keyExtractor={(item) => item.clientQueueId}
+                  keyExtractor={keyExtractor}
                   onDragEnd={handleDragEnd}
-                  renderItem={({ item }) => (
-                    <QueueTrack
-                      item={item}
-                      onTrackPress={handleTrackPress}
-                      onRemovePress={handleRemovePress}
-                    />
-                  )}
+                  renderItem={renderQueueTrack}
                 />
               </View>
             )}
@@ -167,15 +172,9 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
                 <Sortable.Grid
                   columns={1}
                   data={autoUpcoming}
-                  keyExtractor={(item) => item.clientQueueId}
+                  keyExtractor={keyExtractor}
                   onDragEnd={handleDragEnd}
-                  renderItem={({ item }) => (
-                    <QueueTrack
-                      item={item}
-                      onTrackPress={handleTrackPress}
-                      onRemovePress={handleRemovePress}
-                    />
-                  )}
+                  renderItem={renderQueueTrack}
                 />
               </View>
             )}

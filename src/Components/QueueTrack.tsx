@@ -10,57 +10,51 @@ interface QueueTrackProps {
   onRemovePress: (index: number) => void;
 }
 
-export const QueueTrack = React.memo(
-  function QueueTrack({ item, onTrackPress, onRemovePress }: QueueTrackProps) {
-    const { absoluteIndex, artworkUrl, title, artist } = item;
+export const QueueTrack = React.memo(function QueueTrack({
+  item,
+  onTrackPress,
+  onRemovePress,
+}: QueueTrackProps) {
+  const { absoluteIndex, artworkUrl, title, artist } = item;
 
-    return (
-      <View style={styles.trackRow}>
-        <View style={styles.dragHandle}>
-          <Ionicons name="menu" size={20} color="#555" />
-        </View>
-
-        <TouchableOpacity
-          style={styles.trackDetails}
-          onPress={() => onTrackPress(absoluteIndex)}
-        >
-          {artworkUrl ? (
-            <Image
-              source={{ uri: artworkUrl }}
-              style={styles.artwork}
-              cachePolicy="disk"
-            />
-          ) : (
-            <View style={[styles.artwork, styles.fallbackArtwork]} />
-          )}
-          <View style={styles.textContainer}>
-            <Text style={styles.title} numberOfLines={1}>
-              {title}
-            </Text>
-            <Text style={styles.artist} numberOfLines={1}>
-              {artist}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.removeButton}
-          onPress={() => onRemovePress(absoluteIndex)}
-        >
-          <Ionicons name="trash-outline" size={20} color="#ff4d4d" />
-        </TouchableOpacity>
+  return (
+    <View style={styles.trackRow}>
+      <View style={styles.dragHandle}>
+        <Ionicons name="menu" size={20} color="#555" />
       </View>
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.item.id === nextProps.item.id &&
-      prevProps.item.absoluteIndex === nextProps.item.absoluteIndex &&
-      prevProps.onTrackPress === nextProps.onTrackPress &&
-      prevProps.onRemovePress === nextProps.onRemovePress
-    );
-  },
-);
+
+      <TouchableOpacity
+        style={styles.trackDetails}
+        onPress={() => onTrackPress(absoluteIndex)}
+      >
+        {artworkUrl ? (
+          <Image
+            source={{ uri: artworkUrl }}
+            style={styles.artwork}
+            cachePolicy="disk"
+          />
+        ) : (
+          <View style={[styles.artwork, styles.fallbackArtwork]} />
+        )}
+        <View style={styles.textContainer}>
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+          <Text style={styles.artist} numberOfLines={1}>
+            {artist}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.removeButton}
+        onPress={() => onRemovePress(absoluteIndex)}
+      >
+        <Ionicons name="trash-outline" size={20} color="#ff4d4d" />
+      </TouchableOpacity>
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   trackRow: {
