@@ -39,12 +39,12 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
 
     queue.slice(currentIndex + 1).forEach((item: any, localIdx) => {
       const absoluteIndex = currentIndex + 1 + localIdx;
-      item.absoluteIndex = absoluteIndex;
+      const itemWithMeta = { ...item, absoluteIndex };
 
       if (item.origin === "auto") {
-        autoList.push(item);
+        autoList.push(itemWithMeta);
       } else {
-        userList.push(item);
+        userList.push(itemWithMeta);
       }
     });
 
@@ -65,19 +65,76 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
     [removeFromQueue],
   );
 
-  const handleDragEnd = useCallback(
-    ({ data }: { data: any[] }) => {
+  const applyQueueUpdate = useCallback(
+    (newUpcomingSegment: any[]) => {
       const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
-      const reorderedUpcoming = data.map(
-        ({ absoluteIndex, ...songProps }) => songProps,
-      );
 
-      updateQueueOrder([...unchangedPastAndCurrent, ...reorderedUpcoming]);
+      let lastUserIndex = -1;
+      newUpcomingSegment.forEach((item, idx) => {
+        if (item.origin === "user") lastUserIndex = idx;
+      });
+
+      const validatedUpcoming = newUpcomingSegment.map((item, index) => {
+        const cleanSong = { ...item };
+        delete cleanSong.absoluteIndex;
+
+        if (
+          item.origin === "auto" &&
+          (index <= lastUserIndex || (lastUserIndex === -1 && index === 0))
+        ) {
+          return { ...cleanSong, origin: "user" as const };
+        }
+        return cleanSong;
+      });
+
+      updateQueueOrder([...unchangedPastAndCurrent, ...validatedUpcoming]);
     },
     [queue, currentIndex, updateQueueOrder],
   );
 
-  const renderQueueTrack = useCallback(
+  const handleUserDragEnd = useCallback(
+    ({ data }: { data: any[] }) => {
+      const combinedUpcoming = [...data, ...autoUpcoming];
+      applyQueueUpdate(combinedUpcoming);
+    },
+    [autoUpcoming, applyQueueUpdate],
+  );
+
+  const handleAutoDragEnd = useCallback(
+    ({ data }: { data: any[] }) => {
+      const combinedUpcoming = [...userUpcoming, ...data];
+      applyQueueUpdate(combinedUpcoming);
+    },
+    [userUpcoming, applyQueueUpdate],
+  );
+
+  const handleAddToUserQueue = useCallback(
+    (trackToPromote: any) => {
+      const cleanSong = { ...trackToPromote, origin: "user" as const };
+      delete cleanSong.absoluteIndex;
+      const currentUpcomingClean = queue
+        .slice(currentIndex + 1)
+        .map((s: any) => {
+          const copy = { ...s };
+          delete copy.absoluteIndex;
+          return copy;
+        });
+
+      const remainingUpcoming = currentUpcomingClean.filter(
+        (s) => s.clientQueueId !== cleanSong.clientQueueId,
+      );
+
+      const userPart = remainingUpcoming.filter((s) => s.origin === "user");
+      const autoPart = remainingUpcoming.filter((s) => s.origin === "auto");
+      const targetUpcomingSegment = [...userPart, cleanSong, ...autoPart];
+      const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
+
+      updateQueueOrder([...unchangedPastAndCurrent, ...targetUpcomingSegment]);
+    },
+    [queue, currentIndex, updateQueueOrder],
+  );
+
+  const renderUserQueueTrack = useCallback(
     ({ item }: { item: any }) => (
       <QueueTrack
         item={item}
@@ -86,6 +143,18 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
       />
     ),
     [handleTrackPress, handleRemovePress],
+  );
+
+  const renderAutoQueueTrack = useCallback(
+    ({ item }: { item: any }) => (
+      <QueueTrack
+        item={item}
+        onTrackPress={handleTrackPress}
+        onRemovePress={handleRemovePress}
+        onAddToUserQueue={handleAddToUserQueue}
+      />
+    ),
+    [handleTrackPress, handleRemovePress, handleAddToUserQueue],
   );
 
   const keyExtractor = useCallback((item: any) => item.clientQueueId, []);
@@ -156,8 +225,8 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
                   columns={1}
                   data={userUpcoming}
                   keyExtractor={keyExtractor}
-                  onDragEnd={handleDragEnd}
-                  renderItem={renderQueueTrack}
+                  onDragEnd={handleUserDragEnd}
+                  renderItem={renderUserQueueTrack}
                 />
               </View>
             )}
@@ -173,8 +242,8 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
                   columns={1}
                   data={autoUpcoming}
                   keyExtractor={keyExtractor}
-                  onDragEnd={handleDragEnd}
-                  renderItem={renderQueueTrack}
+                  onDragEnd={handleAutoDragEnd}
+                  renderItem={renderAutoQueueTrack}
                 />
               </View>
             )}

@@ -1,21 +1,24 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
-import { Song } from "@/Models/Models";
+import { QueueSong } from "@/Models/Models";
 
 interface QueueTrackProps {
-  item: Song & { absoluteIndex: number };
+  item: any; // Using any for local meta flexibility
   onTrackPress: (index: number) => void;
   onRemovePress: (index: number) => void;
+  onAddToUserQueue?: (item: any) => void; // Added handler
 }
 
 export const QueueTrack = React.memo(function QueueTrack({
   item,
   onTrackPress,
   onRemovePress,
+  onAddToUserQueue,
 }: QueueTrackProps) {
-  const { absoluteIndex, artworkUrl, title, artist } = item;
+  const { absoluteIndex, artworkUrl, title, artist, origin } = item;
 
   return (
     <View style={styles.trackRow}>
@@ -45,6 +48,15 @@ export const QueueTrack = React.memo(function QueueTrack({
           </Text>
         </View>
       </TouchableOpacity>
+
+      {origin === "auto" && onAddToUserQueue && (
+        <TouchableOpacity
+          style={{ paddingHorizontal: 12, justifyContent: "center" }}
+          onPress={() => onAddToUserQueue(item)}
+        >
+          <MaterialIcons name="queue-music" size={22} color="#1DB954" />
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity
         style={styles.removeButton}

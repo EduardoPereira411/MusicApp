@@ -381,11 +381,20 @@ export function useAudioEngine() {
     [loadSongAtIndex],
   );
 
-  const updateQueueOrder = useCallback((newQueue: QueueSong[]) => {
-    setQueue(newQueue);
-    internalQueueRef.current.contextQueue = [...newQueue];
-    internalQueueRef.current.userQueue = [];
-  }, []);
+  const updateQueueOrder = useCallback(
+    (newQueue: QueueSong[]) => {
+      setQueue(newQueue);
+
+      const upcoming = newQueue.slice(currentIndex + 1);
+      internalQueueRef.current.userQueue = upcoming.filter(
+        (s) => s.origin === "user",
+      );
+      internalQueueRef.current.contextQueue = upcoming.filter(
+        (s) => s.origin === "auto",
+      );
+    },
+    [currentIndex],
+  );
 
   const logoutCleanUp = useCallback(() => {
     try {
