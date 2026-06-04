@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -36,10 +36,10 @@ export default function HomeScreen() {
 
   const { currentSong, playing, playSongNow, addToQueue } = useAudio();
 
-  const handleSongOptions = (song: Song) => {
+  const handleSongOptions = useCallback((song: Song) => {
     setSelectedSong(song);
     setIsModalVisible(true);
-  };
+  }, []);
 
   useEffect(() => {
     async function fetchAllDataInitial() {
@@ -70,50 +70,61 @@ export default function HomeScreen() {
     setIsRefreshing(false);
   }
 
-  const getListDataAndRenderer = (): {
-    data: Song[] | Album[] | Artist[];
-    emptyText: string;
-    renderItem: ({
-      item,
-    }: {
-      item: Song | Album | Artist;
-    }) => React.JSX.Element;
-  } => {
-    switch (activeSection) {
-      case "tracks":
-        return {
-          data: songs,
-          emptyText: "No tracks found.",
-          renderItem: ({ item }) => (
+  const renderSongItem = useCallback(
+    ({ item }: { item: Song | Album | Artist }) => {
+      switch (activeSection) {
+        case "tracks": {
+          const songItem = item as Song;
+          const isCurrent = songItem.id === currentSong?.id;
+          return (
             <SongItem
-              item={item as Song}
-              isCurrent={item.id === currentSong?.id}
-              isPlaying={item.id === currentSong?.id && playing}
+              item={songItem}
+              isCurrent={isCurrent}
+              isPlaying={isCurrent && playing}
               onPlay={playSongNow}
               onOptionsPress={handleSongOptions}
               onSwipeLeftToRight={addToQueue}
             />
-          ),
-        };
-      case "albums":
-        return {
-          data: albums,
-          emptyText: "No albums found.",
-          renderItem: ({ item }) => <AlbumItem item={item as Album} />,
-        };
-      case "artists":
-        return {
-          data: artists,
-          emptyText: "No artists found.",
-          renderItem: ({ item }) => (
+          );
+        }
+        case "albums":
+          return <AlbumItem item={item as Album} />;
+        case "artists":
+          return (
             <ArtistItem
               item={item as Artist}
               onPress={(id) => console.log("Artist:", id)}
             />
-          ),
-        };
+          );
+        default:
+          return null;
+      }
+    },
+    [
+      activeSection,
+      currentSong?.id,
+      playing,
+      playSongNow,
+      handleSongOptions,
+      addToQueue,
+    ],
+  );
+
+  const listConfig = useMemo(() => {
+    switch (activeSection) {
+      case "tracks":
+        return { data: songs, emptyText: "No tracks found." };
+      case "albums":
+        return { data: albums, emptyText: "No albums found." };
+      case "artists":
+        return { data: artists, emptyText: "No artists found." };
     }
-  };
+  }, [activeSection, songs, albums, artists]);
+
+  const keyExtractor = useCallback(
+    (item: Song | Album | Artist) => item.id,
+    [],
+  );
 
   if (initialLoading) {
     return (
@@ -122,8 +133,6 @@ export default function HomeScreen() {
       </View>
     );
   }
-
-  const listConfig = getListDataAndRenderer();
 
   return (
     <View style={styles.container}>
@@ -154,9 +163,13 @@ export default function HomeScreen() {
       <View style={{ flex: 1 }}>
         <FlatList<Song | Album | Artist>
           data={listConfig.data}
-          keyExtractor={(item) => item.id}
-          renderItem={listConfig.renderItem}
+          keyExtractor={keyExtractor}
+          renderItem={renderSongItem}
           contentContainerStyle={styles.listContainer}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
