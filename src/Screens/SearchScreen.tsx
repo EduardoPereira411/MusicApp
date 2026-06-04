@@ -1,24 +1,20 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import {
-  authStorage,
-  getSubsonicAuthParams,
-} from "@/Services/navidromeService";
+import { searchAll } from "@/Services/navidromeService";
 import { useAudio } from "@/Context/AudioContext";
-import { Song, Album } from "@/Models/Models";
+import { Song, Album, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
-import { AlbumItem } from "@/Components/AlbumItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { SearchBar } from "@/Components/SearchBar";
+import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 
 type SearchType = "tracks" | "albums";
 
@@ -35,7 +31,6 @@ export default function SearchScreen() {
 
   const { currentSong, playing, playSongNow, addToQueue } = useAudio();
 
-  // Trigger search when theres a change in the search bar, with delay so server does't get overwhelmed
   useEffect(() => {
     if (!query.trim()) {
       setSongs([]);
@@ -54,54 +49,63 @@ export default function SearchScreen() {
     if (!query.trim()) return;
     setLoading(true);
 
-    try {
-      const creds = await authStorage.getCredentials();
-      const params = await getSubsonicAuthParams();
-      if (!creds || !params) return;
+    const result = await searchAll(query);
+    setSongs(result.songs);
+    setAlbums(result.albums);
 
-      // search3.view returns tracks, albums, and artists all at once.
-      const url = `${creds.serverUrl}/rest/search3.view?${params}&query=${encodeURIComponent(query)}&songCount=30&albumCount=30`;
-      const response = await fetch(url);
-      const data = await response.json();
-      const searchResult = data["subsonic-response"]?.searchResult3;
-
-      // Parse Songs
-      const fetchedSongs: any[] = searchResult?.song || [];
-      const parsedSongs = (
-        Array.isArray(fetchedSongs) ? fetchedSongs : [fetchedSongs]
-      ).map((song) => ({
-        id: song.id,
-        title: song.title,
-        artist: song.artist,
-        album: song.album,
-        albumId: song.albumId,
-        artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${song.coverArt || song.id}&size=300`,
-      }));
-
-      // Parse Albums
-      const fetchedAlbums: any[] = searchResult?.album || [];
-      const parsedAlbums = (
-        Array.isArray(fetchedAlbums) ? fetchedAlbums : [fetchedAlbums]
-      ).map((album) => ({
-        id: album.id,
-        name: album.name,
-        artist: album.artist,
-        artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
-      }));
-
-      setSongs(parsedSongs);
-      setAlbums(parsedAlbums);
-    } catch (e) {
-      console.error("Search failed:", e);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   }
 
-  const handleSongOptions = (song: Song) => {
+  const handleSongOptions = useCallback((song: Song) => {
     setSelectedSong(song);
     setIsModalVisible(true);
-  };
+  }, []);
+
+  const renderSearchItem = useCallback(
+    ({ item }: { item: Song | Album }) => {
+      if (activeTab === "tracks") {
+        const songItem = item as Song;
+        const isCurrent = songItem.id === currentSong?.id;
+        return (
+          <SongItem
+            item={songItem}
+            isCurrent={isCurrent}
+            isPlaying={isCurrent && playing}
+            onPlay={playSongNow}
+            onOptionsPress={handleSongOptions}
+            onSwipeLeftToRight={addToQueue}
+          />
+        );
+      } else {
+        const albumItem = item as Album;
+
+        const transformedAlbum: SharedCollectionData = {
+          id: albumItem.id,
+          name: albumItem.name,
+          type: "album",
+          subtitle: albumItem.artist,
+          artworkUrl: albumItem.artworkUrl,
+          songCount: albumItem.songCount,
+        };
+
+        return <MediaCollectionItem item={transformedAlbum} />;
+      }
+    },
+    [
+      activeTab,
+      currentSong?.id,
+      playing,
+      playSongNow,
+      handleSongOptions,
+      addToQueue,
+    ],
+  );
+
+  const listConfig = useMemo(() => {
+    return activeTab === "tracks" ? songs : albums;
+  }, [activeTab, songs, albums]);
+
+  const keyExtractor = useCallback((item: Song | Album) => item.id, []);
 
   return (
     <View style={styles.container}>
@@ -158,10 +162,15 @@ export default function SearchScreen() {
             <ActivityIndicator size="large" color="#1DB954" />
           </View>
         ) : (
-          <FlatList
-            data={(activeTab === "tracks" ? songs : albums) as (Song | Album)[]}
-            keyExtractor={(item) => item.id}
+          <FlatList<Song | Album>
+            data={listConfig}
+            keyExtractor={keyExtractor}
+            renderItem={renderSearchItem}
             contentContainerStyle={styles.listContainer}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
             ListEmptyComponent={
               query.trim() ? (
                 <Text style={styles.emptyText}>
@@ -173,24 +182,6 @@ export default function SearchScreen() {
                 </Text>
               )
             }
-            renderItem={({ item }) => {
-              if (activeTab === "tracks") {
-                const songItem = item as Song;
-                return (
-                  <SongItem
-                    item={songItem}
-                    isCurrent={songItem.id === currentSong?.id}
-                    isPlaying={songItem.id === currentSong?.id && playing}
-                    onPlay={playSongNow}
-                    onOptionsPress={handleSongOptions}
-                    onSwipeLeftToRight={addToQueue}
-                  />
-                );
-              } else {
-                const albumItem = item as Album;
-                return <AlbumItem item={albumItem} />;
-              }
-            }}
           />
         )}
       </View>

@@ -20,6 +20,16 @@ export interface Album {
   name: string;
   artist: string;
   artworkUrl?: string;
+  songCount?: number;
+}
+
+export interface SharedCollectionData {
+  id: string;
+  name: string;
+  type: "album" | "playlist";
+  subtitle?: string;
+  songCount?: number;
+  artworkUrl?: string;
 }
 
 export interface Artist {

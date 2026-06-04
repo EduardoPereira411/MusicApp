@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import {
   fetchNavidromePlaylists,
 } from "@/Services/navidromeService";
 import { downloadAuthStorage } from "@/Services/downloadService";
+import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
+import { SharedCollectionData } from "@/Models/Models";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -38,13 +40,11 @@ export default function ProfileScreen() {
   async function loadUserData() {
     setLoading(true);
 
-    // Fetch Navidrome details
     const creds = await authStorage.getCredentials();
     if (creds?.username) {
       setUsername(creds.username);
     }
 
-    // Fetch existing Download API configurations if present
     const dlCreds = await downloadAuthStorage.getCredentials();
     if (dlCreds) {
       setDlBaseUrl(dlCreds.baseUrl);
@@ -65,13 +65,13 @@ export default function ProfileScreen() {
     }
   }
 
-  async function handleRefresh() {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     await loadPlaylists();
     setIsRefreshing(false);
-  }
+  }, []);
 
-  async function handleSaveDownloadConfig() {
+  const handleSaveDownloadConfig = useCallback(async () => {
     if (!dlBaseUrl) {
       Alert.alert("Error", "Proxy Base URL is required.");
       return;
@@ -92,9 +92,9 @@ export default function ProfileScreen() {
     } finally {
       setIsSavingDl(false);
     }
-  }
+  }, [dlBaseUrl, dlUsername, dlPassword]);
 
-  async function handleClearDownloadConfig() {
+  const handleClearDownloadConfig = useCallback(async () => {
     Alert.alert(
       "Remove Configuration",
       "Are you sure you want to delete your Download API setup?",
@@ -114,9 +114,9 @@ export default function ProfileScreen() {
         },
       ],
     );
-  }
+  }, []);
 
-  async function handleLogout() {
+  const handleLogout = useCallback(async () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -129,7 +129,26 @@ export default function ProfileScreen() {
         },
       },
     ]);
-  }
+  }, [router]);
+
+  const formattedPlaylists = useMemo<SharedCollectionData[]>(() => {
+    return playlists.map((pl) => ({
+      id: pl.id,
+      name: pl.name,
+      type: "playlist",
+      subtitle: pl.owner || "Unknown Owner",
+      songCount: pl.songCount || 0,
+    }));
+  }, [playlists]);
+
+  const renderItem = useCallback(
+    ({ item }: { item: SharedCollectionData }) => (
+      <MediaCollectionItem item={item} />
+    ),
+    [],
+  );
+
+  const keyExtractor = useCallback((item: SharedCollectionData) => item.id, []);
 
   if (loading) {
     return (
@@ -141,10 +160,27 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={playlists}
-        keyExtractor={(item) => item.id}
+      <FlatList<SharedCollectionData>
+        data={formattedPlaylists}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="#1DB954"
+          />
+        }
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>
+            No playlists found on your server.
+          </Text>
+        }
         ListHeaderComponent={
           <View>
             <View style={styles.profileHeader}>
@@ -237,46 +273,9 @@ export default function ProfileScreen() {
             )}
 
             <View style={styles.divider} />
-
             <Text style={styles.sectionHeader}>Your Playlists</Text>
           </View>
         }
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor="#1DB954"
-          />
-        }
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            No playlists found on your server.
-          </Text>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.playlistCard}
-            onPress={() => {
-              router.push({
-                pathname: "/playlist",
-                params: { id: item.id, type: "playlist", name: item.name },
-              });
-            }}
-          >
-            <View style={styles.playlistIconContainer}>
-              <Text style={styles.playlistIcon}>📁</Text>
-            </View>
-            <View style={styles.playlistInfo}>
-              <Text style={styles.playlistName} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={styles.playlistCount}>
-                {item.songCount || 0} tracks
-              </Text>
-            </View>
-            <Text style={styles.arrowIcon}>〉</Text>
-          </TouchableOpacity>
-        )}
       />
     </View>
   );

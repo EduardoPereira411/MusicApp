@@ -157,11 +157,57 @@ export async function fetchAlbums(): Promise<Album[]> {
       id: album.id,
       name: album.name,
       artist: album.artist,
+      songCount: album.songCount,
       artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
     }));
   } catch (e) {
     console.error("Failed fetching albums:", e);
     return [];
+  }
+}
+
+export async function searchAll(
+  query: string,
+): Promise<{ songs: Song[]; albums: Album[] }> {
+  try {
+    const creds = await authStorage.getCredentials();
+    const params = await getSubsonicAuthParams();
+    if (!creds || !params || !query.trim()) return { songs: [], albums: [] };
+
+    const url = `${creds.serverUrl}/rest/search3.view?${params}&query=${encodeURIComponent(query)}&songCount=30&albumCount=30`;
+    const response = await fetch(url);
+    const data = await response.json();
+    const searchResult = data["subsonic-response"]?.searchResult3;
+
+    // Parse Songs
+    const fetchedSongs: any[] = searchResult?.song || [];
+    const songs = (
+      Array.isArray(fetchedSongs) ? fetchedSongs : [fetchedSongs]
+    ).map((song) => ({
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      albumId: song.albumId,
+      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${song.coverArt || song.id}&size=300`,
+    }));
+
+    // Parse Albums
+    const fetchedAlbums: any[] = searchResult?.album || [];
+    const albums = (
+      Array.isArray(fetchedAlbums) ? fetchedAlbums : [fetchedAlbums]
+    ).map((album) => ({
+      id: album.id,
+      name: album.name,
+      artist: album.artist,
+      songCount: album.songCount,
+      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
+    }));
+
+    return { songs, albums };
+  } catch (e) {
+    console.error("Search API service failure:", e);
+    return { songs: [], albums: [] };
   }
 }
 
