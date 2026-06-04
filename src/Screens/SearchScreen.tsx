@@ -16,7 +16,7 @@ import { useRouter } from "expo-router";
 import { SearchBar } from "@/Components/SearchBar";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 
-type SearchType = "tracks" | "albums";
+type SearchType = "tracks" | "albums" | "artists";
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -24,6 +24,7 @@ export default function SearchScreen() {
   const [activeTab, setActiveTab] = useState<SearchType>("tracks");
   const [songs, setSongs] = useState<Song[]>([]);
   const [albums, setAlbums] = useState<SharedCollectionData[]>([]);
+  const [artists, setArtists] = useState<SharedCollectionData[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -35,6 +36,7 @@ export default function SearchScreen() {
     if (!query.trim()) {
       setSongs([]);
       setAlbums([]);
+      setArtists([]);
       return;
     }
 
@@ -52,6 +54,7 @@ export default function SearchScreen() {
     const result = await searchAll(query);
     setSongs(result.songs);
     setAlbums(result.albums);
+    setArtists(result.artists);
 
     setLoading(false);
   }
@@ -91,8 +94,15 @@ export default function SearchScreen() {
   );
 
   const listConfig = useMemo(() => {
-    return activeTab === "tracks" ? songs : albums;
-  }, [activeTab, songs, albums]);
+    switch (activeTab) {
+      case "tracks":
+        return songs;
+      case "albums":
+        return albums;
+      case "artists":
+        return artists;
+    }
+  }, [activeTab, songs, albums, artists]);
 
   const keyExtractor = useCallback(
     (item: Song | SharedCollectionData) => item.id,
@@ -127,7 +137,7 @@ export default function SearchScreen() {
       />
 
       <View style={styles.tabBar}>
-        {(["tracks", "albums"] as SearchType[]).map((tab) => (
+        {(["tracks", "albums", "artists"] as SearchType[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[
@@ -205,17 +215,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 16,
-  },
-  searchBarContainer: {
-    backgroundColor: "#1e1e1e",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 16,
-  },
-  searchInput: {
-    color: "#fff",
-    fontSize: 16,
   },
   tabBar: {
     flexDirection: "row",

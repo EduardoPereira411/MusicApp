@@ -178,15 +178,18 @@ export async function fetchAlbums(): Promise<SharedCollectionData[]> {
   }
 }
 
-export async function searchAll(
-  query: string,
-): Promise<{ songs: Song[]; albums: SharedCollectionData[] }> {
+export async function searchAll(query: string): Promise<{
+  songs: Song[];
+  albums: SharedCollectionData[];
+  artists: SharedCollectionData[];
+}> {
   try {
     const creds = await authStorage.getCredentials();
     const params = await getSubsonicAuthParams();
-    if (!creds || !params || !query.trim()) return { songs: [], albums: [] };
+    if (!creds || !params || !query.trim())
+      return { songs: [], albums: [], artists: [] };
 
-    const url = `${creds.serverUrl}/rest/search3.view?${params}&query=${encodeURIComponent(query)}&songCount=30&albumCount=30`;
+    const url = `${creds.serverUrl}/rest/search3.view?${params}&query=${encodeURIComponent(query)}&songCount=30&albumCount=30&artistCount=30`;
     const response = await fetch(url);
     const data = await response.json();
     const searchResult = data["subsonic-response"]?.searchResult3;
@@ -217,10 +220,22 @@ export async function searchAll(
       artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
     }));
 
-    return { songs, albums };
+    const fetchedArtists: any[] = searchResult?.artist || [];
+    const artists: SharedCollectionData[] = (
+      Array.isArray(fetchedArtists) ? fetchedArtists : [fetchedArtists]
+    ).map((artist) => ({
+      id: artist.id,
+      name: artist.name,
+      type: "artist",
+      subItemCount: artist.albumCount,
+      subtitle: `${artist.albumCount || 0} Albums`,
+      artworkUrl: "",
+    }));
+
+    return { songs, albums, artists };
   } catch (e) {
     console.error("Search API service failure:", e);
-    return { songs: [], albums: [] };
+    return { songs: [], albums: [], artists: [] };
   }
 }
 
