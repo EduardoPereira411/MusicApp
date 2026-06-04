@@ -26,7 +26,7 @@ export function useAudioEngine() {
 
   const internalQueueRef = useRef<{
     userQueue: QueueSong[];
-    contextQueue: QueueSong[];
+    contextQueue: Song[];
   }>({
     userQueue: [],
     contextQueue: [],
@@ -100,15 +100,27 @@ export function useAudioEngine() {
 
     if (songsRemaining <= 2) {
       const storage = internalQueueRef.current;
-      const fullPool = [...storage.userQueue, ...storage.contextQueue];
 
-      if (fullPool.length > queue.length) {
-        const nextBatch = fullPool.slice(queue.length, queue.length + 10);
-        setQueue((prev) => [...prev, ...nextBatch]);
+      const totalPoolLength =
+        storage.contextQueue.length + storage.userQueue.length;
+
+      if (totalPoolLength > queue.length) {
+        const nextRawBatch = storage.contextQueue.slice(
+          queue.length,
+          queue.length + 5,
+        );
+
+        const decoratedBatch: QueueSong[] = nextRawBatch.map((track) => ({
+          ...track,
+          origin: "auto" as const,
+          clientQueueId: generateUniqueId(),
+        }));
+
+        setQueue((prev) => [...prev, ...decoratedBatch]);
       }
 
-      // Procedural/Infinite Radio Generation
-      if (fullPool.length <= queue.length) {
+      // Procedural/Infinite Radio Generation fallback
+      if (totalPoolLength <= queue.length) {
         const lastSong = queue[queue.length - 1];
 
         fetchThemeOrRandomQueue(lastSong, 5).then((nextTracks) => {
@@ -209,25 +221,29 @@ export function useAudioEngine() {
 
       internalQueueRef.current.userQueue = [];
 
-      const userTracks: QueueSong[] = [
-        { ...song, origin: "user" as const, clientQueueId: generateUniqueId() },
-      ];
-
       if (contextSongs && contextSongs.length > 0) {
         const idx = contextSongs.findIndex((s) => s.id === song.id);
         const relativeContext =
           idx !== -1 ? contextSongs.slice(idx) : contextSongs;
 
-        const flaggedContext = relativeContext.map((s) => ({
+        internalQueueRef.current.contextQueue = relativeContext;
+
+        const initialChunk = relativeContext.slice(0, 5).map((s) => ({
           ...s,
-          origin: "user" as const,
+          origin: "auto" as const,
           clientQueueId: generateUniqueId(),
         }));
 
-        internalQueueRef.current.contextQueue = flaggedContext;
-        setQueue(flaggedContext.slice(0, 10));
+        setQueue(initialChunk);
         setCurrentIndex(0);
       } else {
+        const userTracks: QueueSong[] = [
+          {
+            ...song,
+            origin: "user" as const,
+            clientQueueId: generateUniqueId(),
+          },
+        ];
         internalQueueRef.current.contextQueue = [];
         setQueue(userTracks);
         setCurrentIndex(0);

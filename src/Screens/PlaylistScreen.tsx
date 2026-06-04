@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -55,10 +55,50 @@ export default function PlaylistScreen() {
     }
   }
 
-  const handleSongOptions = (song: Song) => {
+  const handleSongOptions = useCallback((song: Song) => {
     setSelectedSong(song);
     setIsModalVisible(true);
-  };
+  }, []);
+
+  const handlePlaySong = useCallback(
+    (item: Song) => {
+      if (isShuffle) {
+        const contextCopy = songs.filter((s) => s.id !== item.id);
+        for (let i = contextCopy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [contextCopy[i], contextCopy[j]] = [contextCopy[j], contextCopy[i]];
+        }
+        playSongNow(item, [item, ...contextCopy]);
+      } else {
+        playSongNow(item, songs);
+      }
+    },
+    [isShuffle, songs, playSongNow],
+  );
+
+  const renderSongItem = useCallback(
+    ({ item, index }: { item: Song; index: number }) => {
+      const isCurrent = currentSong?.id === item.id;
+      return (
+        <SongItem
+          item={item}
+          index={index}
+          showTrackNumber={true}
+          isCurrent={isCurrent}
+          isPlaying={isCurrent && playing}
+          onOptionsPress={handleSongOptions}
+          onSwipeLeftToRight={addToQueue}
+          onPlay={handlePlaySong}
+        />
+      );
+    },
+    [currentSong?.id, playing, handleSongOptions, addToQueue, handlePlaySong],
+  );
+
+  const keyExtractor = useCallback(
+    (item: Song, index: number) => `${item.id}-${index}`,
+    [],
+  );
 
   if (loading) {
     return (
@@ -97,47 +137,20 @@ export default function PlaylistScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Tracks Listing */}
       <FlatList
         data={songs}
-        keyExtractor={(item, index) => `${item.id}-${index}`}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContainer}
+        renderItem={renderSongItem}
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
             This context contains no playable items.
           </Text>
         }
-        renderItem={({ item, index }) => {
-          const isCurrent = currentSong?.id === item.id;
-          return (
-            <SongItem
-              item={item}
-              index={index}
-              showTrackNumber={true}
-              isCurrent={isCurrent}
-              isPlaying={isCurrent && playing}
-              onOptionsPress={handleSongOptions}
-              onSwipeLeftToRight={addToQueue}
-              onPlay={() => {
-                if (isShuffle) {
-                  const contextCopy = [...songs].filter(
-                    (s) => s.id !== item.id,
-                  );
-                  for (let i = contextCopy.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [contextCopy[i], contextCopy[j]] = [
-                      contextCopy[j],
-                      contextCopy[i],
-                    ];
-                  }
-                  playSongNow(item, [item, ...contextCopy]);
-                } else {
-                  playSongNow(item, songs);
-                }
-              }}
-            />
-          );
-        }}
       />
 
       <SongOptionsModal
