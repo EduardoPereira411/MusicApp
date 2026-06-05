@@ -170,9 +170,9 @@ export default function HomeScreen() {
           keyExtractor={keyExtractor}
           renderItem={renderSongItem}
           contentContainerStyle={styles.listContainer}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={5}
+          initialNumToRender={7}
+          maxToRenderPerBatch={5}
+          windowSize={2}
           removeClippedSubviews={true}
           refreshControl={
             <RefreshControl

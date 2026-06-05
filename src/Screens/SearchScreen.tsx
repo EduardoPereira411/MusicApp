@@ -167,9 +167,9 @@ export default function SearchScreen() {
             keyExtractor={keyExtractor}
             renderItem={renderSearchItem}
             contentContainerStyle={styles.listContainer}
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            windowSize={5}
+            initialNumToRender={7}
+            maxToRenderPerBatch={5}
+            windowSize={2}
             removeClippedSubviews={true}
             ListEmptyComponent={
               query.trim() ? (
