@@ -64,7 +64,6 @@ export default function SearchScreen() {
       setAlbums(result.albums || []);
       setArtists(result.artists || []);
     } catch (e: any) {
-      console.error("Search query execution failed:", e);
       setPipelineError(
         e.message || "Failed to finalize content search parameters.",
       );

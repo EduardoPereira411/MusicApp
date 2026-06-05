@@ -67,7 +67,6 @@ export default function DownloadSearchScreen() {
         setAlbums(results);
       }
     } catch (e: any) {
-      console.error("Download server search failed:", e);
       setPipelineError(
         e.message || "Failed to search the remote Download Proxy endpoint.",
       );

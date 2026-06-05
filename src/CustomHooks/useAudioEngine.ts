@@ -150,7 +150,6 @@ export function useAudioEngine() {
   }, [currentIndex, queue.length, showToast, lookAheadError]);
 
   useEffect(() => {
-    console.log("here");
     if (lookAheadError) {
       setLookAheadError(false);
     }

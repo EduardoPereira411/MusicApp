@@ -62,7 +62,6 @@ export default function ProfileScreen() {
       const list = await fetchNavidromePlaylists(navidromeCreds);
       setPlaylists(list);
     } catch (e: any) {
-      console.error("Failed fetching user playlists:", e);
       setPipelineError(e.message || "Failed to load account user playlists.");
     }
   }
@@ -89,7 +88,6 @@ export default function ProfileScreen() {
       Alert.alert("Success", "Download API settings updated successfully!");
       setShowDlConfig(false);
     } catch (error) {
-      console.error("Failed to save download proxy options:", error);
       Alert.alert("Error", "Could not save settings securely.");
     } finally {
       setIsSavingDl(false);

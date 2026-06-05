@@ -58,7 +58,6 @@ export default function HomeScreen() {
       setAlbums(albumsData);
       setArtists(artistsData);
     } catch (err: any) {
-      console.error("Failed to fetch dashboard feed metrics:", err);
       setPipelineError(err.message || "An unexpected network error occurred.");
     } finally {
       setInitialLoading(false);
@@ -83,7 +82,6 @@ export default function HomeScreen() {
         setArtists(await fetchArtists(navidromeCreds));
       }
     } catch (err: any) {
-      console.error("Refresh failed:", err);
       setPipelineError(
         err.message || "Failed to update target feed section components.",
       );
@@ -99,7 +97,6 @@ export default function HomeScreen() {
         setPipelineError(null);
         await playSongNow(song, contextSongs);
       } catch (err: any) {
-        console.error("Failed executing core media playback invocation:", err);
         setPipelineError(
           err.message || "Playback initialization error encountered.",
         );

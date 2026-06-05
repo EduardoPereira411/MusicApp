@@ -66,10 +66,6 @@ export default function PlaylistScreen() {
         setCollections([]);
       }
     } catch (error: any) {
-      console.error(
-        `[PlaylistScreen] UI Error rendering ${type} details:`,
-        error,
-      );
       setPipelineError(
         error.message || `Unable to load resource indices for this ${type}.`,
       );
