@@ -63,7 +63,7 @@ export function useAudioEngine() {
       playsInSilentMode: true,
       interruptionMode: "doNotMix",
       shouldPlayInBackground: true,
-    }).catch((err) => console.error("Error setting audio mode:", err));
+    }).catch(() => {});
 
     MediaControl.enableMediaControls({
       capabilities: [
@@ -74,12 +74,10 @@ export function useAudioEngine() {
         Command.SEEK,
       ],
       compactCapabilities: [Command.PLAY, Command.PAUSE, Command.NEXT_TRACK],
-    }).catch((err) => console.error("Error setting media keys:", err));
+    }).catch(() => {});
 
     return () => {
-      MediaControl.disableMediaControls().catch((err) =>
-        console.error("Error disabling media controls on teardown:", err),
-      );
+      MediaControl.disableMediaControls().catch(() => {});
     };
   }, []);
 
@@ -92,8 +90,13 @@ export function useAudioEngine() {
       album: currentSong.album || "Navidrome Album",
       artwork: currentArtworkUrl ? { uri: currentArtworkUrl } : undefined,
       duration: status.duration || currentSong.duration || 0,
-    }).catch((err) => console.error("Error updating metadata:", err));
-  }, [currentSong, status.duration, currentArtworkUrl]);
+    }).catch(() => {
+      showToast(
+        "Unable to synchronize music metadata layout with your OS control center.",
+        "error",
+      );
+    });
+  }, [currentSong, status.duration, currentArtworkUrl, showToast]);
 
   // LOOK-AHEAD AUTOMATION
   useEffect(() => {
@@ -140,7 +143,7 @@ export function useAudioEngine() {
               setLookAheadError(false);
             }
           })
-          .catch((error: any) => {
+          .catch(() => {
             showToast("Failed to fetch next automatic radio tracks", "error");
             setLookAheadError(true);
           });
@@ -223,7 +226,7 @@ export function useAudioEngine() {
         stateValue,
         status.currentTime,
         speedRate,
-      ).catch((e) => console.error("Lockscreen state sync failed:", e));
+      ).catch(() => {});
     }
   }, [status.playing, currentSong]);
 
@@ -231,7 +234,7 @@ export function useAudioEngine() {
     async (song: Song, contextSongs?: Song[]) => {
       if (!credsRef.current) {
         showToast("Missing active player credentials.", "error");
-        throw new Error("Missing active player authentication config.");
+        return;
       }
 
       try {
@@ -285,7 +288,6 @@ export function useAudioEngine() {
           `Streaming initialization failed: ${err.message || err}`,
           "error",
         );
-        throw err;
       }
     },
     [player, showToast],
@@ -306,7 +308,10 @@ export function useAudioEngine() {
         if (prev.length === 0) {
           setTimeout(() => {
             playSongNow(flaggedSong).catch((err) => {
-              showToast(`Unable to start queue: ${err.message || err}`);
+              showToast(
+                `Unable to start queue: ${err.message || err}`,
+                "error",
+              );
             });
           }, 0);
           return [flaggedSong];
@@ -364,7 +369,7 @@ export function useAudioEngine() {
           : PlaybackState.PAUSED;
         const speedRate = status.playing ? 1.0 : 0.0;
         MediaControl.updatePlaybackState(stateValue, seconds, speedRate).catch(
-          (e) => console.error("Lockscreen state sync failed on seek:", e),
+          () => {},
         );
       }
     },
@@ -449,15 +454,15 @@ export function useAudioEngine() {
         album: "",
         artwork: undefined,
         duration: 0,
-      }).catch((err) => console.error("Error clearing metadata:", err));
+      }).catch(() => {});
 
       MediaControl.updatePlaybackState(PlaybackState.PAUSED, 0, 0.0).catch(
-        (e) => console.error("Error resetting OS playback state:", e),
+        () => {},
       );
-    } catch (error) {
-      console.error("Error executing layout audio teardown:", error);
+    } catch (error: any) {
+      showToast("Audio ecosystem cleanup failed during logout.", "error");
     }
-  }, [player]);
+  }, [player, showToast]);
 
   useEffect(() => {
     if (

@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/Context/AuthContext";
 import { fetchCollectionDetails } from "@/Services/navidromeService";
 import { useAudio } from "@/Context/AudioContext";
+import { useToast } from "@/Context/ToastContext";
 import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
@@ -25,6 +26,7 @@ const APP_ICON_FALLBACK = require("@/assets/images/icon.png");
 export default function PlaylistScreen() {
   const router = useRouter();
   const { navidromeCreds } = useAuth();
+  const { showToast } = useToast();
   const { id, type, name } = useLocalSearchParams<{
     id: string;
     type: "playlist" | "album" | "artist";
@@ -96,10 +98,13 @@ export default function PlaylistScreen() {
   const handlePlaySong = useCallback(
     (item: Song, contextQueue: Song[] = songs) => {
       playSongNow(item, contextQueue).catch((err) => {
-        console.error("Collection streaming execution exception:", err);
+        showToast(
+          err.message || "Failed to start processing playback track.",
+          "error",
+        );
       });
     },
-    [songs, playSongNow],
+    [songs, playSongNow, showToast],
   );
 
   const playCollectionStandard = useCallback(() => {
@@ -257,17 +262,8 @@ export default function PlaylistScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.errorOffsetContainer}>
-        <ErrorDisplay
-          title="Collection Loading Failure"
-          message={pipelineError}
-          onRetry={fetchDetails}
-          retryButtonTitle="Re-fetch Collection Details"
-        />
-      </View>
-
       <FlatList<Song | SharedCollectionData>
-        data={type === "artist" ? collections : songs}
+        data={pipelineError ? [] : type === "artist" ? collections : songs}
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContainer}
         ListHeaderComponent={renderListHeader}
@@ -277,13 +273,22 @@ export default function PlaylistScreen() {
         windowSize={5}
         removeClippedSubviews={true}
         ListEmptyComponent={
-          !pipelineError ? (
+          pipelineError ? (
+            <View style={styles.errorInlineContainer}>
+              <ErrorDisplay
+                title="Collection Loading Failure"
+                message={pipelineError}
+                onRetry={fetchDetails}
+                retryButtonTitle="Re-fetch Collection Details"
+              />
+            </View>
+          ) : (
             <Text style={styles.emptyText}>
               {type === "artist"
                 ? "This artist has no cataloged albums."
                 : "This context contains no playable items."}
             </Text>
-          ) : null
+          )
         }
       />
 
@@ -320,13 +325,13 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 6,
   },
-  errorOffsetContainer: {
-    paddingTop: 100,
-    paddingHorizontal: 16,
+  errorInlineContainer: {
+    paddingTop: 20,
+    paddingHorizontal: 8,
   },
   headerBlock: {
     alignItems: "center",
-    paddingTop: 20,
+    paddingTop: 100,
     paddingHorizontal: 24,
     marginBottom: 20,
   },
