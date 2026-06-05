@@ -23,6 +23,8 @@ export function useAudioEngine() {
   const [queue, setQueue] = useState<QueueSong[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
 
+  const [lookAheadError, setLookAheadError] = useState<boolean>(false);
+
   const player = useAudioPlayer();
   const status = useAudioPlayerStatus(player);
   const { showToast } = useToast();
@@ -93,7 +95,7 @@ export function useAudioEngine() {
     }).catch((err) => console.error("Error updating metadata:", err));
   }, [currentSong, status.duration, currentArtworkUrl]);
 
-  // LOOK-AHEAD AUTOMATION EFFECT WITH ERROR RESILIENCY
+  // LOOK-AHEAD AUTOMATION
   useEffect(() => {
     if (currentIndex === -1 || queue.length === 0) return;
 
@@ -117,6 +119,7 @@ export function useAudioEngine() {
         }));
 
         setQueue((prev) => [...prev, ...decoratedBatch]);
+        setLookAheadError(false);
       }
 
       if (totalPoolLength <= queue.length) {
@@ -134,15 +137,24 @@ export function useAudioEngine() {
               }));
               internalQueueRef.current.contextQueue.push(...flaggedTracks);
               setQueue((prev) => [...prev, ...flaggedTracks]);
+              setLookAheadError(false);
             }
           })
           .catch((error: any) => {
             console.error("Look-ahead radio cycle fetching error:", error);
             showToast("Failed to fetch next automatic radio tracks");
+            setLookAheadError(true);
           });
       }
     }
-  }, [currentIndex, queue.length, showToast]);
+  }, [currentIndex, queue.length, showToast, lookAheadError]);
+
+  useEffect(() => {
+    console.log("here");
+    if (lookAheadError) {
+      setLookAheadError(false);
+    }
+  }, [currentIndex]);
 
   const loadSongAtIndex = useCallback(
     async (index: number, targetQueue = stateRef.current.queue) => {
@@ -156,6 +168,7 @@ export function useAudioEngine() {
           throw new Error("Could not construct a valid stream endpoint URL.");
 
         setCurrentIndex(index);
+        setLookAheadError(false);
         player.replace({ uri: url });
         player.play();
       } catch (err: any) {
@@ -217,7 +230,6 @@ export function useAudioEngine() {
     }
   }, [status.playing, currentSong]);
 
-  // Throws errors up to the caller interface view safely
   const playSongNow = useCallback(
     async (song: Song, contextSongs?: Song[]) => {
       if (!credsRef.current) {
@@ -238,6 +250,7 @@ export function useAudioEngine() {
       }
 
       internalQueueRef.current.userQueue = [];
+      setLookAheadError(false);
 
       if (contextSongs && contextSongs.length > 0) {
         const idx = contextSongs.findIndex((s) => s.id === song.id);
@@ -283,7 +296,7 @@ export function useAudioEngine() {
       };
 
       storage.userQueue.push(flaggedSong);
-
+      setLookAheadError(false);
       setQueue((prev) => {
         if (prev.length === 0) {
           setTimeout(() => {
