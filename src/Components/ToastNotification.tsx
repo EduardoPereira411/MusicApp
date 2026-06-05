@@ -1,11 +1,13 @@
-import { useEffect, useRef } from "react";
-import { Animated, Text, StyleSheet } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Text, StyleSheet, Animated } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { ToastType } from "@/Context/ToastContext";
 
 interface ToastNotificationProps {
   visible: boolean;
   message: string;
+  type: ToastType;
   toastId: number;
   onDismiss: () => void;
 }
@@ -13,6 +15,7 @@ interface ToastNotificationProps {
 export function ToastNotification({
   visible,
   message,
+  type,
   toastId,
   onDismiss,
 }: ToastNotificationProps) {
@@ -22,8 +25,7 @@ export function ToastNotification({
   useEffect(() => {
     if (!visible) return;
 
-    // Check the current position of the toast
-    // @ts-ignore - __getValue() is internal but completely safe for reading native driver values
+    // @ts-ignore - Safe internal lookup for active native driver value
     const currentY = slideAnim.__getValue();
 
     if (currentY <= -100) {
@@ -48,31 +50,35 @@ export function ToastNotification({
         }),
       ]).start();
     }
+
     const timer = setTimeout(() => {
       Animated.timing(slideAnim, {
         toValue: -100,
         duration: 220,
         useNativeDriver: true,
       }).start(() => onDismiss());
-    }, 2000);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [visible, toastId, insets.top, slideAnim, onDismiss]);
+
+  const isError = type === "error";
 
   return (
     <Animated.View
       style={[
         styles.toastContainer,
+        isError ? styles.errorContainer : styles.successContainer,
         { transform: [{ translateY: slideAnim }] },
       ]}
     >
       <Ionicons
-        name="checkmark-circle"
+        name={isError ? "alert-circle" : "checkmark-circle"}
         size={18}
-        color="#1DB954"
+        color={isError ? "#FF5252" : "#1DB954"}
         style={styles.icon}
       />
-      <Text style={styles.toastText} numberOfLines={1}>
+      <Text style={styles.toastText} numberOfLines={2}>
         {message}
       </Text>
     </Animated.View>
@@ -84,7 +90,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 16,
     right: 16,
-    backgroundColor: "#282828",
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
@@ -96,6 +101,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4.65,
     elevation: 8,
+  },
+  successContainer: {
+    backgroundColor: "#282828",
+    borderWidth: 1,
+    borderColor: "#1DB954-33", // Subtle green accent borders
+  },
+  errorContainer: {
+    backgroundColor: "#2D1919",
+    borderWidth: 1,
+    borderColor: "#FF5252-55",
   },
   icon: {
     marginRight: 10,

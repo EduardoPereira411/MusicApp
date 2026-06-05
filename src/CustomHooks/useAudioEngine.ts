@@ -141,8 +141,7 @@ export function useAudioEngine() {
             }
           })
           .catch((error: any) => {
-            console.error("Look-ahead radio cycle fetching error:", error);
-            showToast("Failed to fetch next automatic radio tracks");
+            showToast("Failed to fetch next automatic radio tracks", "error");
             setLookAheadError(true);
           });
       }
@@ -171,8 +170,7 @@ export function useAudioEngine() {
         player.replace({ uri: url });
         player.play();
       } catch (err: any) {
-        console.error("Queue indexing loading error details:", err);
-        showToast(`Stream Error: ${err.message || err}`);
+        showToast(`Playback Failed: ${err.message || err}`, "error");
       }
     },
     [player, showToast],
@@ -232,57 +230,65 @@ export function useAudioEngine() {
   const playSongNow = useCallback(
     async (song: Song, contextSongs?: Song[]) => {
       if (!credsRef.current) {
+        showToast("Missing active player credentials.", "error");
         throw new Error("Missing active player authentication config.");
       }
 
-      if (
-        stateRef.current.queue[stateRef.current.currentIndex]?.id === song.id
-      ) {
-        if (player.playing) player.pause();
-        else player.play();
-        return;
-      }
+      try {
+        if (
+          stateRef.current.queue[stateRef.current.currentIndex]?.id === song.id
+        ) {
+          if (player.playing) player.pause();
+          else player.play();
+          return;
+        }
 
-      const url = getStreamUrl(credsRef.current!, song.id);
-      if (!url) {
-        throw new Error("Failed to format media stream server url location.");
-      }
+        const url = getStreamUrl(credsRef.current!, song.id);
+        if (!url) {
+          throw new Error("Failed to format media stream server url location.");
+        }
 
-      internalQueueRef.current.userQueue = [];
-      setLookAheadError(false);
+        internalQueueRef.current.userQueue = [];
+        setLookAheadError(false);
 
-      if (contextSongs && contextSongs.length > 0) {
-        const idx = contextSongs.findIndex((s) => s.id === song.id);
-        const relativeContext =
-          idx !== -1 ? contextSongs.slice(idx) : contextSongs;
+        if (contextSongs && contextSongs.length > 0) {
+          const idx = contextSongs.findIndex((s) => s.id === song.id);
+          const relativeContext =
+            idx !== -1 ? contextSongs.slice(idx) : contextSongs;
+          internalQueueRef.current.contextQueue = relativeContext;
 
-        internalQueueRef.current.contextQueue = relativeContext;
-
-        const initialChunk = relativeContext.slice(0, 5).map((s) => ({
-          ...s,
-          origin: "auto" as const,
-          clientQueueId: generateUniqueId(),
-        }));
-
-        setQueue(initialChunk);
-        setCurrentIndex(0);
-      } else {
-        const userTracks: QueueSong[] = [
-          {
-            ...song,
-            origin: "user" as const,
+          const initialChunk = relativeContext.slice(0, 5).map((s) => ({
+            ...s,
+            origin: "auto" as const,
             clientQueueId: generateUniqueId(),
-          },
-        ];
-        internalQueueRef.current.contextQueue = [];
-        setQueue(userTracks);
-        setCurrentIndex(0);
-      }
+          }));
 
-      player.replace({ uri: url });
-      player.play();
+          setQueue(initialChunk);
+          setCurrentIndex(0);
+        } else {
+          const userTracks: QueueSong[] = [
+            {
+              ...song,
+              origin: "user" as const,
+              clientQueueId: generateUniqueId(),
+            },
+          ];
+          internalQueueRef.current.contextQueue = [];
+          setQueue(userTracks);
+          setCurrentIndex(0);
+        }
+
+        player.replace({ uri: url });
+        player.play();
+      } catch (err: any) {
+        showToast(
+          `Streaming initialization failed: ${err.message || err}`,
+          "error",
+        );
+        throw err;
+      }
     },
-    [player],
+    [player, showToast],
   );
 
   const addToQueue = useCallback(

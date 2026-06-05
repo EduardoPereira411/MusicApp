@@ -72,6 +72,13 @@ export default function HomeScreen() {
     if (!navidromeCreds) return;
     setIsRefreshing(true);
     setPipelineError(null);
+    if (activeSection === "tracks") {
+      setSongs([]);
+    } else if (activeSection === "albums") {
+      setAlbums([]);
+    } else if (activeSection === "artists") {
+      setArtists([]);
+    }
 
     try {
       if (activeSection === "tracks") {
@@ -90,17 +97,11 @@ export default function HomeScreen() {
     }
   }
 
-  // Intercepting interactive errors when starting direct track playbacks
   const handlePlaySongNow = useCallback(
     async (song: Song, contextSongs?: Song[]) => {
       try {
-        setPipelineError(null);
         await playSongNow(song, contextSongs);
-      } catch (err: any) {
-        setPipelineError(
-          err.message || "Playback initialization error encountered.",
-        );
-      }
+      } catch {}
     },
     [playSongNow],
   );
@@ -170,7 +171,9 @@ export default function HomeScreen() {
               styles.tabButton,
               activeSection === section && styles.tabButtonActive,
             ]}
-            onPress={() => setActiveSection(section)}
+            onPress={() => {
+              setActiveSection(section);
+            }}
           >
             <Text
               style={[
@@ -183,20 +186,21 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ))}
       </View>
-      <ErrorDisplay
-        title="Server Pipeline Exception"
-        message={pipelineError}
-        onRetry={
-          activeSection === "tracks" && songs.length === 0
-            ? fetchAllDataInitial
-            : handleRefresh
-        }
-        retryButtonTitle="Re-sync Active Pipeline"
-      />
+
+      {pipelineError && (
+        <View style={styles.errorWrapper}>
+          <ErrorDisplay
+            title="Synchronization Point Interrupted"
+            message={pipelineError}
+            onRetry={handleRefresh}
+            retryButtonTitle="Re-sync Pipeline"
+          />
+        </View>
+      )}
 
       <View style={{ flex: 1 }}>
         <FlatList<Song | SharedCollectionData>
-          data={listConfig.data}
+          data={pipelineError ? [] : listConfig.data}
           keyExtractor={keyExtractor}
           renderItem={renderSongItem}
           contentContainerStyle={styles.listContainer}
@@ -212,12 +216,13 @@ export default function HomeScreen() {
             />
           }
           ListEmptyComponent={
-            !pipelineError ? (
+            !pipelineError && !isRefreshing ? (
               <Text style={styles.emptyText}>{listConfig.emptyText}</Text>
             ) : null
           }
         />
       </View>
+
       <SongOptionsModal
         visible={isModalVisible}
         song={selectedSong}
@@ -271,8 +276,11 @@ const styles = StyleSheet.create({
   tabButtonTextActive: {
     color: "#1DB954",
   },
+  errorWrapper: {
+    marginBottom: 16,
+  },
   listContainer: {
-    paddingBottom: 100,
+    paddingBottom: 120, // Prevents elements from being hidden behind the GlobalMiniPlayer
   },
   emptyText: {
     color: "#b3b3b3",

@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudio } from "@/Context/AudioContext";
+import { useToast } from "@/Context/ToastContext";
 import { useAudioPlayerStatus, AudioPlayer } from "expo-audio";
 import Slider from "@react-native-community/slider";
 import { QueueModal } from "@/Components/QueueModal";
@@ -47,6 +48,7 @@ export default function GlobalMiniPlayer() {
     player,
   } = useAudio();
 
+  const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const [queueVisible, setQueueVisible] = useState(false);
   const { url: artworkUrl } = useArtwork(currentSong?.coverArt, 100);
@@ -64,36 +66,35 @@ export default function GlobalMiniPlayer() {
   const hasNext = currentIndex < queue.length - 1;
   const hasPrevious = currentIndex > 0;
 
-  // Defensive wrappers for audio pipeline operations
   const handlePlayPrevious = async () => {
     try {
       await playPrevious();
-    } catch (error) {
-      console.warn("Failed to regress playback track: ", error);
+    } catch (error: any) {
+      showToast(`Couldn't change track: ${error.message || error}`, "error");
     }
   };
 
   const handleTogglePlayPause = async () => {
     try {
       await togglePlayPause();
-    } catch (error) {
-      console.warn("Failed to toggle playback state: ", error);
+    } catch (error: any) {
+      showToast(`Playback action failed: ${error.message || error}`, "error");
     }
   };
 
   const handlePlayNext = async () => {
     try {
       await playNext();
-    } catch (error) {
-      console.warn("Failed to skip to next track: ", error);
+    } catch (error: any) {
+      showToast(`Skipping track failed: ${error.message || error}`, "error");
     }
   };
 
   const handleSeek = async (value: number) => {
     try {
       await seekTo(value);
-    } catch (error) {
-      console.warn("Failed to update playhead location: ", error);
+    } catch (error: any) {
+      showToast(`Failed to seek: ${error.message || error}`, "error");
     }
   };
 
