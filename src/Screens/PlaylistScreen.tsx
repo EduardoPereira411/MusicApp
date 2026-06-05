@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,10 @@ import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
+import { Image } from "expo-image";
+import { useArtwork } from "@/CustomHooks/useArtwork";
+
+const APP_ICON_FALLBACK = require("@/assets/images/icon.png");
 
 export default function PlaylistScreen() {
   const router = useRouter();
@@ -29,7 +33,6 @@ export default function PlaylistScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [collections, setCollections] = useState<SharedCollectionData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [isShuffle, setIsShuffle] = useState<boolean>(false);
 
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
@@ -69,26 +72,53 @@ export default function PlaylistScreen() {
     }
   }
 
+  const targetCoverArtId = useMemo(() => {
+    if (type === "artist" && collections.length > 0) {
+      return collections.find((c) => c.coverArt)?.coverArt || "";
+    }
+    if (songs.length > 0 && songs[0].coverArt) {
+      return songs[0].coverArt;
+    }
+    return "";
+  }, [type, songs, collections]);
+
+  const { url: resolvedArtworkUrl } = useArtwork(targetCoverArtId, 400);
+
+  const headerArtworkSource = useMemo(() => {
+    if (resolvedArtworkUrl) {
+      return { uri: resolvedArtworkUrl };
+    }
+    return APP_ICON_FALLBACK;
+  }, [resolvedArtworkUrl]);
+
+  const handlePlaySong = useCallback(
+    (item: Song, contextQueue: Song[] = songs) => {
+      playSongNow(item, contextQueue);
+    },
+    [songs, playSongNow],
+  );
+
+  const playCollectionStandard = useCallback(() => {
+    if (songs.length === 0) return;
+    handlePlaySong(songs[0], songs);
+  }, [songs, handlePlaySong]);
+
+  const playCollectionShuffled = useCallback(() => {
+    if (songs.length === 0) return;
+
+    const shuffledList = [...songs];
+    for (let i = shuffledList.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledList[i], shuffledList[j]] = [shuffledList[j], shuffledList[i]];
+    }
+
+    handlePlaySong(shuffledList[0], shuffledList);
+  }, [songs, handlePlaySong]);
+
   const handleSongOptions = useCallback((song: Song) => {
     setSelectedSong(song);
     setIsModalVisible(true);
   }, []);
-
-  const handlePlaySong = useCallback(
-    (item: Song) => {
-      if (isShuffle) {
-        const contextCopy = songs.filter((s) => s.id !== item.id);
-        for (let i = contextCopy.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [contextCopy[i], contextCopy[j]] = [contextCopy[j], contextCopy[i]];
-        }
-        playSongNow(item, [item, ...contextCopy]);
-      } else {
-        playSongNow(item, songs);
-      }
-    },
-    [isShuffle, songs, playSongNow],
-  );
 
   const renderListItem = useCallback(
     ({ item, index }: { item: Song | SharedCollectionData; index: number }) => {
@@ -106,7 +136,7 @@ export default function PlaylistScreen() {
             isPlaying={isCurrent && playing}
             onOptionsPress={handleSongOptions}
             onSwipeLeftToRight={addToQueue}
-            onPlay={handlePlaySong}
+            onPlay={(track) => handlePlaySong(track, songs)}
           />
         );
       }
@@ -118,6 +148,7 @@ export default function PlaylistScreen() {
       handleSongOptions,
       addToQueue,
       handlePlaySong,
+      songs,
     ],
   );
 
@@ -139,6 +170,70 @@ export default function PlaylistScreen() {
     }
   };
 
+  const renderListHeader = useMemo(() => {
+    return (
+      <View style={styles.headerBlock}>
+        <View style={styles.artworkWrapper}>
+          <Image
+            source={headerArtworkSource}
+            style={styles.heroArtwork}
+            contentFit="cover"
+            transition={200}
+          />
+        </View>
+
+        <Text style={styles.contentTypeLabel}>{getHeaderLabel()}</Text>
+        <Text style={styles.headerTitle} numberOfLines={2}>
+          {name || "Details"}
+        </Text>
+
+        <Text style={styles.headerSubtitle}>
+          {type === "artist"
+            ? `${collections.length} Cataloged Albums`
+            : `${songs.length} Tracks Available`}
+        </Text>
+
+        {type !== "artist" && songs.length > 0 && (
+          <View style={styles.actionButtonGroup}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.playMainButton]}
+              onPress={playCollectionStandard}
+            >
+              <Ionicons
+                name="play"
+                size={20}
+                color="#fff"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.actionButtonText}>Play</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.shuffleMainButton]}
+              onPress={playCollectionShuffled}
+            >
+              <Ionicons
+                name="shuffle"
+                size={20}
+                color="#fff"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.actionButtonText}>Shuffle</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  }, [
+    headerArtworkSource,
+    type,
+    name,
+    collections.length,
+    songs.length,
+    playCollectionStandard,
+    playCollectionShuffled,
+  ]);
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -149,38 +244,20 @@ export default function PlaylistScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerContainer}>
+      <View style={styles.navigationTopBar}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.contentTypeLabel}>{getHeaderLabel()}</Text>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {name || "Details"}
-          </Text>
-        </View>
-
-        {type !== "artist" && (
-          <TouchableOpacity
-            style={styles.shuffleButton}
-            onPress={() => setIsShuffle(!isShuffle)}
-          >
-            <Ionicons
-              name="shuffle"
-              size={24}
-              color={isShuffle ? "#1DB954" : "#fff"}
-            />
-          </TouchableOpacity>
-        )}
       </View>
 
       <FlatList<Song | SharedCollectionData>
         data={type === "artist" ? collections : songs}
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContainer}
+        ListHeaderComponent={renderListHeader}
         renderItem={renderListItem}
         initialNumToRender={12}
         maxToRenderPerBatch={10}
@@ -209,8 +286,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#121212",
-    paddingTop: 60,
-    paddingHorizontal: 16,
   },
   centerContainer: {
     flex: 1,
@@ -218,36 +293,92 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  headerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  backButton: {
-    marginRight: 16,
+  navigationTopBar: {
+    position: "absolute",
+    top: 50,
+    left: 16,
+    zIndex: 10,
+    backgroundColor: "rgba(18, 18, 18, 0.6)",
+    borderRadius: 20,
     padding: 4,
   },
-  headerTextContainer: {
-    flex: 1,
+  backButton: {
+    padding: 6,
+  },
+  headerBlock: {
+    alignItems: "center",
+    paddingTop: 100,
+    paddingHorizontal: 24,
+    marginBottom: 20,
+  },
+  artworkWrapper: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 15,
+    marginBottom: 22,
+  },
+  heroArtwork: {
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: "#282828",
   },
   contentTypeLabel: {
     color: "#1DB954",
     fontSize: 11,
     fontWeight: "bold",
-    letterSpacing: 1.2,
-    marginBottom: 2,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    marginBottom: 6,
   },
   headerTitle: {
     color: "#fff",
-    fontSize: 22,
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    color: "#b3b3b3",
+    fontSize: 13,
+    fontWeight: "500",
+    marginBottom: 20,
+  },
+  actionButtonGroup: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 46,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    flex: 1,
+    maxHeight: 46,
+  },
+  playMainButton: {
+    backgroundColor: "#1DB954",
+  },
+  shuffleMainButton: {
+    backgroundColor: "#282828",
+    borderWidth: 1,
+    borderColor: "#555",
+  },
+  actionButtonText: {
+    color: "#fff",
+    fontSize: 15,
     fontWeight: "bold",
   },
-  shuffleButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
   listContainer: {
-    paddingBottom: 200,
+    paddingHorizontal: 16,
+    paddingBottom: 150,
   },
   emptyText: {
     color: "#b3b3b3",
