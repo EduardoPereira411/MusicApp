@@ -4,7 +4,7 @@ export interface Song {
   artist: string;
   album?: string;
   albumId?: string;
-  artworkUrl?: string;
+  coverArt?: string;
   duration?: number;
   clientQueueId?: string;
   trackNumber?: number;
@@ -15,23 +15,23 @@ export type QueueSong = Song & {
   clientQueueId: string;
 };
 
-export interface Album {
-  id: string;
-  name: string;
-  artist: string;
-  artworkUrl?: string;
-  songCount?: number;
-}
-
 export interface SharedCollectionData {
   id: string;
   name: string;
   type: "album" | "playlist" | "artist";
   subtitle?: string;
   subItemCount?: number;
-  artworkUrl?: string;
+  coverArt?: string;
 }
 
+export interface BaseCredentials {
+  serverUrl: string;
+  username?: string;
+  password?: string;
+}
+
+export interface NavidromeCredentials extends BaseCredentials {}
+export interface DownloadAPICredentials extends BaseCredentials {}
 export interface Artist {
   id: string;
   name: string;

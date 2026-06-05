@@ -10,6 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { Ionicons } from "@expo/vector-icons";
+import { useArtwork } from "@/CustomHooks/useArtwork";
 
 interface SongItemProps {
   item: Song;
@@ -40,6 +41,7 @@ export const SongItem = React.memo(
 
     const translateX = useSharedValue(0);
     const isGreen = useSharedValue(false);
+    const { url: artworkUrl } = useArtwork(item.coverArt, 110);
 
     const panGesture = Gesture.Pan()
       .activeOffsetX([-10, 10])
@@ -109,15 +111,15 @@ export const SongItem = React.memo(
               )}
 
               <Image
-                source={{
-                  uri: item.artworkUrl,
-                  width: 110,
-                  height: 110,
-                }}
+                source={
+                  artworkUrl
+                    ? { uri: artworkUrl }
+                    : require("../../assets/images/icon.png")
+                }
                 style={styles.cardArt}
                 contentFit="cover"
                 transition={200}
-                recyclingKey={item.artworkUrl}
+                recyclingKey={artworkUrl || ""}
               />
 
               <View style={styles.infoContainer}>

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   FlatList,
   TouchableOpacity,
@@ -13,10 +12,13 @@ import { downloadService } from "@/Services/downloadService";
 import { DownloadSongItem } from "@/Components/DownloadSongItem";
 import { DownloadAlbumItem } from "@/Components/DownloadAlbumItem";
 import { SearchBar } from "@/Components/SearchBar";
+import { useAuth } from "@/Context/AuthContext"; // 1. Import useAuth
 
 type SearchType = "tracks" | "albums";
 
 export default function DownloadSearchScreen() {
+  const { downloadCreds } = useAuth();
+
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<SearchType>("tracks");
   const [songs, setSongs] = useState<any[]>([]);
@@ -40,14 +42,25 @@ export default function DownloadSearchScreen() {
 
   async function executeDownloadSearch() {
     if (!query.trim()) return;
-    setLoading(true);
 
+    if (!downloadCreds) {
+      Alert.alert(
+        "Setup Required",
+        "Please configure your Download API server credentials in the Profile tab first.",
+      );
+      return;
+    }
+
+    setLoading(true);
     try {
       if (activeTab === "tracks") {
-        const results = await downloadService.searchSongs(query);
+        const results = await downloadService.searchSongs(downloadCreds, query);
         setSongs(results);
       } else {
-        const results = await downloadService.searchAlbums(query);
+        const results = await downloadService.searchAlbums(
+          downloadCreds,
+          query,
+        );
         setAlbums(results);
       }
     } catch (e) {
@@ -147,17 +160,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: 2,
   },
-  searchBarContainer: {
-    backgroundColor: "#1e1e1e",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 16,
-  },
-  searchInput: {
-    color: "#fff",
-    fontSize: 16,
-  },
   tabBar: {
     flexDirection: "row",
     marginBottom: 20,
@@ -180,36 +182,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   tabButtonTextActive: {
-    color: "#00A3FF", // Distinct cyan/blue coloring to separate it visually from Navidrome Green
-  },
-  listContainer: {
-    paddingBottom: 100,
-  },
-  emptyText: {
-    color: "#b3b3b3",
-    textAlign: "center",
-    marginTop: 40,
-  },
-  rowActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  downloadButton: {
-    backgroundColor: "#00A3FF",
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    marginLeft: 10,
-    minWidth: 55,
-    alignItems: "center",
-  },
-  disabledButton: {
-    backgroundColor: "#444",
-  },
-  downloadButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 13,
+    color: "#00A3FF",
   },
 });

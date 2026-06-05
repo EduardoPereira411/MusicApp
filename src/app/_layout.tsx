@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { LogBox, View, ActivityIndicator, StyleSheet } from "react-native";
 import { Stack, useSegments, useRouter } from "expo-router";
+import { AuthProvider, useAuth } from "@/Context/AuthContext"; // Import Auth Context hooks
 import { AudioProvider, useAudio } from "@/Context/AudioContext";
 import { ToastProvider } from "@/Context/ToastContext";
 import GlobalMiniPlayer from "@/Components/GlobalMiniPlayer";
-import { authStorage } from "@/Services/navidromeService";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 LogBox.ignoreLogs(["Dispatching media control event"]);
@@ -29,30 +29,22 @@ function InnerRootLayout() {
   const segments = useSegments();
   const router = useRouter();
   const { logoutCleanUp } = useAudio();
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
+
+  const { navidromeCreds, isLoading } = useAuth();
 
   const isLoginScreen = segments[0] === "login";
 
-  // Authentication Routing Guard
   useEffect(() => {
-    async function checkAuth() {
-      try {
-        const creds = await authStorage.getCredentials();
-        const isLoggedIn = !!creds?.username;
+    if (isLoading) return;
 
-        if (!isLoggedIn && !isLoginScreen) {
-          router.replace("/login");
-        } else if (isLoggedIn && isLoginScreen) {
-          router.replace("/(tabs)");
-        }
-      } catch (e) {
-        console.error("Auth initialization check failed:", e);
-      } finally {
-        setIsAuthChecked(true);
-      }
+    const isLoggedIn = !!navidromeCreds?.username;
+
+    if (!isLoggedIn && !isLoginScreen) {
+      router.replace("/login");
+    } else if (isLoggedIn && isLoginScreen) {
+      router.replace("/(tabs)");
     }
-    checkAuth();
-  }, [segments, isLoginScreen, router]);
+  }, [segments, isLoginScreen, router, navidromeCreds, isLoading]);
 
   // Completely teardown player context and OS controls when on the login screen
   useEffect(() => {
@@ -61,7 +53,7 @@ function InnerRootLayout() {
     }
   }, [isLoginScreen, logoutCleanUp]);
 
-  if (!isAuthChecked) {
+  if (isLoading) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#1DB954" />
@@ -85,11 +77,13 @@ function InnerRootLayout() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ToastProvider>
-        <AudioProvider>
-          <InnerRootLayout />
-        </AudioProvider>
-      </ToastProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <AudioProvider>
+            <InnerRootLayout />
+          </AudioProvider>
+        </ToastProvider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

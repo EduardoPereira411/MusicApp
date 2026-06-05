@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { Song } from "@/Models/Models";
+import { useAuth } from "@/Context/AuthContext";
+import { useArtwork } from "@/CustomHooks/useArtwork";
 import {
   fetchNavidromePlaylists,
   checkSongInPlaylist,
@@ -33,11 +35,13 @@ export function SongOptionsModal({
   onAddToQueue,
 }: SongOptionsModalProps) {
   const router = useRouter();
+  const { navidromeCreds } = useAuth();
+  const { url: artworkUrl } = useArtwork(song?.coverArt);
+
   const [viewState, setViewState] = useState<"menu" | "playlists">("menu");
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [loadingPlaylists, setLoadingPlaylists] = useState(false);
 
-  // Reset view state whenever modal opens/closes
   useEffect(() => {
     if (visible) setViewState("menu");
   }, [visible]);
@@ -59,10 +63,15 @@ export function SongOptionsModal({
   };
 
   const handlePlaylistSelectClick = async () => {
+    if (!navidromeCreds) {
+      Alert.alert("Error", "You must be logged in to manage playlists.");
+      return;
+    }
+
     setViewState("playlists");
     setLoadingPlaylists(true);
     try {
-      const list = await fetchNavidromePlaylists();
+      const list = await fetchNavidromePlaylists(navidromeCreds);
       setPlaylists(list);
     } catch (e) {
       Alert.alert("Error", "Could not fetch playlists from the server.");
@@ -75,8 +84,13 @@ export function SongOptionsModal({
     playlistId: string,
     playlistName: string,
   ) => {
+    if (!navidromeCreds) return;
     try {
-      const success = await addTrackToPlaylist(playlistId, song.id);
+      const success = await addTrackToPlaylist(
+        navidromeCreds,
+        playlistId,
+        song.id,
+      );
       if (success) {
         Alert.alert("Success", `Added "${song.title}" to "${playlistName}".`);
         onClose();
@@ -92,8 +106,10 @@ export function SongOptionsModal({
     playlistId: string,
     playlistName: string,
   ) => {
+    if (!navidromeCreds) return;
     try {
       const isAlreadyInPlaylist = await checkSongInPlaylist(
+        navidromeCreds,
         playlistId,
         song.id,
       );
@@ -138,7 +154,7 @@ export function SongOptionsModal({
       <View style={styles.sheetContainer}>
         <View style={styles.songHeader}>
           <Image
-            source={{ uri: song.artworkUrl }}
+            source={{ uri: artworkUrl || undefined }}
             style={styles.metaArt}
             contentFit="cover"
           />

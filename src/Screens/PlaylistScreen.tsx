@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@/Context/AuthContext"; // 1. Import Auth context
 import { fetchCollectionDetails } from "@/Services/navidromeService";
 import { useAudio } from "@/Context/AudioContext";
 import { Song, SharedCollectionData } from "@/Models/Models";
@@ -18,6 +19,7 @@ import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 
 export default function PlaylistScreen() {
   const router = useRouter();
+  const { navidromeCreds } = useAuth(); // 2. Extract synchronous token configuration
   const { id, type, name } = useLocalSearchParams<{
     id: string;
     type: "playlist" | "album" | "artist";
@@ -33,18 +35,24 @@ export default function PlaylistScreen() {
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const { currentSong, playing, playSongNow, addToQueue } = useAudio();
 
+  // Reactive Mounting Fetcher gated by context initialization
   useEffect(() => {
-    if (id && type) {
+    if (id && type && navidromeCreds) {
       fetchDetails();
     }
-  }, [id, type]);
+  }, [id, type, navidromeCreds]);
 
   async function fetchDetails() {
-    if (!id || !type) return;
+    if (!id || !type || !navidromeCreds) return;
 
     setLoading(true);
     try {
-      const result = await fetchCollectionDetails(id, type, name);
+      const result = await fetchCollectionDetails(
+        navidromeCreds,
+        id,
+        type,
+        name,
+      );
       if (type === "artist") {
         setCollections(result.collections || []);
         setSongs([]);

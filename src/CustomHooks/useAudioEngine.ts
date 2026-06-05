@@ -11,12 +11,15 @@ import {
 } from "@/Services/navidromeService";
 import { Song, QueueSong } from "@/Models/Models";
 import { useToast } from "@/Context/ToastContext";
+import { useAuth } from "@/Context/AuthContext";
+import { useArtwork } from "./useArtwork";
 
 const generateUniqueId = (): string => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
 export function useAudioEngine() {
+  const { navidromeCreds } = useAuth();
   const [queue, setQueue] = useState<QueueSong[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
 
@@ -32,11 +35,19 @@ export function useAudioEngine() {
     contextQueue: [],
   });
 
+  // Track credentials in a ref to bypass stale closure issues across async steps securely
+  const credsRef = useRef(navidromeCreds);
+  useEffect(() => {
+    credsRef.current = navidromeCreds;
+  }, [navidromeCreds]);
+
   const currentSong = useMemo(() => {
     return currentIndex >= 0 && currentIndex < queue.length
       ? queue[currentIndex]
       : null;
   }, [currentIndex, queue]);
+
+  const { url: currentArtworkUrl } = useArtwork(currentSong?.coverArt, 500);
 
   const stateRef = useRef<{ queue: QueueSong[]; currentIndex: number }>({
     queue,
@@ -54,7 +65,6 @@ export function useAudioEngine() {
       shouldPlayInBackground: true,
     }).catch((err) => console.error("Error setting audio mode:", err));
 
-    //Register Media controls only once
     MediaControl.enableMediaControls({
       capabilities: [
         Command.PLAY,
@@ -67,14 +77,13 @@ export function useAudioEngine() {
     }).catch((err) => console.error("Error setting media keys:", err));
 
     return () => {
-      // Disable controls when unmounted
       MediaControl.disableMediaControls().catch((err) =>
         console.error("Error disabling media controls on teardown:", err),
       );
     };
   }, []);
 
-  //Updating art and duration of song
+  // Updating art and duration of song
   useEffect(() => {
     if (!currentSong) return;
 
@@ -82,12 +91,10 @@ export function useAudioEngine() {
       title: currentSong.title,
       artist: currentSong.artist,
       album: currentSong.album || "Navidrome Album",
-      artwork: currentSong.artworkUrl
-        ? { uri: currentSong.artworkUrl }
-        : undefined,
+      artwork: currentArtworkUrl ? { uri: currentArtworkUrl } : undefined,
       duration: status.duration || currentSong.duration || 0,
     }).catch((err) => console.error("Error updating metadata:", err));
-  }, [currentSong, status.duration]);
+  }, [currentSong, status.duration, currentArtworkUrl]);
 
   /**
    * LOOK-AHEAD AUTOMATION EFFECT
@@ -100,7 +107,6 @@ export function useAudioEngine() {
 
     if (songsRemaining <= 2) {
       const storage = internalQueueRef.current;
-
       const totalPoolLength =
         storage.contextQueue.length + storage.userQueue.length;
 
@@ -123,27 +129,35 @@ export function useAudioEngine() {
       if (totalPoolLength <= queue.length) {
         const lastSong = queue[queue.length - 1];
 
-        fetchThemeOrRandomQueue(lastSong, 5).then((nextTracks) => {
-          if (nextTracks.length > 0) {
-            const flaggedTracks = nextTracks.map((track) => ({
-              ...track,
-              origin: "auto" as const,
-              clientQueueId: generateUniqueId(),
-            }));
-            internalQueueRef.current.contextQueue.push(...flaggedTracks);
-            setQueue((prev) => [...prev, ...flaggedTracks]);
-          }
-        });
+        // Safety bail-out (e.g. user just hit logout)
+        if (!credsRef.current) return;
+
+        // Force assert credentials (!) because routing ensures they exist at this lifecycle step
+        fetchThemeOrRandomQueue(credsRef.current!, lastSong, 5).then(
+          (nextTracks) => {
+            if (nextTracks.length > 0) {
+              const flaggedTracks = nextTracks.map((track) => ({
+                ...track,
+                origin: "auto" as const,
+                clientQueueId: generateUniqueId(),
+              }));
+              internalQueueRef.current.contextQueue.push(...flaggedTracks);
+              setQueue((prev) => [...prev, ...flaggedTracks]);
+            }
+          },
+        );
       }
     }
   }, [currentIndex, queue.length]);
 
   const loadSongAtIndex = useCallback(
     async (index: number, targetQueue = stateRef.current.queue) => {
-      if (index < 0 || index >= targetQueue.length) return;
+      if (index < 0 || index >= targetQueue.length || !credsRef.current) return;
 
       const targetSong = targetQueue[index];
-      const url = await getStreamUrl(targetSong.id);
+
+      // Force assert credentials safely directly in RAM
+      const url = await getStreamUrl(credsRef.current!, targetSong.id);
       if (!url) return;
 
       setCurrentIndex(index);
@@ -208,6 +222,8 @@ export function useAudioEngine() {
 
   const playSongNow = useCallback(
     async (song: Song, contextSongs?: Song[]) => {
+      if (!credsRef.current) return;
+
       if (
         stateRef.current.queue[stateRef.current.currentIndex]?.id === song.id
       ) {
@@ -216,7 +232,7 @@ export function useAudioEngine() {
         return;
       }
 
-      const url = await getStreamUrl(song.id);
+      const url = await getStreamUrl(credsRef.current!, song.id);
       if (!url) return;
 
       internalQueueRef.current.userQueue = [];

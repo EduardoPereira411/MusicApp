@@ -7,6 +7,7 @@ import { useAudio } from "@/Context/AudioContext";
 import { useAudioPlayerStatus, AudioPlayer } from "expo-audio";
 import Slider from "@react-native-community/slider";
 import { QueueModal } from "@/Components/QueueModal";
+import { useArtwork } from "@/CustomHooks/useArtwork";
 
 const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
   player,
@@ -48,16 +49,17 @@ export default function GlobalMiniPlayer() {
 
   const insets = useSafeAreaInsets();
   const [queueVisible, setQueueVisible] = useState(false);
+  const { url: artworkUrl } = useArtwork(currentSong?.coverArt, 100);
 
   if (!currentSong) return null;
 
   const dynamicBottom = 49 + insets.bottom + 8;
 
   const coverSource = useMemo(() => {
-    return currentSong.artworkUrl
-      ? { uri: currentSong.artworkUrl }
+    return artworkUrl
+      ? { uri: artworkUrl }
       : require("../../assets/images/icon.png");
-  }, [currentSong.artworkUrl]);
+  }, [artworkUrl]);
 
   const hasNext = currentIndex < queue.length - 1;
   const hasPrevious = currentIndex > 0;

@@ -11,12 +11,15 @@ import {
 import { AlbumTracksModal } from "@/Components/AlbumTracksModal";
 import { downloadService } from "@/Services/downloadService";
 import { DownloadAlbumMetadata } from "@/Models/Models";
+import { useAuth } from "@/Context/AuthContext"; // 1. Import useAuth
 
 interface DownloadAlbumItemProps {
   item: DownloadAlbumMetadata;
 }
 
 export function DownloadAlbumItem({ item }: DownloadAlbumItemProps) {
+  const { downloadCreds } = useAuth();
+
   const [modalVisible, setModalVisible] = useState(false);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
@@ -24,8 +27,18 @@ export function DownloadAlbumItem({ item }: DownloadAlbumItemProps) {
   const displayId = item.album_id || (item as any).browseId;
 
   const handleDownloadFullAlbum = async () => {
+    if (!downloadCreds) {
+      Alert.alert("Error", "Missing download configuration credentials.");
+      return;
+    }
+
     setIsDownloadingAll(true);
-    const response = await downloadService.getAlbumTracks(displayId, true);
+
+    const response = await downloadService.getAlbumTracks(
+      downloadCreds,
+      displayId,
+      true,
+    );
 
     if (response) {
       Alert.alert("Success", `Queued full album download!`);

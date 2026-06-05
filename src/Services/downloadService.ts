@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { DownloadAPICredentials } from "@/Models/Models";
 
 const DOWNLOAD_KEYS = {
   BASE_URL: "dl_api_base_url",
@@ -6,29 +7,27 @@ const DOWNLOAD_KEYS = {
   PASS: "dl_api_pass",
 };
 
-export interface DownloadApiCredentials {
-  baseUrl: string;
-  user?: string;
-  pass?: string;
-}
-
 export const downloadAuthStorage = {
-  async saveCredentials({ baseUrl, user, pass }: DownloadApiCredentials) {
-    const cleanUrl = baseUrl.replace(/\/$/, "");
+  async saveCredentials({
+    serverUrl,
+    username,
+    password,
+  }: DownloadAPICredentials) {
+    const cleanUrl = serverUrl.replace(/\/$/, "");
     await SecureStore.setItemAsync(DOWNLOAD_KEYS.BASE_URL, cleanUrl);
-    if (user) await SecureStore.setItemAsync(DOWNLOAD_KEYS.USER, user);
-    if (pass) await SecureStore.setItemAsync(DOWNLOAD_KEYS.PASS, pass);
+    if (username) await SecureStore.setItemAsync(DOWNLOAD_KEYS.USER, username);
+    if (password) await SecureStore.setItemAsync(DOWNLOAD_KEYS.PASS, password);
   },
 
-  async getCredentials(): Promise<DownloadApiCredentials | null> {
-    const baseUrl = await SecureStore.getItemAsync(DOWNLOAD_KEYS.BASE_URL);
-    const user =
+  async getCredentials(): Promise<DownloadAPICredentials | null> {
+    const serverUrl = await SecureStore.getItemAsync(DOWNLOAD_KEYS.BASE_URL);
+    const username =
       (await SecureStore.getItemAsync(DOWNLOAD_KEYS.USER)) || undefined;
-    const pass =
+    const password =
       (await SecureStore.getItemAsync(DOWNLOAD_KEYS.PASS)) || undefined;
 
-    if (!baseUrl) return null;
-    return { baseUrl, user, pass };
+    if (!serverUrl) return null;
+    return { serverUrl, username, password };
   },
 
   async clearCredentials() {
@@ -37,35 +36,33 @@ export const downloadAuthStorage = {
   },
 };
 
-// Helper to build headers including Basic Auth dynamically
-async function getHeaders(): Promise<{
+/**
+ * Synchronously forms execution objects via memory contexts.
+ * Bypasses file storage lookups during networking updates.
+ */
+export function buildRequestConfig(creds: DownloadAPICredentials): {
   headers: HeadersInit;
   baseUrl: string;
-} | null> {
-  const creds = await downloadAuthStorage.getCredentials();
-  if (!creds) return null;
-
+} {
   const headers: HeadersInit = {
     "Content-Type": "application/json",
   };
 
-  if (creds.user && creds.pass) {
-    const encodedCredentials = btoa(`${creds.user}:${creds.pass}`);
+  if (creds.username && creds.password) {
+    const encodedCredentials = btoa(`${creds.username}:${creds.password}`);
     headers["Authorization"] = `Basic ${encodedCredentials}`;
   }
 
-  return { headers, baseUrl: creds.baseUrl };
+  return { headers, baseUrl: creds.serverUrl };
 }
 
 export const downloadService = {
-  /**
-   * POST /song_search
-   * Search for songs on YTMusic
-   */
-  async searchSongs(query: string): Promise<any[]> {
+  async searchSongs(
+    creds: DownloadAPICredentials,
+    query: string,
+  ): Promise<any[]> {
     try {
-      const config = await getHeaders();
-      if (!config) return [];
+      const config = buildRequestConfig(creds);
 
       const response = await fetch(`${config.baseUrl}/song_search`, {
         method: "POST",
@@ -81,14 +78,12 @@ export const downloadService = {
     }
   },
 
-  /**
-   * POST /video_search
-   * Search for videos/music videos on YTMusic
-   */
-  async searchVideos(query: string): Promise<any[]> {
+  async searchVideos(
+    creds: DownloadAPICredentials,
+    query: string,
+  ): Promise<any[]> {
     try {
-      const config = await getHeaders();
-      if (!config) return [];
+      const config = buildRequestConfig(creds);
 
       const response = await fetch(`${config.baseUrl}/video_search`, {
         method: "POST",
@@ -104,14 +99,12 @@ export const downloadService = {
     }
   },
 
-  /**
-   * POST /album_search
-   * Search for albums on YTMusic
-   */
-  async searchAlbums(query: string): Promise<any[]> {
+  async searchAlbums(
+    creds: DownloadAPICredentials,
+    query: string,
+  ): Promise<any[]> {
     try {
-      const config = await getHeaders();
-      if (!config) return [];
+      const config = buildRequestConfig(creds);
 
       const response = await fetch(`${config.baseUrl}/album_search`, {
         method: "POST",
@@ -127,17 +120,13 @@ export const downloadService = {
     }
   },
 
-  /**
-   * POST /album_tracks
-   * Fetches metadata for items within an album or dispatches a full album download.
-   */
   async getAlbumTracks(
+    creds: DownloadAPICredentials,
     browseId: string,
     download: boolean = false,
   ): Promise<any | null> {
     try {
-      const config = await getHeaders();
-      if (!config) return null;
+      const config = buildRequestConfig(creds);
 
       const response = await fetch(`${config.baseUrl}/album_tracks`, {
         method: "POST",
@@ -152,16 +141,12 @@ export const downloadService = {
     }
   },
 
-  /**
-   * POST /download
-   * Triggers a single track download process.
-   */
   async downloadTrack(
+    creds: DownloadAPICredentials,
     track: any,
   ): Promise<{ status: string; task_id: string } | null> {
     try {
-      const config = await getHeaders();
-      if (!config) return null;
+      const config = buildRequestConfig(creds);
 
       const response = await fetch(`${config.baseUrl}/download`, {
         method: "POST",
@@ -169,28 +154,19 @@ export const downloadService = {
         body: JSON.stringify(track),
       });
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      return await response.json(); // Returns { status: "accepted", task_id: "..." }
+      return await response.json();
     } catch (error) {
       console.error("Failed to trigger track download:", error);
       return null;
     }
   },
 
-  /**
-   * GET /tasks/<task_id>
-   * Polls progress metrics for active download pipelines.
-   */
-  async getTaskProgress(taskId: string): Promise<{
-    task_id: string;
-    album: string;
-    status: string;
-    progress: string;
-    percent_complete: number;
-    summary: any[];
-  } | null> {
+  async getTaskProgress(
+    creds: DownloadAPICredentials,
+    taskId: string,
+  ): Promise<any | null> {
     try {
-      const config = await getHeaders();
-      if (!config) return null;
+      const config = buildRequestConfig(creds);
 
       const response = await fetch(`${config.baseUrl}/tasks/${taskId}`, {
         method: "GET",

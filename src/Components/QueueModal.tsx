@@ -10,6 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudio } from "@/Context/AudioContext";
+import { useArtwork } from "@/CustomHooks/useArtwork";
 import { Image } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Sortable from "react-native-sortables";
@@ -30,6 +31,8 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
     updateQueueOrder,
   } = useAudio();
   const insets = useSafeAreaInsets();
+
+  const { url: currentArtworkUrl } = useArtwork(currentSong?.coverArt, 150);
 
   const { userUpcoming, autoUpcoming } = useMemo(() => {
     if (currentIndex < 0) return { userUpcoming: [], autoUpcoming: [] };
@@ -192,14 +195,16 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
                 <Text style={styles.sectionTitle}>Now Playing</Text>
                 <View style={[styles.trackRow, styles.playingRow]}>
                   <View style={styles.trackDetails}>
-                    {currentSong.artworkUrl ? (
-                      <Image
-                        source={{ uri: currentSong.artworkUrl }}
-                        style={styles.artwork}
-                      />
-                    ) : (
-                      <View style={[styles.artwork, styles.fallbackArtwork]} />
-                    )}
+                    <Image
+                      source={
+                        currentArtworkUrl
+                          ? { uri: currentArtworkUrl }
+                          : undefined
+                      }
+                      style={styles.artwork}
+                      contentFit="cover"
+                      transition={150}
+                    />
                     <View style={styles.textContainer}>
                       <Text
                         style={[styles.title, styles.playingText]}
@@ -334,9 +339,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 4,
-  },
-  fallbackArtwork: {
-    backgroundColor: "#333",
+    backgroundColor: "#333", // acts as inline fallback natively
   },
   textContainer: {
     flex: 1,

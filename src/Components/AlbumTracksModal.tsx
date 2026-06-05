@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DownloadSongItem } from "@/Components/DownloadSongItem";
 import { downloadService } from "@/Services/downloadService";
+import { useAuth } from "@/Context/AuthContext";
 
 interface AlbumTracksModalProps {
   visible: boolean;
@@ -26,6 +27,8 @@ export function AlbumTracksModal({
   albumTitle,
   onClose,
 }: AlbumTracksModalProps) {
+  const { downloadCreds } = useAuth();
+
   const [tracks, setTracks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [bulkDownloading, setBulkDownloading] = useState(false);
@@ -37,8 +40,18 @@ export function AlbumTracksModal({
   }, [visible, albumId]);
 
   const fetchAlbumDetails = async () => {
+    // Safety check: ensure credentials are present
+    if (!downloadCreds) {
+      Alert.alert("Error", "Missing download configuration credentials.");
+      return;
+    }
+
     setLoading(true);
-    const data = await downloadService.getAlbumTracks(albumId, false);
+    const data = await downloadService.getAlbumTracks(
+      downloadCreds,
+      albumId,
+      false,
+    );
 
     if (data && data.results) {
       const albumCover = data.album_cover || "";
@@ -58,8 +71,14 @@ export function AlbumTracksModal({
   };
 
   const downloadAllTracks = async () => {
+    if (!downloadCreds) return;
+
     setBulkDownloading(true);
-    const data = await downloadService.getAlbumTracks(albumId, true);
+    const data = await downloadService.getAlbumTracks(
+      downloadCreds,
+      albumId,
+      true,
+    );
     if (data) {
       Alert.alert("Success", "All tracks added to the download queue!");
     } else {

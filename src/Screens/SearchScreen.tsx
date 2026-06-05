@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { searchAll } from "@/Services/navidromeService";
+import { useAuth } from "@/Context/AuthContext";
 import { useAudio } from "@/Context/AudioContext";
 import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
@@ -20,6 +21,8 @@ type SearchType = "tracks" | "albums" | "artists";
 
 export default function SearchScreen() {
   const router = useRouter();
+  const { navidromeCreds } = useAuth();
+
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<SearchType>("tracks");
   const [songs, setSongs] = useState<Song[]>([]);
@@ -32,6 +35,7 @@ export default function SearchScreen() {
 
   const { currentSong, playing, playSongNow, addToQueue } = useAudio();
 
+  // Debounced search trigger
   useEffect(() => {
     if (!query.trim()) {
       setSongs([]);
@@ -45,18 +49,22 @@ export default function SearchScreen() {
     }, 600);
 
     return () => clearTimeout(delayDebounce);
-  }, [query]);
+  }, [query, navidromeCreds]);
 
   async function executeSearch() {
-    if (!query.trim()) return;
+    if (!query.trim() || !navidromeCreds) return;
     setLoading(true);
 
-    const result = await searchAll(query);
-    setSongs(result.songs);
-    setAlbums(result.albums);
-    setArtists(result.artists);
-
-    setLoading(false);
+    try {
+      const result = await searchAll(navidromeCreds, query);
+      setSongs(result.songs || []);
+      setAlbums(result.albums || []);
+      setArtists(result.artists || []);
+    } catch (e) {
+      console.error("Search query execution failed:", e);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const handleSongOptions = useCallback((song: Song) => {
@@ -111,22 +119,13 @@ export default function SearchScreen() {
 
   return (
     <View style={styles.container}>
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
+      <View style={styles.headerRow}>
         <Text style={styles.header}>Search</Text>
         <TouchableOpacity
-          style={{ backgroundColor: "#282828", padding: 8, borderRadius: 20 }}
+          style={styles.downloaderButton}
           onPress={() => router.push("/download-search")}
         >
-          <Text style={{ color: "#00A3FF", fontWeight: "bold", fontSize: 13 }}>
-            Go to Downloader
-          </Text>
+          <Text style={styles.downloaderButtonText}>Go to Downloader</Text>
         </TouchableOpacity>
       </View>
 
@@ -210,11 +209,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   header: {
     color: "#fff",
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 16,
+  },
+  downloaderButton: {
+    backgroundColor: "#282828",
+    padding: 8,
+    borderRadius: 20,
+  },
+  downloaderButtonText: {
+    color: "#00A3FF",
+    fontWeight: "bold",
+    fontSize: 13,
   },
   tabBar: {
     flexDirection: "row",

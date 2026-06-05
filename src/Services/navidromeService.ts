@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import md5 from "md5";
 import { Song, SharedCollectionData } from "@/Models/Models";
+import { NavidromeCredentials } from "@/Models/Models";
 
 const KEYS = {
   SERVER_URL: "navidrome_server_url",
@@ -8,26 +9,24 @@ const KEYS = {
   PASSWORD: "navidrome_password",
 };
 
-export interface Credentials {
-  serverUrl: string;
-  username: string;
-  password?: string;
-}
-
 export const authStorage = {
-  async saveCredentials({ serverUrl, username, password }: Credentials) {
+  async saveCredentials({
+    serverUrl,
+    username,
+    password,
+  }: NavidromeCredentials) {
     const cleanUrl = serverUrl.replace(/\/$/, "");
     await SecureStore.setItemAsync(KEYS.SERVER_URL, cleanUrl);
-    await SecureStore.setItemAsync(KEYS.USERNAME, username);
-    if (password) {
-      await SecureStore.setItemAsync(KEYS.PASSWORD, password);
-    }
+    if (username) await SecureStore.setItemAsync(KEYS.USERNAME, username);
+    if (password) await SecureStore.setItemAsync(KEYS.PASSWORD, password);
   },
 
-  async getCredentials(): Promise<Credentials | null> {
+  async getCredentials(): Promise<NavidromeCredentials | null> {
     const serverUrl = await SecureStore.getItemAsync(KEYS.SERVER_URL);
-    const username = (await SecureStore.getItemAsync(KEYS.USERNAME)) || "";
-    const password = (await SecureStore.getItemAsync(KEYS.PASSWORD)) || "";
+    const username =
+      (await SecureStore.getItemAsync(KEYS.USERNAME)) || undefined;
+    const password =
+      (await SecureStore.getItemAsync(KEYS.PASSWORD)) || undefined;
 
     if (!serverUrl) return null;
     return { serverUrl, username, password };
@@ -41,34 +40,77 @@ export const authStorage = {
 
 /**
  * Generates the required Subsonic auth query string parameters (u, t, s, v, c, f)
- * Subsonic token format: md5(password + salt)
+ * Synchronously processes in-memory credentials parameters instantly.
  */
-export async function getSubsonicAuthParams(): Promise<string | null> {
-  const creds = await authStorage.getCredentials();
-  if (!creds || !creds.password) return null;
+export function getSubsonicAuthParams(
+  creds: NavidromeCredentials,
+  size?: number,
+): string | null {
+  if (!creds.password || !creds.username) return null;
 
   const salt = Math.random().toString(36).substring(2, 10);
   const token = md5(creds.password + salt);
 
-  const params = new URLSearchParams({
+  const params: Record<string, string> = {
     u: creds.username,
     t: token,
     s: salt,
     v: "1.16.1",
     c: "my-music-app",
     f: "json",
+  };
+
+  if (size !== undefined) {
+    params.size = size.toString();
+  }
+
+  return new URLSearchParams(params).toString();
+}
+
+export function buildSubsonicAuthParams(
+  username: string,
+  password: string,
+): string {
+  // 1. Generate a secure, randomized string (the salt)
+  const salt = Math.random().toString(36).substring(2, 12);
+
+  // 2. Compute token: MD5(password + salt)
+  const token = md5(password + salt);
+
+  // 3. Assemble parameters compatible with Navidrome's strict JSON endpoint
+  const params = new URLSearchParams({
+    u: username,
+    t: token,
+    s: salt,
+    v: "1.16.1", // Subsonic API client compliance version
+    c: "app", // Custom client application signature identifier
+    f: "json", // Enforce raw application JSON serialization responses
   });
 
   return params.toString();
 }
 
-export async function fetchNavidromePlaylists(): Promise<
-  SharedCollectionData[]
-> {
+/**
+ * Fast synchronous tool to stitch full artwork URLs with arbitrary canvas limits.
+ */
+export function getArtworkUrl(
+  creds: NavidromeCredentials,
+  coverArtId: string | undefined,
+  size: number = 300,
+): string | null {
+  if (!coverArtId || !creds) return null;
+  const params = getSubsonicAuthParams(creds, size);
+  if (!params) return null;
+
+  return `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${coverArtId}`;
+}
+
+export async function fetchNavidromePlaylists(
+  creds: NavidromeCredentials,
+): Promise<SharedCollectionData[]> {
   try {
-    const creds = await authStorage.getCredentials();
-    const params = await getSubsonicAuthParams();
-    if (!creds || !params) return [];
+    const params = getSubsonicAuthParams(creds);
+    if (!params) return [];
 
     const url = `${creds.serverUrl}/rest/getPlaylists.view?${params}`;
     const response = await fetch(url);
@@ -77,13 +119,14 @@ export async function fetchNavidromePlaylists(): Promise<
     const playlists = data["subsonic-response"]?.playlists?.playlist || [];
     const playlistsArray = Array.isArray(playlists) ? playlists : [playlists];
 
+    console.log(playlistsArray);
     return playlistsArray.map((playlist: any) => ({
       id: playlist.id,
       name: playlist.name,
       type: "playlist",
       subtitle: `By ${playlist.owner || "Unknown"}`,
       subItemCount: playlist.songCount,
-      artworkUrl: "",
+      coverArt: "",
     }));
   } catch (e) {
     console.error("Failed to fetch playlists:", e);
@@ -92,12 +135,12 @@ export async function fetchNavidromePlaylists(): Promise<
 }
 
 export async function checkSongInPlaylist(
+  creds: NavidromeCredentials,
   playlistId: string,
   songId: string,
 ): Promise<boolean> {
-  const creds = await authStorage.getCredentials();
-  const params = await getSubsonicAuthParams();
-  if (!creds || !params) return false;
+  const params = getSubsonicAuthParams(creds);
+  if (!params) return false;
 
   const checkUrl = `${creds.serverUrl}/rest/getPlaylist.view?${params}&id=${playlistId}`;
   const checkRes = await fetch(checkUrl);
@@ -112,12 +155,12 @@ export async function checkSongInPlaylist(
 }
 
 export async function addTrackToPlaylist(
+  creds: NavidromeCredentials,
   playlistId: string,
   songId: string,
 ): Promise<boolean> {
-  const creds = await authStorage.getCredentials();
-  const params = await getSubsonicAuthParams();
-  if (!creds || !params) return false;
+  const params = getSubsonicAuthParams(creds);
+  if (!params) return false;
 
   const updateUrl = `${creds.serverUrl}/rest/updatePlaylist.view?${params}&playlistId=${playlistId}&songIdToAdd=${songId}`;
   const updateRes = await fetch(updateUrl);
@@ -126,11 +169,14 @@ export async function addTrackToPlaylist(
   return updateData["subsonic-response"]?.status === "ok";
 }
 
-export async function fetchTracks(): Promise<Song[]> {
+export async function fetchTracks(
+  creds: NavidromeCredentials,
+  imageSize: number = 300,
+): Promise<Song[]> {
   try {
-    const creds = await authStorage.getCredentials();
-    const params = await getSubsonicAuthParams();
-    if (!creds || !params) return [];
+    const params = getSubsonicAuthParams(creds);
+    const imgParams = getSubsonicAuthParams(creds, imageSize);
+    if (!params || !imgParams) return [];
 
     const url = `${creds.serverUrl}/rest/getRandomSongs.view?${params}&size=20`;
     const response = await fetch(url);
@@ -144,7 +190,8 @@ export async function fetchTracks(): Promise<Song[]> {
       artist: song.artist,
       album: song.album,
       albumId: song.albumId,
-      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${song.coverArt || song.id}&size=300`,
+      coverArt: song.coverArt || song.id,
+      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${imgParams}&id=${song.coverArt || song.id}`,
     }));
   } catch (e) {
     console.error("Failed fetching tracks:", e);
@@ -152,11 +199,14 @@ export async function fetchTracks(): Promise<Song[]> {
   }
 }
 
-export async function fetchAlbums(): Promise<SharedCollectionData[]> {
+export async function fetchAlbums(
+  creds: NavidromeCredentials,
+  imageSize: number = 300,
+): Promise<SharedCollectionData[]> {
   try {
-    const creds = await authStorage.getCredentials();
-    const params = await getSubsonicAuthParams();
-    if (!creds || !params) return [];
+    const params = getSubsonicAuthParams(creds);
+    const imgParams = getSubsonicAuthParams(creds, imageSize);
+    if (!params || !imgParams) return [];
 
     const url = `${creds.serverUrl}/rest/getAlbumList2.view?${params}&type=random&size=20`;
     const response = await fetch(url);
@@ -170,7 +220,8 @@ export async function fetchAlbums(): Promise<SharedCollectionData[]> {
       type: "album",
       subtitle: album.artist,
       subItemCount: album.songCount,
-      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
+      coverArt: album.coverArt || album.id,
+      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${imgParams}&id=${album.coverArt || album.id}`,
     }));
   } catch (e) {
     console.error("Failed fetching albums:", e);
@@ -178,15 +229,19 @@ export async function fetchAlbums(): Promise<SharedCollectionData[]> {
   }
 }
 
-export async function searchAll(query: string): Promise<{
+export async function searchAll(
+  creds: NavidromeCredentials,
+  query: string,
+  imageSize: number = 300,
+): Promise<{
   songs: Song[];
   albums: SharedCollectionData[];
   artists: SharedCollectionData[];
 }> {
   try {
-    const creds = await authStorage.getCredentials();
-    const params = await getSubsonicAuthParams();
-    if (!creds || !params || !query.trim())
+    const params = getSubsonicAuthParams(creds);
+    const imgParams = getSubsonicAuthParams(creds, imageSize);
+    if (!params || !imgParams || !query.trim())
       return { songs: [], albums: [], artists: [] };
 
     const url = `${creds.serverUrl}/rest/search3.view?${params}&query=${encodeURIComponent(query)}&songCount=30&albumCount=30&artistCount=30`;
@@ -194,7 +249,6 @@ export async function searchAll(query: string): Promise<{
     const data = await response.json();
     const searchResult = data["subsonic-response"]?.searchResult3;
 
-    // Parse Songs
     const fetchedSongs: any[] = searchResult?.song || [];
     const songs = (
       Array.isArray(fetchedSongs) ? fetchedSongs : [fetchedSongs]
@@ -204,10 +258,10 @@ export async function searchAll(query: string): Promise<{
       artist: song.artist,
       album: song.album,
       albumId: song.albumId,
-      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${song.coverArt || song.id}&size=300`,
+      coverArt: song.coverArt || song.id,
+      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${imgParams}&id=${song.coverArt || song.id}`,
     }));
 
-    // Parse Albums
     const fetchedAlbums: any[] = searchResult?.album || [];
     const albums: SharedCollectionData[] = (
       Array.isArray(fetchedAlbums) ? fetchedAlbums : [fetchedAlbums]
@@ -217,7 +271,8 @@ export async function searchAll(query: string): Promise<{
       type: "album",
       subtitle: album.artist,
       subItemCount: album.songCount,
-      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
+      coverArt: album.coverArt || album.id,
+      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${imgParams}&id=${album.coverArt || album.id}`,
     }));
 
     const fetchedArtists: any[] = searchResult?.artist || [];
@@ -229,7 +284,7 @@ export async function searchAll(query: string): Promise<{
       type: "artist",
       subItemCount: artist.albumCount,
       subtitle: `${artist.albumCount || 0} Albums`,
-      artworkUrl: "",
+      coverArt: "",
     }));
 
     return { songs, albums, artists };
@@ -239,11 +294,12 @@ export async function searchAll(query: string): Promise<{
   }
 }
 
-export async function fetchArtists(): Promise<SharedCollectionData[]> {
+export async function fetchArtists(
+  creds: NavidromeCredentials,
+): Promise<SharedCollectionData[]> {
   try {
-    const creds = await authStorage.getCredentials();
-    const params = await getSubsonicAuthParams();
-    if (!creds || !params) return [];
+    const params = getSubsonicAuthParams(creds);
+    if (!params) return [];
 
     const url = `${creds.serverUrl}/rest/getArtists.view?${params}`;
     const response = await fetch(url);
@@ -261,6 +317,7 @@ export async function fetchArtists(): Promise<SharedCollectionData[]> {
             type: "artist",
             subItemCount: art.albumCount,
             subtitle: `${art.albumCount || 0} Albums`,
+            coverArt: "",
           });
         });
       }
@@ -274,14 +331,15 @@ export async function fetchArtists(): Promise<SharedCollectionData[]> {
 }
 
 export async function fetchCollectionDetails(
+  creds: NavidromeCredentials,
   id: string,
   type: "playlist" | "album" | "artist",
   fallbackName?: string,
 ): Promise<{ songs?: Song[]; collections?: SharedCollectionData[] }> {
   try {
-    const creds = await authStorage.getCredentials();
-    const params = await getSubsonicAuthParams();
-    if (!creds || !params) return {};
+    const params = getSubsonicAuthParams(creds);
+    const imgParams = getSubsonicAuthParams(creds);
+    if (!params || !imgParams) return {};
 
     if (type === "artist") {
       const url = `${creds.serverUrl}/rest/getArtist.view?${params}&id=${id}&f=json`;
@@ -300,7 +358,8 @@ export async function fetchCollectionDetails(
         type: "album",
         subtitle: album.artist || fallbackName,
         subItemCount: album.songCount,
-        artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${album.coverArt || album.id}&size=300`,
+        coverArt: album.coverArt || album.id,
+        artworkUrl: album.coverArt || album.id,
       }));
 
       return { collections: albums };
@@ -326,7 +385,8 @@ export async function fetchCollectionDetails(
         artist: track.artist || "Unknown Artist",
         album: track.album || fallbackName || "",
         albumId: track.albumId || id,
-        artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${track.coverArt || track.id}&size=150`,
+        coverArt: track.coverArt || track.id,
+        artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${imgParams}&id=${track.coverArt || track.id}`,
       }));
 
     return { songs };
@@ -339,63 +399,41 @@ export async function fetchCollectionDetails(
   }
 }
 
-/**
- * Generates the full stream link for a given song ID
- */
-export async function getStreamUrl(songId: string): Promise<string | null> {
-  try {
-    const creds = await authStorage.getCredentials();
-    const params = await getSubsonicAuthParams();
-    if (!creds || !params) return null;
-    return `${creds.serverUrl}/rest/stream.view?${params}&id=${songId}`;
-  } catch (e) {
-    console.error("Error generating stream link:", e);
-    return null;
-  }
+export function getStreamUrl(
+  creds: NavidromeCredentials,
+  songId: string,
+): string | null {
+  const params = getSubsonicAuthParams(creds);
+  if (!params) return null;
+  return `${creds.serverUrl}/rest/stream.view?${params}&id=${songId}`;
 }
 
-/**
- * Dynamically generates recommended queue tracks from Navidrome
- */
 export async function fetchThemeOrRandomQueue(
+  creds: NavidromeCredentials,
   baseSong: Song,
   size: number = 25,
 ): Promise<Song[]> {
   try {
-    const creds = await authStorage.getCredentials();
-    const params = await getSubsonicAuthParams();
-    if (!creds || !params) return [];
+    const params = getSubsonicAuthParams(creds);
+    if (!params) return [];
 
-    let fetchedTracks: any[] = [];
-
-    // Getting similar songs request (disabled for now since similar songs are not configured on server)
-    //const similarResponse = await fetch(
-    //  `${creds.serverUrl}/rest/getSimilarSongs2.view?${params}&id=${baseSong.id}&count=25&f=json`,
-    //);
-    //const similarData = await similarResponse.json();
-    //fetchedTracks =
-    //  similarData["subsonic-response"]?.similarSongs?.song || [];
-
-    // Fetch random songs to build a queue
-    //if (fetchedTracks.length === 0) {
-    // Fetch random songs to build a queue
     const randomResponse = await fetch(
       `${creds.serverUrl}/rest/getRandomSongs.view?${params}&size=${size}&f=json`,
     );
     const randomData = await randomResponse.json();
-    fetchedTracks = randomData["subsonic-response"]?.randomSongs?.song || [];
+    const fetchedTracks =
+      randomData["subsonic-response"]?.randomSongs?.song || [];
 
     return fetchedTracks
-      .filter((track: any) => track.id !== baseSong.id) // Avoid duplicate songs
+      .filter((track: any) => track.id !== baseSong.id)
       .map((track: any) => ({
         id: track.id,
         title: track.title,
         artist: track.artist,
         album: track.album,
         duration: track.duration,
-        artworkUrl: track.coverArt
-          ? `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${track.coverArt}`
-          : undefined,
+        coverArt: track.coverArt || track.id,
+        artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${track.coverArt || track.id}`,
       }));
   } catch (error) {
     console.error("Failed creating dynamic context queue:", error);

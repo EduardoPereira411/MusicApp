@@ -11,54 +11,53 @@ import {
   TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
-import {
-  authStorage,
-  fetchNavidromePlaylists,
-} from "@/Services/navidromeService";
-import { downloadAuthStorage } from "@/Services/downloadService";
+import { useAuth } from "@/Context/AuthContext"; // 1. Use centralized Memory Auth
+import { useAudio } from "@/Context/AudioContext"; // 2. Stop ongoing audio on logouts
+import { fetchNavidromePlaylists } from "@/Services/navidromeService";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 import { SharedCollectionData } from "@/Models/Models";
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { navidromeCreds, downloadCreds, setNavidromeAuth, setDownloadAuth } =
+    useAuth();
+  const { logoutCleanUp } = useAudio();
+
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [username, setUsername] = useState<string>("");
 
-  // Download API Form State
+  // Download API Form State (Synchronously seeded from memory state)
   const [showDlConfig, setShowDlConfig] = useState<boolean>(false);
-  const [dlBaseUrl, setDlBaseUrl] = useState<string>("");
-  const [dlUsername, setDlUsername] = useState<string>("");
-  const [dlPassword, setDlPassword] = useState<string>("");
+  const [dlBaseUrl, setDlBaseUrl] = useState<string>(
+    downloadCreds?.serverUrl || "",
+  );
+  const [dlUsername, setDlUsername] = useState<string>(
+    downloadCreds?.username || "",
+  );
+  const [dlPassword, setDlPassword] = useState<string>(
+    downloadCreds?.password || "",
+  );
   const [isSavingDl, setIsSavingDl] = useState<boolean>(false);
 
+  const username = navidromeCreds?.username || "";
+
+  // Combined Initializer
   useEffect(() => {
-    loadUserData();
-  }, []);
+    if (!navidromeCreds) return;
 
-  async function loadUserData() {
-    setLoading(true);
-
-    const creds = await authStorage.getCredentials();
-    if (creds?.username) {
-      setUsername(creds.username);
+    async function loadInitialPlaylists() {
+      setLoading(true);
+      await loadPlaylists();
+      setLoading(false);
     }
-
-    const dlCreds = await downloadAuthStorage.getCredentials();
-    if (dlCreds) {
-      setDlBaseUrl(dlCreds.baseUrl);
-      setDlUsername(dlCreds.user || "");
-      setDlPassword(dlCreds.pass || "");
-    }
-
-    await loadPlaylists();
-    setLoading(false);
-  }
+    loadInitialPlaylists();
+  }, [navidromeCreds]);
 
   async function loadPlaylists() {
+    if (!navidromeCreds) return;
     try {
-      const list = await fetchNavidromePlaylists();
+      const list = await fetchNavidromePlaylists(navidromeCreds);
       setPlaylists(list);
     } catch (e) {
       console.error("Failed fetching user playlists:", e);
@@ -69,7 +68,7 @@ export default function ProfileScreen() {
     setIsRefreshing(true);
     await loadPlaylists();
     setIsRefreshing(false);
-  }, []);
+  }, [navidromeCreds]);
 
   const handleSaveDownloadConfig = useCallback(async () => {
     if (!dlBaseUrl) {
@@ -79,10 +78,10 @@ export default function ProfileScreen() {
 
     setIsSavingDl(true);
     try {
-      await downloadAuthStorage.saveCredentials({
-        baseUrl: dlBaseUrl,
-        user: dlUsername || undefined,
-        pass: dlPassword || undefined,
+      await setDownloadAuth({
+        serverUrl: dlBaseUrl,
+        username: dlUsername || undefined,
+        password: dlPassword || undefined,
       });
       Alert.alert("Success", "Download API settings updated successfully!");
       setShowDlConfig(false);
@@ -92,7 +91,7 @@ export default function ProfileScreen() {
     } finally {
       setIsSavingDl(false);
     }
-  }, [dlBaseUrl, dlUsername, dlPassword]);
+  }, [dlBaseUrl, dlUsername, dlPassword, setDownloadAuth]);
 
   const handleClearDownloadConfig = useCallback(async () => {
     Alert.alert(
@@ -104,7 +103,7 @@ export default function ProfileScreen() {
           text: "Remove",
           style: "destructive",
           onPress: async () => {
-            await downloadAuthStorage.clearCredentials();
+            await setDownloadAuth(null);
             setDlBaseUrl("");
             setDlUsername("");
             setDlPassword("");
@@ -114,7 +113,7 @@ export default function ProfileScreen() {
         },
       ],
     );
-  }, []);
+  }, [setDownloadAuth]);
 
   const handleLogout = useCallback(async () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -123,21 +122,27 @@ export default function ProfileScreen() {
         text: "Log Out",
         style: "destructive",
         onPress: async () => {
-          await authStorage.clearCredentials();
-          await downloadAuthStorage.clearCredentials();
+          // Tear down background audio workers, clear streams and notification art
+          logoutCleanUp();
+
+          // Wipe memory credentials and secure storage simultaneously
+          await setNavidromeAuth(null);
+          await setDownloadAuth(null);
+
           router.replace("/login");
         },
       },
     ]);
-  }, [router]);
+  }, [router, setNavidromeAuth, setDownloadAuth, logoutCleanUp]);
 
   const formattedPlaylists = useMemo<SharedCollectionData[]>(() => {
     return playlists.map((pl) => ({
       id: pl.id,
       name: pl.name,
       type: "playlist",
+      coverArt: pl.coverArt,
       subtitle: pl.subtitle || "Unknown Owner",
-      songCount: pl.songCount || 0,
+      subItemCount: pl.subItemCount || 0,
     }));
   }, [playlists]);
 
@@ -402,45 +407,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingBottom: 120,
-  },
-  playlistCard: {
-    backgroundColor: "#1e1e1e",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  playlistIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 6,
-    backgroundColor: "#282828",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 14,
-  },
-  playlistIcon: {
-    fontSize: 24,
-  },
-  playlistInfo: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  playlistName: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  playlistCount: {
-    color: "#b3b3b3",
-    fontSize: 13,
-  },
-  arrowIcon: {
-    color: "#b3b3b3",
-    fontSize: 18,
-    paddingHorizontal: 8,
   },
   emptyText: {
     color: "#b3b3b3",

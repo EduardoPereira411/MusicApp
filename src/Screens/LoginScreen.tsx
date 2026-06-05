@@ -13,15 +13,13 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import {
-  authStorage,
-  getSubsonicAuthParams,
-} from "@/Services/navidromeService";
-import { downloadAuthStorage } from "@/Services/downloadService";
+import { useAuth } from "@/Context/AuthContext"; // 1. Centralized auth hooks
+import { buildSubsonicAuthParams } from "@/Services/navidromeService";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { navidromeCreds, downloadCreds, setNavidromeAuth, setDownloadAuth } =
+    useAuth();
 
   // Navidrome settings
   const [serverUrl, setServerUrl] = useState("");
@@ -36,7 +34,6 @@ export default function LoginScreen() {
 
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
@@ -54,6 +51,22 @@ export default function LoginScreen() {
       keyboardHideListener.remove();
     };
   }, []);
+
+  // Pre-seed inputs synchronously if credentials already live inside memory context
+  useEffect(() => {
+    if (navidromeCreds?.serverUrl) {
+      setServerUrl(navidromeCreds.serverUrl);
+    }
+    if (navidromeCreds?.username) {
+      setUsername(navidromeCreds.username);
+    }
+    if (downloadCreds?.serverUrl) {
+      setDlBaseUrl(downloadCreds.serverUrl);
+      setDlUsername(downloadCreds.username || "");
+      setDlPassword(downloadCreds.username || "");
+      setShowDownloadConfig(true);
+    }
+  }, [navidromeCreds, downloadCreds]);
 
   const handleCancel = () => {
     if (abortControllerRef.current) {
@@ -77,13 +90,12 @@ export default function LoginScreen() {
     }, 7000);
 
     try {
-      await authStorage.saveCredentials({ serverUrl, username, password });
-
-      const authQueryString = await getSubsonicAuthParams();
-      const testUrl = `${serverUrl.replace(/\/$/, "")}/rest/ping.view?${authQueryString}`;
+      // 2. Compute the testing auth string locally without overriding state prematurely
+      const authQueryString = buildSubsonicAuthParams(username, password);
+      const cleanServerUrl = serverUrl.replace(/\/$/, "");
+      const testUrl = `${cleanServerUrl}/rest/ping.view?${authQueryString}`;
 
       const response = await fetch(testUrl, { signal: controller.signal });
-
       clearTimeout(timeoutId);
 
       if (!response.ok) {
@@ -91,7 +103,6 @@ export default function LoginScreen() {
       }
 
       const responseText = await response.text();
-
       if (responseText.trim().startsWith("<")) {
         throw new Error(
           "The server responded with an HTML page instead of API data. Verify your URL.",
@@ -102,14 +113,21 @@ export default function LoginScreen() {
       const subsonicResponse = data["subsonic-response"];
 
       if (subsonicResponse && subsonicResponse.status === "ok") {
+        // 3. Handshake validation passed! Commit tokens safely to memory storage states
+        await setNavidromeAuth({
+          serverUrl: cleanServerUrl,
+          username,
+          password,
+        });
+
         if (showDownloadConfig && dlBaseUrl) {
-          await downloadAuthStorage.saveCredentials({
-            baseUrl: dlBaseUrl,
-            user: dlUsername,
-            pass: dlPassword,
+          await setDownloadAuth({
+            serverUrl: dlBaseUrl,
+            username: dlUsername || undefined,
+            password: dlPassword || undefined,
           });
-        } else if (!showDownloadConfig) {
-          await downloadAuthStorage.clearCredentials();
+        } else {
+          await setDownloadAuth(null);
         }
 
         Alert.alert("Success", "Configuration applied successfully!");
@@ -121,7 +139,10 @@ export default function LoginScreen() {
       }
     } catch (error: any) {
       clearTimeout(timeoutId);
-      await authStorage.clearCredentials();
+
+      // Wipe structural bindings on validation failures
+      await setNavidromeAuth(null);
+      await setDownloadAuth(null);
 
       if (error.name === "AbortError") {
         Alert.alert(
@@ -136,25 +157,6 @@ export default function LoginScreen() {
       abortControllerRef.current = null;
     }
   };
-
-  useEffect(() => {
-    async function loadSavedServer() {
-      try {
-        const navidromeCreds = await authStorage.getCredentials();
-        const downloadServerCreds = await downloadAuthStorage.getCredentials();
-        if (navidromeCreds?.serverUrl) {
-          setServerUrl(navidromeCreds.serverUrl);
-        }
-        if (downloadServerCreds?.baseUrl) {
-          setDlBaseUrl(downloadServerCreds.baseUrl);
-          setShowDownloadConfig(true);
-        }
-      } catch (error) {
-        console.error("Failed to load saved server URL:", error);
-      }
-    }
-    loadSavedServer();
-  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>

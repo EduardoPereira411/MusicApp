@@ -9,6 +9,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useAudio } from "@/Context/AudioContext";
+import { useAuth } from "@/Context/AuthContext"; // 1. Import Auth Context
 import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
@@ -22,6 +23,7 @@ import {
 type SectionType = "tracks" | "albums" | "artists";
 
 export default function HomeScreen() {
+  const { navidromeCreds } = useAuth(); // 2. Grab synchronous memory keys
   const [activeSection, setActiveSection] = useState<SectionType>("tracks");
   const [songs, setSongs] = useState<Song[]>([]);
   const [albums, setAlbums] = useState<SharedCollectionData[]>([]);
@@ -41,32 +43,46 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+    if (!navidromeCreds) return;
+
     async function fetchAllDataInitial() {
       setInitialLoading(true);
-      const [tracksData, albumsData, artistsData] = await Promise.all([
-        fetchTracks(),
-        fetchAlbums(),
-        fetchArtists(),
-      ]);
-      setSongs(tracksData);
-      setAlbums(albumsData);
-      setArtists(artistsData);
-      setInitialLoading(false);
+      try {
+        const [tracksData, albumsData, artistsData] = await Promise.all([
+          fetchTracks(navidromeCreds!),
+          fetchAlbums(navidromeCreds!),
+          fetchArtists(navidromeCreds!),
+        ]);
+        setSongs(tracksData);
+        setAlbums(albumsData);
+        setArtists(artistsData);
+      } catch (err) {
+        console.error("Failed to fetch dashboard feed metrics:", err);
+      } finally {
+        setInitialLoading(false);
+      }
     }
 
     fetchAllDataInitial();
-  }, []);
+  }, [navidromeCreds]);
 
   async function handleRefresh() {
+    if (!navidromeCreds) return;
     setIsRefreshing(true);
-    if (activeSection === "tracks") {
-      setSongs(await fetchTracks());
-    } else if (activeSection === "albums") {
-      setAlbums(await fetchAlbums());
-    } else if (activeSection === "artists") {
-      setArtists(await fetchArtists());
+
+    try {
+      if (activeSection === "tracks") {
+        setSongs(await fetchTracks(navidromeCreds));
+      } else if (activeSection === "albums") {
+        setAlbums(await fetchAlbums(navidromeCreds));
+      } else if (activeSection === "artists") {
+        setArtists(await fetchArtists(navidromeCreds));
+      }
+    } catch (err) {
+      console.error("Refresh failed:", err);
+    } finally {
+      setIsRefreshing(false);
     }
-    setIsRefreshing(false);
   }
 
   const renderSongItem = useCallback(

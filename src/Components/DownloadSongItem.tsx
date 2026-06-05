@@ -10,18 +10,26 @@ import {
 } from "react-native";
 import { downloadService } from "@/Services/downloadService";
 import { DownloadTrackMetadata } from "@/Models/Models";
+import { useAuth } from "@/Context/AuthContext";
 
 interface DownloadSongItemProps {
   item: DownloadTrackMetadata;
 }
 
 export function DownloadSongItem({ item }: DownloadSongItemProps) {
+  const { downloadCreds } = useAuth();
+
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
+    if (!downloadCreds) {
+      Alert.alert("Error", "Missing download configuration credentials.");
+      return;
+    }
+
     setIsDownloading(true);
     try {
-      const response = await downloadService.downloadTrack(item);
+      const response = await downloadService.downloadTrack(downloadCreds, item);
       if (response && response.status === "accepted") {
         Alert.alert("Success", `Started downloading: ${item.song_name}`);
       } else {
