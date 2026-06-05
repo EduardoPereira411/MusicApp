@@ -1,13 +1,13 @@
-import { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { Image } from "expo-image";
 import { downloadService } from "@/Services/downloadService";
 import { DownloadTrackMetadata } from "@/Models/Models";
 import { useAuth } from "@/Context/AuthContext";
@@ -16,77 +16,86 @@ interface DownloadSongItemProps {
   item: DownloadTrackMetadata;
 }
 
-export function DownloadSongItem({ item }: DownloadSongItemProps) {
-  const { downloadCreds } = useAuth();
+export const DownloadSongItem = React.memo(
+  ({ item }: DownloadSongItemProps) => {
+    const { downloadCreds } = useAuth();
+    const [isDownloading, setIsDownloading] = React.useState(false);
 
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const handleDownload = async () => {
-    if (!downloadCreds) {
-      Alert.alert("Error", "Missing download configuration credentials.");
-      return;
-    }
-
-    setIsDownloading(true);
-    try {
-      const response = await downloadService.downloadTrack(downloadCreds, item);
-      if (response && response.status === "accepted") {
-        Alert.alert("Success", `Started downloading: ${item.song_name}`);
-      } else {
-        Alert.alert("Error", "Failed to queue download on server.");
+    const handleDownload = async () => {
+      if (!downloadCreds) {
+        Alert.alert("Error", "Missing download configuration credentials.");
+        return;
       }
-    } catch (error) {
-      Alert.alert("Error", "An error occurred during download execution.");
-    } finally {
-      setIsDownloading(false);
-    }
-  };
 
-  const formatDuration = (seconds?: number) => {
-    if (!seconds) return "";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
-  };
-
-  return (
-    <View style={styles.container}>
-      <Image
-        source={
-          item.album_cover
-            ? { uri: item.album_cover }
-            : require("@/assets/images/icon.png")
+      setIsDownloading(true);
+      try {
+        const response = await downloadService.downloadTrack(
+          downloadCreds,
+          item,
+        );
+        if (response && response.status === "accepted") {
+          Alert.alert("Success", `Started downloading: ${item.song_name}`);
+        } else {
+          Alert.alert("Error", "Failed to queue download on server.");
         }
-        style={styles.coverArt}
-      />
-      <View style={styles.textContainer}>
-        <Text style={styles.title} numberOfLines={1}>
-          {item.song_name}
-        </Text>
-        <Text style={styles.subtitle} numberOfLines={1}>
-          {item.artist} {item.album_name ? `• ${item.album_name}` : ""}
-        </Text>
-        {item.song_duration ? (
-          <Text style={styles.durationText}>
-            {formatDuration(item.song_duration)}
-          </Text>
-        ) : null}
-      </View>
+      } catch (error) {
+        Alert.alert("Error", "An error occurred during download execution.");
+      } finally {
+        setIsDownloading(false);
+      }
+    };
 
-      <TouchableOpacity
-        style={[styles.button, isDownloading && styles.buttonDisabled]}
-        onPress={handleDownload}
-        disabled={isDownloading}
-      >
-        {isDownloading ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Get</Text>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
-}
+    const formatDuration = (seconds?: number) => {
+      if (!seconds) return "";
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+    };
+
+    const artworkUrl = item.album_cover || "";
+
+    return (
+      <View style={styles.container}>
+        <Image
+          source={
+            artworkUrl
+              ? { uri: artworkUrl }
+              : require("@/assets/images/icon.png")
+          }
+          style={styles.coverArt}
+          contentFit="cover"
+          transition={200}
+          recyclingKey={artworkUrl}
+        />
+        <View style={styles.textContainer}>
+          <Text style={styles.title} numberOfLines={1}>
+            {item.song_name}
+          </Text>
+          <Text style={styles.subtitle} numberOfLines={1}>
+            {item.artist} {item.album_name ? `• ${item.album_name}` : ""}
+          </Text>
+          {item.song_duration ? (
+            <Text style={styles.durationText}>
+              {formatDuration(item.song_duration)}
+            </Text>
+          ) : null}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.button, isDownloading && styles.buttonDisabled]}
+          onPress={handleDownload}
+          disabled={isDownloading}
+        >
+          {isDownloading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Get</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   container: {

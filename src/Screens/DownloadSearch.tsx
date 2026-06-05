@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -25,7 +25,6 @@ export default function DownloadSearchScreen() {
   const [albums, setAlbums] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Debounced search trigger
   useEffect(() => {
     if (!query.trim()) {
       setSongs([]);
@@ -38,7 +37,7 @@ export default function DownloadSearchScreen() {
     }, 600);
 
     return () => clearTimeout(delayDebounce);
-  }, [query, activeTab]); // Re-run search if tab changes while query exists
+  }, [query, activeTab]);
 
   async function executeDownloadSearch() {
     if (!query.trim()) return;
@@ -69,6 +68,23 @@ export default function DownloadSearchScreen() {
       setLoading(false);
     }
   }
+
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      if (activeTab === "tracks") {
+        return <DownloadSongItem item={item} />;
+      } else {
+        return <DownloadAlbumItem item={item} />;
+      }
+    },
+    [activeTab],
+  );
+
+  const keyExtractor = useCallback((item: any, index: number) => {
+    return (
+      item.download_url || item.browseId || item.album_id || index.toString()
+    );
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -117,19 +133,12 @@ export default function DownloadSearchScreen() {
         ) : (
           <FlatList
             data={activeTab === "tracks" ? songs : albums}
-            keyExtractor={(item, index) =>
-              item.download_url ||
-              item.browseId ||
-              item.album_id ||
-              index.toString()
-            }
-            renderItem={({ item }) => {
-              if (activeTab === "tracks") {
-                return <DownloadSongItem item={item} />;
-              } else {
-                return <DownloadAlbumItem item={item} />;
-              }
-            }}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
+            initialNumToRender={8}
+            maxToRenderPerBatch={5}
+            windowSize={3}
+            removeClippedSubviews={true}
           />
         )}
       </View>

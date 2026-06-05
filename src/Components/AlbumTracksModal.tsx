@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Modal,
   View,
@@ -40,7 +40,6 @@ export function AlbumTracksModal({
   }, [visible, albumId]);
 
   const fetchAlbumDetails = async () => {
-    // Safety check: ensure credentials are present
     if (!downloadCreds) {
       Alert.alert("Error", "Missing download configuration credentials.");
       return;
@@ -87,6 +86,14 @@ export function AlbumTracksModal({
     setBulkDownloading(false);
   };
 
+  const renderItem = useCallback(({ item }: { item: any }) => {
+    return <DownloadSongItem item={item} />;
+  }, []);
+
+  const keyExtractor = useCallback((item: any, index: number) => {
+    return item.download_url || index.toString();
+  }, []);
+
   return (
     <Modal
       visible={visible}
@@ -114,10 +121,13 @@ export function AlbumTracksModal({
         ) : (
           <FlatList
             data={tracks}
-            keyExtractor={(item, index) =>
-              item.download_url || index.toString()
-            }
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
             contentContainerStyle={styles.list}
+            initialNumToRender={10}
+            maxToRenderPerBatch={8}
+            windowSize={3}
+            removeClippedSubviews={true}
             ListHeaderComponent={
               tracks.length > 0 ? (
                 <TouchableOpacity
@@ -138,7 +148,6 @@ export function AlbumTracksModal({
                 </TouchableOpacity>
               ) : null
             }
-            renderItem={({ item }) => <DownloadSongItem item={item} />}
           />
         )}
       </SafeAreaView>

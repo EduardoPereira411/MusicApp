@@ -1,13 +1,13 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { Image } from "expo-image";
 import { AlbumTracksModal } from "@/Components/AlbumTracksModal";
 import { downloadService } from "@/Services/downloadService";
 import { DownloadAlbumMetadata } from "@/Models/Models";
@@ -17,83 +17,92 @@ interface DownloadAlbumItemProps {
   item: DownloadAlbumMetadata;
 }
 
-export function DownloadAlbumItem({ item }: DownloadAlbumItemProps) {
-  const { downloadCreds } = useAuth();
+export const DownloadAlbumItem = React.memo(
+  ({ item }: DownloadAlbumItemProps) => {
+    const { downloadCreds } = useAuth();
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
-  const displayTitle = item.album_name || (item as any).title;
-  const displayId = item.album_id || (item as any).browseId;
+    const displayTitle = item.album_name || (item as any).title;
+    const displayId = item.album_id || (item as any).browseId;
+    const artworkUrl = item.album_cover || "";
 
-  const handleDownloadFullAlbum = async () => {
-    if (!downloadCreds) {
-      Alert.alert("Error", "Missing download configuration credentials.");
-      return;
-    }
+    const handleDownloadFullAlbum = async () => {
+      if (!downloadCreds) {
+        Alert.alert("Error", "Missing download configuration credentials.");
+        return;
+      }
 
-    setIsDownloadingAll(true);
+      setIsDownloadingAll(true);
 
-    const response = await downloadService.getAlbumTracks(
-      downloadCreds,
-      displayId,
-      true,
-    );
+      const response = await downloadService.getAlbumTracks(
+        downloadCreds,
+        displayId,
+        true,
+      );
 
-    if (response) {
-      Alert.alert("Success", `Queued full album download!`);
-    } else {
-      Alert.alert("Error", "Failed to queue album download.");
-    }
-    setIsDownloadingAll(false);
-  };
+      if (response) {
+        Alert.alert("Success", `Queued full album download!`);
+      } else {
+        Alert.alert("Error", "Failed to queue album download.");
+      }
+      setIsDownloadingAll(false);
+    };
 
-  return (
-    <>
-      <TouchableOpacity
-        style={styles.container}
-        activeOpacity={0.7}
-        onPress={() => setModalVisible(true)}
-      >
-        <Image
-          source={
-            item.album_cover
-              ? { uri: item.album_cover }
-              : require("@/assets/images/icon.png")
-          }
-          style={styles.coverArt}
-        />
-        <View style={styles.textContainer}>
-          <Text style={styles.name} numberOfLines={1}>
-            {displayTitle}
-          </Text>
-          <Text style={styles.details} numberOfLines={1}>
-            {item.album_type || "Album"} • {item.artist}
-          </Text>
-        </View>
-
+    return (
+      <>
         <TouchableOpacity
-          style={[styles.getButton, isDownloadingAll && styles.disabledButton]}
-          onPress={handleDownloadFullAlbum}
-          disabled={isDownloadingAll}
+          style={styles.container}
+          activeOpacity={0.7}
+          onPress={() => setModalVisible(true)}
         >
-          {isDownloadingAll ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.getButtonText}>Get</Text>
-          )}
-        </TouchableOpacity>
-      </TouchableOpacity>
+          <Image
+            source={
+              artworkUrl
+                ? { uri: artworkUrl }
+                : require("@/assets/images/icon.png")
+            }
+            style={styles.coverArt}
+            contentFit="cover"
+            transition={200}
+            recyclingKey={artworkUrl}
+          />
+          <View style={styles.textContainer}>
+            <Text style={styles.name} numberOfLines={1}>
+              {displayTitle}
+            </Text>
+            <Text style={styles.details} numberOfLines={1}>
+              {item.album_type || "Album"} • {item.artist}
+            </Text>
+          </View>
 
-      <AlbumTracksModal
-        visible={modalVisible}
-        albumId={displayId}
-        albumTitle={displayTitle}
-        onClose={() => setModalVisible(false)}
-      />
-    </>
-  );
-}
+          <TouchableOpacity
+            style={[
+              styles.getButton,
+              isDownloadingAll && styles.disabledButton,
+            ]}
+            onPress={handleDownloadFullAlbum}
+            disabled={isDownloadingAll}
+          >
+            {isDownloadingAll ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.getButtonText}>Get</Text>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        <AlbumTracksModal
+          visible={modalVisible}
+          albumId={displayId}
+          albumTitle={displayTitle}
+          onClose={() => setModalVisible(false)}
+        />
+      </>
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   container: {
