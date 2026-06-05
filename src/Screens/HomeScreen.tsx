@@ -9,7 +9,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useAudio } from "@/Context/AudioContext";
-import { useAuth } from "@/Context/AuthContext"; // 1. Import Auth Context
+import { useAuth } from "@/Context/AuthContext";
 import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
@@ -23,7 +23,7 @@ import {
 type SectionType = "tracks" | "albums" | "artists";
 
 export default function HomeScreen() {
-  const { navidromeCreds } = useAuth(); // 2. Grab synchronous memory keys
+  const { navidromeCreds } = useAuth();
   const [activeSection, setActiveSection] = useState<SectionType>("tracks");
   const [songs, setSongs] = useState<Song[]>([]);
   const [albums, setAlbums] = useState<SharedCollectionData[]>([]);

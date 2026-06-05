@@ -129,10 +129,8 @@ export function useAudioEngine() {
       if (totalPoolLength <= queue.length) {
         const lastSong = queue[queue.length - 1];
 
-        // Safety bail-out (e.g. user just hit logout)
         if (!credsRef.current) return;
 
-        // Force assert credentials (!) because routing ensures they exist at this lifecycle step
         fetchThemeOrRandomQueue(credsRef.current!, lastSong, 5).then(
           (nextTracks) => {
             if (nextTracks.length > 0) {
@@ -157,7 +155,7 @@ export function useAudioEngine() {
       const targetSong = targetQueue[index];
 
       // Force assert credentials safely directly in RAM
-      const url = await getStreamUrl(credsRef.current!, targetSong.id);
+      const url = getStreamUrl(credsRef.current!, targetSong.id);
       if (!url) return;
 
       setCurrentIndex(index);

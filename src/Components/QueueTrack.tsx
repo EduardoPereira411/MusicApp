@@ -3,13 +3,14 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
+import { useArtwork } from "@/CustomHooks/useArtwork";
 import { QueueSong } from "@/Models/Models";
 
 interface QueueTrackProps {
-  item: any; // Using any for local meta flexibility
+  item: any;
   onTrackPress: (index: number) => void;
   onRemovePress: (index: number) => void;
-  onAddToUserQueue?: (item: any) => void; // Added handler
+  onAddToUserQueue?: (item: any) => void;
 }
 
 export const QueueTrack = React.memo(function QueueTrack({
@@ -18,7 +19,9 @@ export const QueueTrack = React.memo(function QueueTrack({
   onRemovePress,
   onAddToUserQueue,
 }: QueueTrackProps) {
-  const { absoluteIndex, artworkUrl, title, artist, origin } = item;
+  const { absoluteIndex, coverArt, title, artist, origin } = item;
+
+  const { url: artworkUrl } = useArtwork(coverArt);
 
   return (
     <View style={styles.trackRow}>

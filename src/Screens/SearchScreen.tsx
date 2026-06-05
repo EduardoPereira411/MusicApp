@@ -35,7 +35,6 @@ export default function SearchScreen() {
 
   const { currentSong, playing, playSongNow, addToQueue } = useAudio();
 
-  // Debounced search trigger
   useEffect(() => {
     if (!query.trim()) {
       setSongs([]);

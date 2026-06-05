@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useArtwork } from "@/CustomHooks/useArtwork"; // 1. Import our fast memory artwork hook
+import { useArtwork } from "@/CustomHooks/useArtwork";
 import { SharedCollectionData } from "@/Models/Models";
 
 interface MediaCollectionItemProps {

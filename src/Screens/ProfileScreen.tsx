@@ -11,8 +11,8 @@ import {
   TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "@/Context/AuthContext"; // 1. Use centralized Memory Auth
-import { useAudio } from "@/Context/AudioContext"; // 2. Stop ongoing audio on logouts
+import { useAuth } from "@/Context/AuthContext";
+import { useAudio } from "@/Context/AudioContext";
 import { fetchNavidromePlaylists } from "@/Services/navidromeService";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 import { SharedCollectionData } from "@/Models/Models";
@@ -27,7 +27,6 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  // Download API Form State (Synchronously seeded from memory state)
   const [showDlConfig, setShowDlConfig] = useState<boolean>(false);
   const [dlBaseUrl, setDlBaseUrl] = useState<string>(
     downloadCreds?.serverUrl || "",

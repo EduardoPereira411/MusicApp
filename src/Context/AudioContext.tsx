@@ -1,11 +1,11 @@
 import React, { createContext, useContext } from "react";
 import { AudioPlayer } from "expo-audio";
-import { Song } from "@/Models/Models";
+import { Song, QueueSong } from "@/Models/Models";
 import { useAudioEngine } from "@/CustomHooks/useAudioEngine";
 
 interface AudioContextType {
-  currentSong: Song | null;
-  queue: Song[];
+  currentSong: QueueSong | null;
+  queue: QueueSong[];
   currentIndex: number;
   playing: boolean;
   player: AudioPlayer;
@@ -17,7 +17,7 @@ interface AudioContextType {
   seekTo: (seconds: number) => void;
   removeFromQueue: (index: number) => void;
   skipToQueueIndex: (index: number) => void;
-  updateQueueOrder: (newQueue: Song[]) => void;
+  updateQueueOrder: (newQueue: QueueSong[]) => void;
   logoutCleanUp: () => void;
 }
 

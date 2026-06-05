@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 import { AlbumTracksModal } from "@/Components/AlbumTracksModal";
 import { downloadService } from "@/Services/downloadService";
 import { DownloadAlbumMetadata } from "@/Models/Models";
-import { useAuth } from "@/Context/AuthContext"; // 1. Import useAuth
+import { useAuth } from "@/Context/AuthContext";
 
 interface DownloadAlbumItemProps {
   item: DownloadAlbumMetadata;

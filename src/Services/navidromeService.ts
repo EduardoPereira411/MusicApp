@@ -71,20 +71,16 @@ export function buildSubsonicAuthParams(
   username: string,
   password: string,
 ): string {
-  // 1. Generate a secure, randomized string (the salt)
   const salt = Math.random().toString(36).substring(2, 12);
-
-  // 2. Compute token: MD5(password + salt)
   const token = md5(password + salt);
 
-  // 3. Assemble parameters compatible with Navidrome's strict JSON endpoint
   const params = new URLSearchParams({
     u: username,
     t: token,
     s: salt,
-    v: "1.16.1", // Subsonic API client compliance version
-    c: "app", // Custom client application signature identifier
-    f: "json", // Enforce raw application JSON serialization responses
+    v: "1.16.1",
+    c: "app",
+    f: "json",
   });
 
   return params.toString();
@@ -119,7 +115,6 @@ export async function fetchNavidromePlaylists(
     const playlists = data["subsonic-response"]?.playlists?.playlist || [];
     const playlistsArray = Array.isArray(playlists) ? playlists : [playlists];
 
-    console.log(playlistsArray);
     return playlistsArray.map((playlist: any) => ({
       id: playlist.id,
       name: playlist.name,
@@ -191,7 +186,6 @@ export async function fetchTracks(
       album: song.album,
       albumId: song.albumId,
       coverArt: song.coverArt || song.id,
-      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${imgParams}&id=${song.coverArt || song.id}`,
     }));
   } catch (e) {
     console.error("Failed fetching tracks:", e);
@@ -221,7 +215,6 @@ export async function fetchAlbums(
       subtitle: album.artist,
       subItemCount: album.songCount,
       coverArt: album.coverArt || album.id,
-      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${imgParams}&id=${album.coverArt || album.id}`,
     }));
   } catch (e) {
     console.error("Failed fetching albums:", e);
@@ -259,7 +252,6 @@ export async function searchAll(
       album: song.album,
       albumId: song.albumId,
       coverArt: song.coverArt || song.id,
-      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${imgParams}&id=${song.coverArt || song.id}`,
     }));
 
     const fetchedAlbums: any[] = searchResult?.album || [];
@@ -272,7 +264,6 @@ export async function searchAll(
       subtitle: album.artist,
       subItemCount: album.songCount,
       coverArt: album.coverArt || album.id,
-      artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${imgParams}&id=${album.coverArt || album.id}`,
     }));
 
     const fetchedArtists: any[] = searchResult?.artist || [];
@@ -359,7 +350,6 @@ export async function fetchCollectionDetails(
         subtitle: album.artist || fallbackName,
         subItemCount: album.songCount,
         coverArt: album.coverArt || album.id,
-        artworkUrl: album.coverArt || album.id,
       }));
 
       return { collections: albums };
@@ -386,7 +376,6 @@ export async function fetchCollectionDetails(
         album: track.album || fallbackName || "",
         albumId: track.albumId || id,
         coverArt: track.coverArt || track.id,
-        artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${imgParams}&id=${track.coverArt || track.id}`,
       }));
 
     return { songs };
@@ -433,7 +422,6 @@ export async function fetchThemeOrRandomQueue(
         album: track.album,
         duration: track.duration,
         coverArt: track.coverArt || track.id,
-        artworkUrl: `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${track.coverArt || track.id}`,
       }));
   } catch (error) {
     console.error("Failed creating dynamic context queue:", error);

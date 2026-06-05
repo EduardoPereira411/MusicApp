@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "@/Context/AuthContext"; // 1. Centralized auth hooks
+import { useAuth } from "@/Context/AuthContext";
 import { buildSubsonicAuthParams } from "@/Services/navidromeService";
 
 export default function LoginScreen() {
@@ -90,7 +90,6 @@ export default function LoginScreen() {
     }, 7000);
 
     try {
-      // 2. Compute the testing auth string locally without overriding state prematurely
       const authQueryString = buildSubsonicAuthParams(username, password);
       const cleanServerUrl = serverUrl.replace(/\/$/, "");
       const testUrl = `${cleanServerUrl}/rest/ping.view?${authQueryString}`;
@@ -113,7 +112,6 @@ export default function LoginScreen() {
       const subsonicResponse = data["subsonic-response"];
 
       if (subsonicResponse && subsonicResponse.status === "ok") {
-        // 3. Handshake validation passed! Commit tokens safely to memory storage states
         await setNavidromeAuth({
           serverUrl: cleanServerUrl,
           username,
@@ -140,7 +138,6 @@ export default function LoginScreen() {
     } catch (error: any) {
       clearTimeout(timeoutId);
 
-      // Wipe structural bindings on validation failures
       await setNavidromeAuth(null);
       await setDownloadAuth(null);
 

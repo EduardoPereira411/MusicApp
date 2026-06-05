@@ -12,7 +12,7 @@ import { downloadService } from "@/Services/downloadService";
 import { DownloadSongItem } from "@/Components/DownloadSongItem";
 import { DownloadAlbumItem } from "@/Components/DownloadAlbumItem";
 import { SearchBar } from "@/Components/SearchBar";
-import { useAuth } from "@/Context/AuthContext"; // 1. Import useAuth
+import { useAuth } from "@/Context/AuthContext";
 
 type SearchType = "tracks" | "albums";
 
