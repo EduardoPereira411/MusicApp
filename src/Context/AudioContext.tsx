@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from "react";
 import { AudioPlayer } from "expo-audio";
-import { Song, QueueSong } from "@/Models/Models";
+import { Song, QueueSong, PlaybackContext } from "@/Models/Models";
 import { useAudioEngine } from "@/CustomHooks/useAudioEngine";
 
 interface AudioContextType {
@@ -9,7 +9,12 @@ interface AudioContextType {
   currentIndex: number;
   playing: boolean;
   player: AudioPlayer;
-  playSongNow: (song: Song, contextSongs?: Song[]) => Promise<void>;
+  playSongNow: (
+    song: Song,
+    contextSongs?: Song[],
+    contextInfo?: PlaybackContext,
+  ) => Promise<void>;
+  playbackContext: PlaybackContext | null;
   addToQueue: (song: Song) => void;
   playNext: () => void;
   playPrevious: () => void;

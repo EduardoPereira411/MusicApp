@@ -37,7 +37,8 @@ export default function HomeScreen() {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
-  const { currentSong, playing, playSongNow, addToQueue } = useAudio();
+  const { currentSong, playing, playSongNow, addToQueue, playbackContext } =
+    useAudio();
 
   const handleSongOptions = useCallback((song: Song) => {
     setSelectedSong(song);
@@ -100,7 +101,7 @@ export default function HomeScreen() {
   const handlePlaySongNow = useCallback(
     async (song: Song, contextSongs?: Song[]) => {
       try {
-        await playSongNow(song, contextSongs);
+        await playSongNow(song, contextSongs, { type: "home" });
       } catch {}
     },
     [playSongNow],
@@ -110,7 +111,10 @@ export default function HomeScreen() {
     ({ item }: { item: Song | SharedCollectionData }) => {
       if (activeSection === "tracks") {
         const songItem = item as Song;
-        const isCurrent = songItem.id === currentSong?.id;
+
+        const isCurrent =
+          songItem.id === currentSong?.id && playbackContext?.type === "home";
+
         return (
           <SongItem
             item={songItem}
@@ -128,6 +132,7 @@ export default function HomeScreen() {
     [
       activeSection,
       currentSong?.id,
+      playbackContext,
       playing,
       handlePlaySongNow,
       handleSongOptions,
@@ -280,7 +285,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   listContainer: {
-    paddingBottom: 120, // Prevents elements from being hidden behind the GlobalMiniPlayer
+    paddingBottom: 120,
   },
   emptyText: {
     color: "#b3b3b3",

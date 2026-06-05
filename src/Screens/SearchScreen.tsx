@@ -35,7 +35,8 @@ export default function SearchScreen() {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  const { currentSong, playing, playSongNow, addToQueue } = useAudio();
+  const { currentSong, playing, playSongNow, addToQueue, playbackContext } =
+    useAudio();
 
   useEffect(() => {
     if (!query.trim()) {
@@ -56,7 +57,7 @@ export default function SearchScreen() {
   async function executeSearch() {
     if (!query.trim() || !navidromeCreds) return;
     setLoading(true);
-    setPipelineError(null); // Reset exception tracking on new action
+    setPipelineError(null);
 
     try {
       const result = await searchAll(navidromeCreds, query);
@@ -77,17 +78,29 @@ export default function SearchScreen() {
     setIsModalVisible(true);
   }, []);
 
+  const handlePlaySongNow = useCallback(
+    async (song: Song) => {
+      try {
+        await playSongNow(song, undefined, { type: "search" });
+      } catch {}
+    },
+    [playSongNow],
+  );
+
   const renderSearchItem = useCallback(
     ({ item }: { item: Song | SharedCollectionData }) => {
       if (activeTab === "tracks") {
         const songItem = item as Song;
-        const isCurrent = songItem.id === currentSong?.id;
+
+        const isCurrent =
+          songItem.id === currentSong?.id && playbackContext?.type === "search";
+
         return (
           <SongItem
             item={songItem}
             isCurrent={isCurrent}
             isPlaying={isCurrent && playing}
-            onPlay={playSongNow}
+            onPlay={handlePlaySongNow}
             onOptionsPress={handleSongOptions}
             onSwipeLeftToRight={addToQueue}
           />
@@ -99,8 +112,9 @@ export default function SearchScreen() {
     [
       activeTab,
       currentSong?.id,
+      playbackContext,
       playing,
-      playSongNow,
+      handlePlaySongNow,
       handleSongOptions,
       addToQueue,
     ],

@@ -40,7 +40,14 @@ export default function PlaylistScreen() {
 
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
-  const { currentSong, playing, playSongNow, addToQueue } = useAudio();
+  const {
+    currentSong,
+    currentIndex,
+    playbackContext,
+    playing,
+    playSongNow,
+    addToQueue,
+  } = useAudio();
 
   useEffect(() => {
     if (id && type && navidromeCreds) {
@@ -97,14 +104,11 @@ export default function PlaylistScreen() {
 
   const handlePlaySong = useCallback(
     (item: Song, contextQueue: Song[] = songs) => {
-      playSongNow(item, contextQueue).catch((err) => {
-        showToast(
-          err.message || "Failed to start processing playback track.",
-          "error",
-        );
+      playSongNow(item, contextQueue, { type: type, id: id }).catch((err) => {
+        showToast(err.message || "Failed playback execution.", "error");
       });
     },
-    [songs, playSongNow, showToast],
+    [songs, playSongNow, showToast, type, id], // added type, id to deps
   );
 
   const playCollectionStandard = useCallback(() => {
@@ -135,7 +139,13 @@ export default function PlaylistScreen() {
         return <MediaCollectionItem item={item as SharedCollectionData} />;
       } else {
         const trackItem = item as Song;
-        const isCurrent = currentSong?.id === trackItem.id;
+
+        // 1. Core Match: Is it the right song in the right playlist?
+        const isCurrent =
+          currentSong?.id === trackItem.id &&
+          playbackContext?.type === type &&
+          playbackContext?.id === id;
+
         return (
           <SongItem
             item={trackItem}
@@ -152,7 +162,9 @@ export default function PlaylistScreen() {
     },
     [
       type,
+      id,
       currentSong?.id,
+      playbackContext,
       playing,
       handleSongOptions,
       addToQueue,

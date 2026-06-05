@@ -9,7 +9,7 @@ import {
   getStreamUrl,
   fetchThemeOrRandomQueue,
 } from "@/Services/navidromeService";
-import { Song, QueueSong } from "@/Models/Models";
+import { Song, QueueSong, PlaybackContext } from "@/Models/Models";
 import { useToast } from "@/Context/ToastContext";
 import { useAuth } from "@/Context/AuthContext";
 import { useArtwork } from "./useArtwork";
@@ -22,6 +22,8 @@ export function useAudioEngine() {
   const { navidromeCreds } = useAuth();
   const [queue, setQueue] = useState<QueueSong[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
+  const [playbackContext, setPlaybackContext] =
+    useState<PlaybackContext | null>(null);
 
   const [lookAheadError, setLookAheadError] = useState<boolean>(false);
 
@@ -231,13 +233,18 @@ export function useAudioEngine() {
   }, [status.playing, currentSong]);
 
   const playSongNow = useCallback(
-    async (song: Song, contextSongs?: Song[]) => {
-      if (!credsRef.current) {
-        showToast("Missing active player credentials.", "error");
-        return;
-      }
+    async (
+      song: Song,
+      contextSongs?: Song[],
+      contextInfo?: PlaybackContext,
+    ) => {
+      if (!credsRef.current) return;
 
       try {
+        // Set the active scope context
+        const determinedContext = contextInfo || { type: "search" };
+        setPlaybackContext(determinedContext);
+
         if (
           stateRef.current.queue[stateRef.current.currentIndex]?.id === song.id
         ) {
@@ -264,6 +271,7 @@ export function useAudioEngine() {
             ...s,
             origin: "auto" as const,
             clientQueueId: generateUniqueId(),
+            playbackContext: determinedContext,
           }));
 
           setQueue(initialChunk);
@@ -274,6 +282,7 @@ export function useAudioEngine() {
               ...song,
               origin: "user" as const,
               clientQueueId: generateUniqueId(),
+              playbackContext: determinedContext,
             },
           ];
           internalQueueRef.current.contextQueue = [];
@@ -495,6 +504,7 @@ export function useAudioEngine() {
     playing: status.playing,
     player,
     playSongNow,
+    playbackContext,
     addToQueue,
     playNext,
     playPrevious,

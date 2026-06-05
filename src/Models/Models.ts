@@ -10,10 +10,17 @@ export interface Song {
   trackNumber?: number;
 }
 
-export type QueueSong = Song & {
-  origin?: "user" | "auto";
+export interface PlaybackContext {
+  type: "playlist" | "album" | "artist" | "home" | "search";
+  id?: string;
+  songIndex?: number;
+}
+
+export interface QueueSong extends Song {
+  origin: "user" | "auto";
   clientQueueId: string;
-};
+  playbackContext?: PlaybackContext;
+}
 
 export interface SharedCollectionData {
   id: string;
