@@ -14,6 +14,7 @@ import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
+import { ErrorDisplay } from "@/Components/ErrorDisplay";
 import {
   fetchTracks,
   fetchAlbums,
@@ -31,6 +32,7 @@ export default function HomeScreen() {
 
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
@@ -42,33 +44,35 @@ export default function HomeScreen() {
     setIsModalVisible(true);
   }, []);
 
-  useEffect(() => {
+  const fetchAllDataInitial = useCallback(async () => {
     if (!navidromeCreds) return;
-
-    async function fetchAllDataInitial() {
-      setInitialLoading(true);
-      try {
-        const [tracksData, albumsData, artistsData] = await Promise.all([
-          fetchTracks(navidromeCreds!),
-          fetchAlbums(navidromeCreds!),
-          fetchArtists(navidromeCreds!),
-        ]);
-        setSongs(tracksData);
-        setAlbums(albumsData);
-        setArtists(artistsData);
-      } catch (err) {
-        console.error("Failed to fetch dashboard feed metrics:", err);
-      } finally {
-        setInitialLoading(false);
-      }
+    setInitialLoading(true);
+    setPipelineError(null);
+    try {
+      const [tracksData, albumsData, artistsData] = await Promise.all([
+        fetchTracks(navidromeCreds),
+        fetchAlbums(navidromeCreds),
+        fetchArtists(navidromeCreds),
+      ]);
+      setSongs(tracksData);
+      setAlbums(albumsData);
+      setArtists(artistsData);
+    } catch (err: any) {
+      console.error("Failed to fetch dashboard feed metrics:", err);
+      setPipelineError(err.message || "An unexpected network error occurred.");
+    } finally {
+      setInitialLoading(false);
     }
-
-    fetchAllDataInitial();
   }, [navidromeCreds]);
+
+  useEffect(() => {
+    fetchAllDataInitial();
+  }, [fetchAllDataInitial]);
 
   async function handleRefresh() {
     if (!navidromeCreds) return;
     setIsRefreshing(true);
+    setPipelineError(null);
 
     try {
       if (activeSection === "tracks") {
@@ -78,12 +82,31 @@ export default function HomeScreen() {
       } else if (activeSection === "artists") {
         setArtists(await fetchArtists(navidromeCreds));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Refresh failed:", err);
+      setPipelineError(
+        err.message || "Failed to update target feed section components.",
+      );
     } finally {
       setIsRefreshing(false);
     }
   }
+
+  // Intercepting interactive errors when starting direct track playbacks
+  const handlePlaySongNow = useCallback(
+    async (song: Song, contextSongs?: Song[]) => {
+      try {
+        setPipelineError(null);
+        await playSongNow(song, contextSongs);
+      } catch (err: any) {
+        console.error("Failed executing core media playback invocation:", err);
+        setPipelineError(
+          err.message || "Playback initialization error encountered.",
+        );
+      }
+    },
+    [playSongNow],
+  );
 
   const renderSongItem = useCallback(
     ({ item }: { item: Song | SharedCollectionData }) => {
@@ -95,7 +118,7 @@ export default function HomeScreen() {
             item={songItem}
             isCurrent={isCurrent}
             isPlaying={isCurrent && playing}
-            onPlay={playSongNow}
+            onPlay={handlePlaySongNow}
             onOptionsPress={handleSongOptions}
             onSwipeLeftToRight={addToQueue}
           />
@@ -108,7 +131,7 @@ export default function HomeScreen() {
       activeSection,
       currentSong?.id,
       playing,
-      playSongNow,
+      handlePlaySongNow,
       handleSongOptions,
       addToQueue,
     ],
@@ -163,6 +186,16 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ))}
       </View>
+      <ErrorDisplay
+        title="Server Pipeline Exception"
+        message={pipelineError}
+        onRetry={
+          activeSection === "tracks" && songs.length === 0
+            ? fetchAllDataInitial
+            : handleRefresh
+        }
+        retryButtonTitle="Re-sync Active Pipeline"
+      />
 
       <View style={{ flex: 1 }}>
         <FlatList<Song | SharedCollectionData>
@@ -182,7 +215,9 @@ export default function HomeScreen() {
             />
           }
           ListEmptyComponent={
-            <Text style={styles.emptyText}>{listConfig.emptyText}</Text>
+            !pipelineError ? (
+              <Text style={styles.emptyText}>{listConfig.emptyText}</Text>
+            ) : null
           }
         />
       </View>

@@ -69,12 +69,14 @@ export const downloadService = {
         headers: config.headers,
         body: JSON.stringify({ query }),
       });
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`Server responded with code ${response.status}`);
       const data = await response.json();
       return data.results || [];
-    } catch (error) {
-      console.error("Failed downloading song search results:", error);
-      return [];
+    } catch (error: any) {
+      throw new Error(
+        `Failed downloading song search results: ${error.message || error}`,
+      );
     }
   },
 
@@ -90,12 +92,14 @@ export const downloadService = {
         headers: config.headers,
         body: JSON.stringify({ query }),
       });
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`Server responded with code ${response.status}`);
       const data = await response.json();
       return data.results || [];
-    } catch (error) {
-      console.error("Failed downloading video search results:", error);
-      return [];
+    } catch (error: any) {
+      throw new Error(
+        `Failed downloading video search results: ${error.message || error}`,
+      );
     }
   },
 
@@ -111,12 +115,14 @@ export const downloadService = {
         headers: config.headers,
         body: JSON.stringify({ query }),
       });
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`Server responded with code ${response.status}`);
       const data = await response.json();
       return data.results || [];
-    } catch (error) {
-      console.error("Failed downloading album search results:", error);
-      return [];
+    } catch (error: any) {
+      throw new Error(
+        `Failed downloading album search results: ${error.message || error}`,
+      );
     }
   },
 
@@ -124,7 +130,7 @@ export const downloadService = {
     creds: DownloadAPICredentials,
     browseId: string,
     download: boolean = false,
-  ): Promise<any | null> {
+  ): Promise<any> {
     try {
       const config = buildRequestConfig(creds);
 
@@ -133,18 +139,20 @@ export const downloadService = {
         headers: config.headers,
         body: JSON.stringify({ browseId, download }),
       });
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`Server responded with code ${response.status}`);
       return await response.json();
-    } catch (error) {
-      console.error(`Failed executing /album_tracks for ${browseId}:`, error);
-      return null;
+    } catch (error: any) {
+      throw new Error(
+        `Failed executing /album_tracks for ${browseId}: ${error.message || error}`,
+      );
     }
   },
 
   async downloadTrack(
     creds: DownloadAPICredentials,
     track: any,
-  ): Promise<{ status: string; task_id: string } | null> {
+  ): Promise<{ status: string; task_id: string }> {
     try {
       const config = buildRequestConfig(creds);
 
@@ -153,18 +161,20 @@ export const downloadService = {
         headers: config.headers,
         body: JSON.stringify(track),
       });
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`Server responded with code ${response.status}`);
       return await response.json();
-    } catch (error) {
-      console.error("Failed to trigger track download:", error);
-      return null;
+    } catch (error: any) {
+      throw new Error(
+        `Failed to trigger track download: ${error.message || error}`,
+      );
     }
   },
 
   async getTaskProgress(
     creds: DownloadAPICredentials,
     taskId: string,
-  ): Promise<any | null> {
+  ): Promise<any> {
     try {
       const config = buildRequestConfig(creds);
 
@@ -172,11 +182,13 @@ export const downloadService = {
         method: "GET",
         headers: config.headers,
       });
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`Server responded with code ${response.status}`);
       return await response.json();
-    } catch (error) {
-      console.error(`Failed to fetch task progress for ${taskId}:`, error);
-      return null;
+    } catch (error: any) {
+      throw new Error(
+        `Failed to fetch task progress for ${taskId}: ${error.message || error}`,
+      );
     }
   },
 };

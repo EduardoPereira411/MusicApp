@@ -13,6 +13,7 @@ import { DownloadSongItem } from "@/Components/DownloadSongItem";
 import { DownloadAlbumItem } from "@/Components/DownloadAlbumItem";
 import { SearchBar } from "@/Components/SearchBar";
 import { useAuth } from "@/Context/AuthContext";
+import { ErrorDisplay } from "@/Components/ErrorDisplay";
 
 type SearchType = "tracks" | "albums";
 
@@ -24,11 +25,13 @@ export default function DownloadSearchScreen() {
   const [songs, setSongs] = useState<any[]>([]);
   const [albums, setAlbums] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!query.trim()) {
       setSongs([]);
       setAlbums([]);
+      setPipelineError(null);
       return;
     }
 
@@ -51,6 +54,7 @@ export default function DownloadSearchScreen() {
     }
 
     setLoading(true);
+    setPipelineError(null);
     try {
       if (activeTab === "tracks") {
         const results = await downloadService.searchSongs(downloadCreds, query);
@@ -62,8 +66,11 @@ export default function DownloadSearchScreen() {
         );
         setAlbums(results);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Download server search failed:", e);
+      setPipelineError(
+        e.message || "Failed to search the remote Download Proxy endpoint.",
+      );
     } finally {
       setLoading(false);
     }
@@ -110,6 +117,7 @@ export default function DownloadSearchScreen() {
             onPress={() => {
               setSongs([]);
               setAlbums([]);
+              setPipelineError(null);
               setActiveTab(tab);
             }}
           >
@@ -124,6 +132,13 @@ export default function DownloadSearchScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      <ErrorDisplay
+        title="Download Pipeline Exception"
+        message={pipelineError}
+        onRetry={executeDownloadSearch}
+        retryButtonTitle="Retry Search Pipeline"
+      />
 
       <View style={{ flex: 1 }}>
         {loading ? (

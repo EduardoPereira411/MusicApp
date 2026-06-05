@@ -16,6 +16,7 @@ import { useAudio } from "@/Context/AudioContext";
 import { fetchNavidromePlaylists } from "@/Services/navidromeService";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 import { SharedCollectionData } from "@/Models/Models";
+import { ErrorDisplay } from "@/Components/ErrorDisplay";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function ProfileScreen() {
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   const [showDlConfig, setShowDlConfig] = useState<boolean>(false);
   const [dlBaseUrl, setDlBaseUrl] = useState<string>(
@@ -55,11 +57,13 @@ export default function ProfileScreen() {
 
   async function loadPlaylists() {
     if (!navidromeCreds) return;
+    setPipelineError(null);
     try {
       const list = await fetchNavidromePlaylists(navidromeCreds);
       setPlaylists(list);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed fetching user playlists:", e);
+      setPipelineError(e.message || "Failed to load account user playlists.");
     }
   }
 
@@ -121,13 +125,9 @@ export default function ProfileScreen() {
         text: "Log Out",
         style: "destructive",
         onPress: async () => {
-          // Tear down background audio workers, clear streams and notification art
           logoutCleanUp();
-
-          // Wipe memory credentials and secure storage simultaneously
           await setNavidromeAuth(null);
           await setDownloadAuth(null);
-
           router.replace("/login");
         },
       },
@@ -181,9 +181,11 @@ export default function ProfileScreen() {
           />
         }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            No playlists found on your server.
-          </Text>
+          !pipelineError ? (
+            <Text style={styles.emptyText}>
+              No playlists found on your server.
+            </Text>
+          ) : null
         }
         ListHeaderComponent={
           <View>
@@ -277,6 +279,14 @@ export default function ProfileScreen() {
             )}
 
             <View style={styles.divider} />
+
+            <ErrorDisplay
+              title="Playlist Service Sync Error"
+              message={pipelineError}
+              onRetry={handleRefresh}
+              retryButtonTitle="Re-sync Playlists"
+            />
+
             <Text style={styles.sectionHeader}>Your Playlists</Text>
           </View>
         }

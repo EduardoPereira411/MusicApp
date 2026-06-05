@@ -64,6 +64,39 @@ export default function GlobalMiniPlayer() {
   const hasNext = currentIndex < queue.length - 1;
   const hasPrevious = currentIndex > 0;
 
+  // Defensive wrappers for audio pipeline operations
+  const handlePlayPrevious = async () => {
+    try {
+      await playPrevious();
+    } catch (error) {
+      console.warn("Failed to regress playback track: ", error);
+    }
+  };
+
+  const handleTogglePlayPause = async () => {
+    try {
+      await togglePlayPause();
+    } catch (error) {
+      console.warn("Failed to toggle playback state: ", error);
+    }
+  };
+
+  const handlePlayNext = async () => {
+    try {
+      await playNext();
+    } catch (error) {
+      console.warn("Failed to skip to next track: ", error);
+    }
+  };
+
+  const handleSeek = async (value: number) => {
+    try {
+      await seekTo(value);
+    } catch (error) {
+      console.warn("Failed to update playhead location: ", error);
+    }
+  };
+
   return (
     <>
       <View style={[styles.miniPlayerContainer, { bottom: dynamicBottom }]}>
@@ -91,7 +124,7 @@ export default function GlobalMiniPlayer() {
 
           <View style={styles.controlsContainer}>
             <TouchableOpacity
-              onPress={playPrevious}
+              onPress={handlePlayPrevious}
               disabled={!hasPrevious}
               style={styles.controlButton}
             >
@@ -103,7 +136,7 @@ export default function GlobalMiniPlayer() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={togglePlayPause}
+              onPress={handleTogglePlayPause}
               style={styles.playButton}
             >
               <Ionicons
@@ -114,7 +147,7 @@ export default function GlobalMiniPlayer() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={playNext}
+              onPress={handlePlayNext}
               disabled={!hasNext}
               style={styles.controlButton}
             >
@@ -127,7 +160,7 @@ export default function GlobalMiniPlayer() {
           </View>
         </View>
 
-        <MiniPlayerSlider player={player} seekTo={seekTo} />
+        <MiniPlayerSlider player={player} seekTo={handleSeek} />
       </View>
 
       <QueueModal

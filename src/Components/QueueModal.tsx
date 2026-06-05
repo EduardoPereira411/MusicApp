@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import {
   Modal,
   View,
@@ -15,6 +15,7 @@ import { Image } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Sortable from "react-native-sortables";
 import { QueueTrack } from "@/Components/QueueTrack";
+import { ErrorDisplay } from "@/Components/ErrorDisplay";
 
 interface QueueModalProps {
   visible: boolean;
@@ -32,6 +33,7 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
   } = useAudio();
   const insets = useSafeAreaInsets();
 
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
   const { url: currentArtworkUrl } = useArtwork(currentSong?.coverArt, 150);
 
   const { userUpcoming, autoUpcoming } = useMemo(() => {
@@ -56,41 +58,58 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
 
   const handleTrackPress = useCallback(
     (idx: number) => {
-      skipToQueueIndex(idx);
+      try {
+        setPipelineError(null);
+        skipToQueueIndex(idx);
+      } catch (err: any) {
+        setPipelineError("Failed to switch tracks inside current playlist.");
+      }
     },
     [skipToQueueIndex],
   );
 
   const handleRemovePress = useCallback(
     (idx: number) => {
-      removeFromQueue(idx);
+      try {
+        setPipelineError(null);
+        removeFromQueue(idx);
+      } catch (err: any) {
+        setPipelineError("Could not remove the selected item from queue.");
+      }
     },
     [removeFromQueue],
   );
 
   const applyQueueUpdate = useCallback(
     (newUpcomingSegment: any[]) => {
-      const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
+      setPipelineError(null);
+      try {
+        const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
 
-      let lastUserIndex = -1;
-      newUpcomingSegment.forEach((item, idx) => {
-        if (item.origin === "user") lastUserIndex = idx;
-      });
+        let lastUserIndex = -1;
+        newUpcomingSegment.forEach((item, idx) => {
+          if (item.origin === "user") lastUserIndex = idx;
+        });
 
-      const validatedUpcoming = newUpcomingSegment.map((item, index) => {
-        const cleanSong = { ...item };
-        delete cleanSong.absoluteIndex;
+        const validatedUpcoming = newUpcomingSegment.map((item, index) => {
+          const cleanSong = { ...item };
+          delete cleanSong.absoluteIndex;
 
-        if (
-          item.origin === "auto" &&
-          (index <= lastUserIndex || (lastUserIndex === -1 && index === 0))
-        ) {
-          return { ...cleanSong, origin: "user" as const };
-        }
-        return cleanSong;
-      });
+          if (
+            item.origin === "auto" &&
+            (index <= lastUserIndex || (lastUserIndex === -1 && index === 0))
+          ) {
+            return { ...cleanSong, origin: "user" as const };
+          }
+          return cleanSong;
+        });
 
-      updateQueueOrder([...unchangedPastAndCurrent, ...validatedUpcoming]);
+        updateQueueOrder([...unchangedPastAndCurrent, ...validatedUpcoming]);
+      } catch (err: any) {
+        setPipelineError(
+          "Failed to synchronize the modified queue arrangement.",
+        );
+      }
     },
     [queue, currentIndex, updateQueueOrder],
   );
@@ -113,26 +132,34 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
 
   const handleAddToUserQueue = useCallback(
     (trackToPromote: any) => {
-      const cleanSong = { ...trackToPromote, origin: "user" as const };
-      delete cleanSong.absoluteIndex;
-      const currentUpcomingClean = queue
-        .slice(currentIndex + 1)
-        .map((s: any) => {
-          const copy = { ...s };
-          delete copy.absoluteIndex;
-          return copy;
-        });
+      setPipelineError(null);
+      try {
+        const cleanSong = { ...trackToPromote, origin: "user" as const };
+        delete cleanSong.absoluteIndex;
+        const currentUpcomingClean = queue
+          .slice(currentIndex + 1)
+          .map((s: any) => {
+            const copy = { ...s };
+            delete copy.absoluteIndex;
+            return copy;
+          });
 
-      const remainingUpcoming = currentUpcomingClean.filter(
-        (s) => s.clientQueueId !== cleanSong.clientQueueId,
-      );
+        const remainingUpcoming = currentUpcomingClean.filter(
+          (s) => s.clientQueueId !== cleanSong.clientQueueId,
+        );
 
-      const userPart = remainingUpcoming.filter((s) => s.origin === "user");
-      const autoPart = remainingUpcoming.filter((s) => s.origin === "auto");
-      const targetUpcomingSegment = [...userPart, cleanSong, ...autoPart];
-      const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
+        const userPart = remainingUpcoming.filter((s) => s.origin === "user");
+        const autoPart = remainingUpcoming.filter((s) => s.origin === "auto");
+        const targetUpcomingSegment = [...userPart, cleanSong, ...autoPart];
+        const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
 
-      updateQueueOrder([...unchangedPastAndCurrent, ...targetUpcomingSegment]);
+        updateQueueOrder([
+          ...unchangedPastAndCurrent,
+          ...targetUpcomingSegment,
+        ]);
+      } catch (err: any) {
+        setPipelineError("Unable to prioritize recommendation index.");
+      }
     },
     [queue, currentIndex, updateQueueOrder],
   );
@@ -162,6 +189,10 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
 
   const keyExtractor = useCallback((item: any) => item.clientQueueId, []);
 
+  const clearPipelineErrors = useCallback(() => {
+    setPipelineError(null);
+  }, []);
+
   if (!visible) return null;
 
   return (
@@ -182,6 +213,12 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
             <Text style={styles.headerTitle}>Play Queue</Text>
             <View style={styles.headerSpacer} />
           </View>
+          <ErrorDisplay
+            title="Queue Mutation Exception"
+            message={pipelineError}
+            onRetry={clearPipelineErrors}
+            retryButtonTitle="Dismiss Notification"
+          />
 
           <ScrollView
             contentContainerStyle={[
@@ -339,7 +376,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 4,
-    backgroundColor: "#333", // acts as inline fallback natively
+    backgroundColor: "#333",
   },
   textContainer: {
     flex: 1,

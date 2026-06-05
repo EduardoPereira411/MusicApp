@@ -16,6 +16,7 @@ import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { useRouter } from "expo-router";
 import { SearchBar } from "@/Components/SearchBar";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
+import { ErrorDisplay } from "@/Components/ErrorDisplay";
 
 type SearchType = "tracks" | "albums" | "artists";
 
@@ -29,6 +30,7 @@ export default function SearchScreen() {
   const [albums, setAlbums] = useState<SharedCollectionData[]>([]);
   const [artists, setArtists] = useState<SharedCollectionData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -40,6 +42,7 @@ export default function SearchScreen() {
       setSongs([]);
       setAlbums([]);
       setArtists([]);
+      setPipelineError(null);
       return;
     }
 
@@ -53,14 +56,18 @@ export default function SearchScreen() {
   async function executeSearch() {
     if (!query.trim() || !navidromeCreds) return;
     setLoading(true);
+    setPipelineError(null); // Reset exception tracking on new action
 
     try {
       const result = await searchAll(navidromeCreds, query);
       setSongs(result.songs || []);
       setAlbums(result.albums || []);
       setArtists(result.artists || []);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Search query execution failed:", e);
+      setPipelineError(
+        e.message || "Failed to finalize content search parameters.",
+      );
     } finally {
       setLoading(false);
     }
@@ -142,7 +149,10 @@ export default function SearchScreen() {
               styles.tabButton,
               activeTab === tab && styles.tabButtonActive,
             ]}
-            onPress={() => setActiveTab(tab)}
+            onPress={() => {
+              setPipelineError(null);
+              setActiveTab(tab);
+            }}
           >
             <Text
               style={[
@@ -155,6 +165,13 @@ export default function SearchScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      <ErrorDisplay
+        title="Search Routine Exception"
+        message={pipelineError}
+        onRetry={executeSearch}
+        retryButtonTitle="Re-run Search Query"
+      />
 
       <View style={{ flex: 1 }}>
         {loading ? (
@@ -172,15 +189,17 @@ export default function SearchScreen() {
             windowSize={2}
             removeClippedSubviews={true}
             ListEmptyComponent={
-              query.trim() ? (
-                <Text style={styles.emptyText}>
-                  No results found for "{query}"
-                </Text>
-              ) : (
-                <Text style={styles.emptyText}>
-                  Type something to begin your search.
-                </Text>
-              )
+              !pipelineError ? (
+                query.trim() ? (
+                  <Text style={styles.emptyText}>
+                    No results found for "{query}"
+                  </Text>
+                ) : (
+                  <Text style={styles.emptyText}>
+                    Type something to begin your search.
+                  </Text>
+                )
+              ) : null
             }
           />
         )}

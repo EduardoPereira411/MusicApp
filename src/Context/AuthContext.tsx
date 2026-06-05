@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (download) setDownloadCreds(download);
       } catch (error) {
         console.error(
-          "[AuthContext] Failed to bootstrap application keys:",
+          "[AuthContext] Failed to bootstrap application keys safely:",
           error,
         );
       } finally {

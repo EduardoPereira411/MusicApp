@@ -18,6 +18,7 @@ import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 import { Image } from "expo-image";
 import { useArtwork } from "@/CustomHooks/useArtwork";
+import { ErrorDisplay } from "@/Components/ErrorDisplay";
 
 const APP_ICON_FALLBACK = require("@/assets/images/icon.png");
 
@@ -33,6 +34,7 @@ export default function PlaylistScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [collections, setCollections] = useState<SharedCollectionData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
@@ -48,6 +50,7 @@ export default function PlaylistScreen() {
     if (!id || !type || !navidromeCreds) return;
 
     setLoading(true);
+    setPipelineError(null);
     try {
       const result = await fetchCollectionDetails(
         navidromeCreds,
@@ -62,10 +65,13 @@ export default function PlaylistScreen() {
         setSongs(result.songs || []);
         setCollections([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(
         `[PlaylistScreen] UI Error rendering ${type} details:`,
         error,
+      );
+      setPipelineError(
+        error.message || `Unable to load resource indices for this ${type}.`,
       );
     } finally {
       setLoading(false);
@@ -93,7 +99,9 @@ export default function PlaylistScreen() {
 
   const handlePlaySong = useCallback(
     (item: Song, contextQueue: Song[] = songs) => {
-      playSongNow(item, contextQueue);
+      playSongNow(item, contextQueue).catch((err) => {
+        console.error("Collection streaming execution exception:", err);
+      });
     },
     [songs, playSongNow],
   );
@@ -253,6 +261,15 @@ export default function PlaylistScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.errorOffsetContainer}>
+        <ErrorDisplay
+          title="Collection Loading Failure"
+          message={pipelineError}
+          onRetry={fetchDetails}
+          retryButtonTitle="Re-fetch Collection Details"
+        />
+      </View>
+
       <FlatList<Song | SharedCollectionData>
         data={type === "artist" ? collections : songs}
         keyExtractor={keyExtractor}
@@ -264,11 +281,13 @@ export default function PlaylistScreen() {
         windowSize={5}
         removeClippedSubviews={true}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            {type === "artist"
-              ? "This artist has no cataloged albums."
-              : "This context contains no playable items."}
-          </Text>
+          !pipelineError ? (
+            <Text style={styles.emptyText}>
+              {type === "artist"
+                ? "This artist has no cataloged albums."
+                : "This context contains no playable items."}
+            </Text>
+          ) : null
         }
       />
 
@@ -305,9 +324,13 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 6,
   },
+  errorOffsetContainer: {
+    paddingTop: 100,
+    paddingHorizontal: 16,
+  },
   headerBlock: {
     alignItems: "center",
-    paddingTop: 100,
+    paddingTop: 20,
     paddingHorizontal: 24,
     marginBottom: 20,
   },

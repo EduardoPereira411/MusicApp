@@ -40,7 +40,6 @@ export const authStorage = {
 
 /**
  * Generates the required Subsonic auth query string parameters (u, t, s, v, c, f)
- * Synchronously processes in-memory credentials parameters instantly.
  */
 export function getSubsonicAuthParams(
   creds: NavidromeCredentials,
@@ -106,13 +105,22 @@ export async function fetchNavidromePlaylists(
 ): Promise<SharedCollectionData[]> {
   try {
     const params = getSubsonicAuthParams(creds);
-    if (!params) return [];
+    if (!params) throw new Error("Missing username or password configuration.");
 
     const url = `${creds.serverUrl}/rest/getPlaylists.view?${params}`;
     const response = await fetch(url);
-    const data = await response.json();
+    if (!response.ok)
+      throw new Error(`HTTP network status error: ${response.status}`);
 
-    const playlists = data["subsonic-response"]?.playlists?.playlist || [];
+    const data = await response.json();
+    const subResponse = data["subsonic-response"];
+    if (subResponse?.status === "failed") {
+      throw new Error(
+        subResponse.error?.message || "Subsonic api authentication failed.",
+      );
+    }
+
+    const playlists = subResponse?.playlists?.playlist || [];
     const playlistsArray = Array.isArray(playlists) ? playlists : [playlists];
 
     return playlistsArray.map((playlist: any) => ({
@@ -123,9 +131,8 @@ export async function fetchNavidromePlaylists(
       subItemCount: playlist.songCount,
       coverArt: "",
     }));
-  } catch (e) {
-    console.error("Failed to fetch playlists:", e);
-    throw e;
+  } catch (e: any) {
+    throw new Error(`Failed to fetch playlists: ${e.message || e}`);
   }
 }
 
@@ -134,19 +141,34 @@ export async function checkSongInPlaylist(
   playlistId: string,
   songId: string,
 ): Promise<boolean> {
-  const params = getSubsonicAuthParams(creds);
-  if (!params) return false;
+  try {
+    const params = getSubsonicAuthParams(creds);
+    if (!params) throw new Error("Missing username or password configuration.");
 
-  const checkUrl = `${creds.serverUrl}/rest/getPlaylist.view?${params}&id=${playlistId}`;
-  const checkRes = await fetch(checkUrl);
-  const checkData = await checkRes.json();
+    const checkUrl = `${creds.serverUrl}/rest/getPlaylist.view?${params}&id=${playlistId}`;
+    const checkRes = await fetch(checkUrl);
+    if (!checkRes.ok)
+      throw new Error(`HTTP status code error: ${checkRes.status}`);
 
-  const existingTracks = checkData["subsonic-response"]?.playlist?.entry || [];
-  const tracksArray = Array.isArray(existingTracks)
-    ? existingTracks
-    : [existingTracks];
+    const checkData = await checkRes.json();
+    const subResponse = checkData["subsonic-response"];
+    if (subResponse?.status === "failed") {
+      throw new Error(
+        subResponse.error?.message || "Subsonic server interaction failed.",
+      );
+    }
 
-  return tracksArray.some((track: any) => track.id === songId);
+    const existingTracks = subResponse?.playlist?.entry || [];
+    const tracksArray = Array.isArray(existingTracks)
+      ? existingTracks
+      : [existingTracks];
+
+    return tracksArray.some((track: any) => track.id === songId);
+  } catch (e: any) {
+    throw new Error(
+      `Failed while validating structural playlist state: ${e.message || e}`,
+    );
+  }
 }
 
 export async function addTrackToPlaylist(
@@ -154,14 +176,27 @@ export async function addTrackToPlaylist(
   playlistId: string,
   songId: string,
 ): Promise<boolean> {
-  const params = getSubsonicAuthParams(creds);
-  if (!params) return false;
+  try {
+    const params = getSubsonicAuthParams(creds);
+    if (!params) throw new Error("Missing username or password configuration.");
 
-  const updateUrl = `${creds.serverUrl}/rest/updatePlaylist.view?${params}&playlistId=${playlistId}&songIdToAdd=${songId}`;
-  const updateRes = await fetch(updateUrl);
-  const updateData = await updateRes.json();
+    const updateUrl = `${creds.serverUrl}/rest/updatePlaylist.view?${params}&playlistId=${playlistId}&songIdToAdd=${songId}`;
+    const updateRes = await fetch(updateUrl);
+    if (!updateRes.ok)
+      throw new Error(`HTTP Status Error: ${updateRes.status}`);
 
-  return updateData["subsonic-response"]?.status === "ok";
+    const updateData = await updateRes.json();
+    const subResponse = updateData["subsonic-response"];
+    if (subResponse?.status === "failed") {
+      throw new Error(
+        subResponse.error?.message || "Could not save track to playlist.",
+      );
+    }
+
+    return subResponse?.status === "ok";
+  } catch (e: any) {
+    throw new Error(`Playlist insertion failed: ${e.message || e}`);
+  }
 }
 
 export async function fetchTracks(
@@ -170,15 +205,21 @@ export async function fetchTracks(
 ): Promise<Song[]> {
   try {
     const params = getSubsonicAuthParams(creds);
-    const imgParams = getSubsonicAuthParams(creds, imageSize);
-    if (!params || !imgParams) return [];
+    if (!params) throw new Error("Missing authentication credentials.");
 
     const url = `${creds.serverUrl}/rest/getRandomSongs.view?${params}&size=20`;
     const response = await fetch(url);
-    const data = await response.json();
-    const fetchedSongs: any[] =
-      data["subsonic-response"]?.randomSongs?.song || [];
+    if (!response.ok) throw new Error(`HTTP status error: ${response.status}`);
 
+    const data = await response.json();
+    const subResponse = data["subsonic-response"];
+    if (subResponse?.status === "failed") {
+      throw new Error(
+        subResponse.error?.message || "Subsonic application context failure.",
+      );
+    }
+
+    const fetchedSongs: any[] = subResponse?.randomSongs?.song || [];
     return fetchedSongs.map((song) => ({
       id: song.id,
       title: song.title,
@@ -187,9 +228,8 @@ export async function fetchTracks(
       albumId: song.albumId,
       coverArt: song.coverArt || song.id,
     }));
-  } catch (e) {
-    console.error("Failed fetching tracks:", e);
-    return [];
+  } catch (e: any) {
+    throw new Error(`Failed fetching random tracks: ${e.message || e}`);
   }
 }
 
@@ -199,15 +239,22 @@ export async function fetchAlbums(
 ): Promise<SharedCollectionData[]> {
   try {
     const params = getSubsonicAuthParams(creds);
-    const imgParams = getSubsonicAuthParams(creds, imageSize);
-    if (!params || !imgParams) return [];
+    if (!params) throw new Error("Missing credentials setup context.");
 
     const url = `${creds.serverUrl}/rest/getAlbumList2.view?${params}&type=random&size=20`;
     const response = await fetch(url);
-    const data = await response.json();
-    const fetchedAlbums: any[] =
-      data["subsonic-response"]?.albumList2?.album || [];
+    if (!response.ok)
+      throw new Error(`HTTP execution connection fault: ${response.status}`);
 
+    const data = await response.json();
+    const subResponse = data["subsonic-response"];
+    if (subResponse?.status === "failed") {
+      throw new Error(
+        subResponse.error?.message || "Subsonic retrieval context fault.",
+      );
+    }
+
+    const fetchedAlbums: any[] = subResponse?.albumList2?.album || [];
     return fetchedAlbums.map((album) => ({
       id: album.id,
       name: album.name,
@@ -216,9 +263,8 @@ export async function fetchAlbums(
       subItemCount: album.songCount,
       coverArt: album.coverArt || album.id,
     }));
-  } catch (e) {
-    console.error("Failed fetching albums:", e);
-    return [];
+  } catch (e: any) {
+    throw new Error(`Failed fetching albums list: ${e.message || e}`);
   }
 }
 
@@ -233,55 +279,67 @@ export async function searchAll(
 }> {
   try {
     const params = getSubsonicAuthParams(creds);
-    const imgParams = getSubsonicAuthParams(creds, imageSize);
-    if (!params || !imgParams || !query.trim())
-      return { songs: [], albums: [], artists: [] };
+    if (!params) throw new Error("Missing structural auth properties.");
+    if (!query.trim()) return { songs: [], albums: [], artists: [] };
 
     const url = `${creds.serverUrl}/rest/search3.view?${params}&query=${encodeURIComponent(query)}&songCount=30&albumCount=30&artistCount=30`;
     const response = await fetch(url);
+    if (!response.ok)
+      throw new Error(`Server connection error: ${response.status}`);
+
     const data = await response.json();
-    const searchResult = data["subsonic-response"]?.searchResult3;
+    const subResponse = data["subsonic-response"];
+    if (subResponse?.status === "failed") {
+      throw new Error(
+        subResponse.error?.message || "Search index query denied.",
+      );
+    }
+
+    const searchResult = subResponse?.searchResult3;
 
     const fetchedSongs: any[] = searchResult?.song || [];
-    const songs = (
-      Array.isArray(fetchedSongs) ? fetchedSongs : [fetchedSongs]
-    ).map((song) => ({
-      id: song.id,
-      title: song.title,
-      artist: song.artist,
-      album: song.album,
-      albumId: song.albumId,
-      coverArt: song.coverArt || song.id,
-    }));
+    const songs = (Array.isArray(fetchedSongs) ? fetchedSongs : [fetchedSongs])
+      .filter(Boolean)
+      .map((song) => ({
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        album: song.album,
+        albumId: song.albumId,
+        coverArt: song.coverArt || song.id,
+      }));
 
     const fetchedAlbums: any[] = searchResult?.album || [];
     const albums: SharedCollectionData[] = (
       Array.isArray(fetchedAlbums) ? fetchedAlbums : [fetchedAlbums]
-    ).map((album) => ({
-      id: album.id,
-      name: album.name,
-      type: "album",
-      subtitle: album.artist,
-      subItemCount: album.songCount,
-      coverArt: album.coverArt || album.id,
-    }));
+    )
+      .filter(Boolean)
+      .map((album) => ({
+        id: album.id,
+        name: album.name,
+        type: "album",
+        subtitle: album.artist,
+        subItemCount: album.songCount,
+        coverArt: album.coverArt || album.id,
+      }));
 
     const fetchedArtists: any[] = searchResult?.artist || [];
     const artists: SharedCollectionData[] = (
       Array.isArray(fetchedArtists) ? fetchedArtists : [fetchedArtists]
-    ).map((artist) => ({
-      id: artist.id,
-      name: artist.name,
-      type: "artist",
-      subItemCount: artist.albumCount,
-      subtitle: `${artist.albumCount || 0} Albums`,
-      coverArt: "",
-    }));
+    )
+      .filter(Boolean)
+      .map((artist) => ({
+        id: artist.id,
+        name: artist.name,
+        type: "artist",
+        subItemCount: artist.albumCount,
+        subtitle: `${artist.albumCount || 0} Albums`,
+        coverArt: "",
+      }));
 
     return { songs, albums, artists };
-  } catch (e) {
-    console.error("Search API service failure:", e);
-    return { songs: [], albums: [], artists: [] };
+  } catch (e: any) {
+    throw new Error(`Search index failure down stream: ${e.message || e}`);
   }
 }
 
@@ -290,13 +348,21 @@ export async function fetchArtists(
 ): Promise<SharedCollectionData[]> {
   try {
     const params = getSubsonicAuthParams(creds);
-    if (!params) return [];
+    if (!params) throw new Error("No active identity context token parsed.");
 
     const url = `${creds.serverUrl}/rest/getArtists.view?${params}`;
     const response = await fetch(url);
-    const data = await response.json();
+    if (!response.ok) throw new Error(`HTTP status: ${response.status}`);
 
-    const indices: any[] = data["subsonic-response"]?.artists?.index || [];
+    const data = await response.json();
+    const subResponse = data["subsonic-response"];
+    if (subResponse?.status === "failed") {
+      throw new Error(
+        subResponse.error?.message || "Artists payload rejected.",
+      );
+    }
+
+    const indices: any[] = subResponse?.artists?.index || [];
     const fetchedArtists: SharedCollectionData[] = [];
 
     indices.forEach((index) => {
@@ -315,9 +381,10 @@ export async function fetchArtists(
     });
 
     return fetchedArtists.slice(0, 30);
-  } catch (e) {
-    console.error("Failed fetching artists:", e);
-    return [];
+  } catch (e: any) {
+    throw new Error(
+      `Failed fetching artists core directory: ${e.message || e}`,
+    );
   }
 }
 
@@ -329,15 +396,23 @@ export async function fetchCollectionDetails(
 ): Promise<{ songs?: Song[]; collections?: SharedCollectionData[] }> {
   try {
     const params = getSubsonicAuthParams(creds);
-    const imgParams = getSubsonicAuthParams(creds);
-    if (!params || !imgParams) return {};
+    if (!params) throw new Error("Subsonic token processing aborted.");
 
     if (type === "artist") {
       const url = `${creds.serverUrl}/rest/getArtist.view?${params}&id=${id}&f=json`;
       const response = await fetch(url);
-      const data = await response.json();
+      if (!response.ok)
+        throw new Error(`HTTP processing anomaly: ${response.status}`);
 
-      const artistData = data["subsonic-response"]?.artist;
+      const data = await response.json();
+      const subResponse = data["subsonic-response"];
+      if (subResponse?.status === "failed") {
+        throw new Error(
+          subResponse.error?.message || "Artist collections context blocked.",
+        );
+      }
+
+      const artistData = subResponse?.artist;
       if (!artistData) return { collections: [] };
 
       const rawAlbums = artistData.album || [];
@@ -359,9 +434,18 @@ export async function fetchCollectionDetails(
     const url = `${creds.serverUrl}/rest/${endpoint}?${params}&id=${id}&f=json`;
 
     const response = await fetch(url);
-    const data = await response.json();
+    if (!response.ok)
+      throw new Error(`HTTP endpoint anomaly: ${response.status}`);
 
-    const targetData = data["subsonic-response"]?.[type];
+    const data = await response.json();
+    const subResponse = data["subsonic-response"];
+    if (subResponse?.status === "failed") {
+      throw new Error(
+        subResponse.error?.message || "Collection records lookup failed.",
+      );
+    }
+
+    const targetData = subResponse?.[type];
     if (!targetData) return { songs: [] };
 
     const rawTracks = targetData.entry || targetData.song || [];
@@ -379,12 +463,10 @@ export async function fetchCollectionDetails(
       }));
 
     return { songs };
-  } catch (error) {
-    console.error(
-      `[navidromeService] Error fetching collection details for ${type} with ID ${id}:`,
-      error,
+  } catch (error: any) {
+    throw new Error(
+      `Error fetching collection details for ${type}: ${error.message || error}`,
     );
-    throw error;
   }
 }
 
@@ -404,14 +486,24 @@ export async function fetchThemeOrRandomQueue(
 ): Promise<Song[]> {
   try {
     const params = getSubsonicAuthParams(creds);
-    if (!params) return [];
+    if (!params)
+      throw new Error("Subsonic credentials stream parameters missing.");
 
     const randomResponse = await fetch(
       `${creds.serverUrl}/rest/getRandomSongs.view?${params}&size=${size}&f=json`,
     );
+    if (!randomResponse.ok)
+      throw new Error(`HTTP stream failure status: ${randomResponse.status}`);
+
     const randomData = await randomResponse.json();
-    const fetchedTracks =
-      randomData["subsonic-response"]?.randomSongs?.song || [];
+    const subResponse = randomData["subsonic-response"];
+    if (subResponse?.status === "failed") {
+      throw new Error(
+        subResponse.error?.message || "Dynamic queue generation rejected.",
+      );
+    }
+
+    const fetchedTracks = subResponse?.randomSongs?.song || [];
 
     return fetchedTracks
       .filter((track: any) => track.id !== baseSong.id)
@@ -423,8 +515,9 @@ export async function fetchThemeOrRandomQueue(
         duration: track.duration,
         coverArt: track.coverArt || track.id,
       }));
-  } catch (error) {
-    console.error("Failed creating dynamic context queue:", error);
-    return [];
+  } catch (error: any) {
+    throw new Error(
+      `Failed creating dynamic context queue: ${error.message || error}`,
+    );
   }
 }

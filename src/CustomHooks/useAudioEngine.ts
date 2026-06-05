@@ -35,7 +35,6 @@ export function useAudioEngine() {
     contextQueue: [],
   });
 
-  // Track credentials in a ref to bypass stale closure issues across async steps securely
   const credsRef = useRef(navidromeCreds);
   useEffect(() => {
     credsRef.current = navidromeCreds;
@@ -57,7 +56,6 @@ export function useAudioEngine() {
     stateRef.current = { queue, currentIndex };
   }, [queue, currentIndex]);
 
-  // Initialization of OS background audio with track skipping functionality
   useEffect(() => {
     setAudioModeAsync({
       playsInSilentMode: true,
@@ -83,7 +81,6 @@ export function useAudioEngine() {
     };
   }, []);
 
-  // Updating art and duration of song
   useEffect(() => {
     if (!currentSong) return;
 
@@ -96,10 +93,7 @@ export function useAudioEngine() {
     }).catch((err) => console.error("Error updating metadata:", err));
   }, [currentSong, status.duration, currentArtworkUrl]);
 
-  /**
-   * LOOK-AHEAD AUTOMATION EFFECT
-   * Seamlessly builds chunks using user entries first, then album lists, then radio fallbacks
-   */
+  // LOOK-AHEAD AUTOMATION EFFECT WITH ERROR RESILIENCY
   useEffect(() => {
     if (currentIndex === -1 || queue.length === 0) return;
 
@@ -125,14 +119,13 @@ export function useAudioEngine() {
         setQueue((prev) => [...prev, ...decoratedBatch]);
       }
 
-      // Procedural/Infinite Radio Generation fallback
       if (totalPoolLength <= queue.length) {
         const lastSong = queue[queue.length - 1];
 
         if (!credsRef.current) return;
 
-        fetchThemeOrRandomQueue(credsRef.current!, lastSong, 5).then(
-          (nextTracks) => {
+        fetchThemeOrRandomQueue(credsRef.current!, lastSong, 5)
+          .then((nextTracks) => {
             if (nextTracks.length > 0) {
               const flaggedTracks = nextTracks.map((track) => ({
                 ...track,
@@ -142,11 +135,14 @@ export function useAudioEngine() {
               internalQueueRef.current.contextQueue.push(...flaggedTracks);
               setQueue((prev) => [...prev, ...flaggedTracks]);
             }
-          },
-        );
+          })
+          .catch((error: any) => {
+            console.error("Look-ahead radio cycle fetching error:", error);
+            showToast("Failed to fetch next automatic radio tracks");
+          });
       }
     }
-  }, [currentIndex, queue.length]);
+  }, [currentIndex, queue.length, showToast]);
 
   const loadSongAtIndex = useCallback(
     async (index: number, targetQueue = stateRef.current.queue) => {
@@ -154,18 +150,22 @@ export function useAudioEngine() {
 
       const targetSong = targetQueue[index];
 
-      // Force assert credentials safely directly in RAM
-      const url = getStreamUrl(credsRef.current!, targetSong.id);
-      if (!url) return;
+      try {
+        const url = getStreamUrl(credsRef.current!, targetSong.id);
+        if (!url)
+          throw new Error("Could not construct a valid stream endpoint URL.");
 
-      setCurrentIndex(index);
-      player.replace({ uri: url });
-      player.play();
+        setCurrentIndex(index);
+        player.replace({ uri: url });
+        player.play();
+      } catch (err: any) {
+        console.error("Queue indexing loading error details:", err);
+        showToast(`Stream Error: ${err.message || err}`);
+      }
     },
-    [player],
+    [player, showToast],
   );
 
-  // Lockscreen Event Listener
   useEffect(() => {
     const removeListener = MediaControl.addListener((event) => {
       const { queue: freshQueue, currentIndex: freshIndex } = stateRef.current;
@@ -202,7 +202,6 @@ export function useAudioEngine() {
     return () => removeListener();
   }, [player, loadSongAtIndex]);
 
-  // Sync Playback State (activated when playback state or song changes)
   useEffect(() => {
     if (currentSong) {
       const stateValue = status.playing
@@ -218,9 +217,12 @@ export function useAudioEngine() {
     }
   }, [status.playing, currentSong]);
 
+  // Throws errors up to the caller interface view safely
   const playSongNow = useCallback(
     async (song: Song, contextSongs?: Song[]) => {
-      if (!credsRef.current) return;
+      if (!credsRef.current) {
+        throw new Error("Missing active player authentication config.");
+      }
 
       if (
         stateRef.current.queue[stateRef.current.currentIndex]?.id === song.id
@@ -230,8 +232,10 @@ export function useAudioEngine() {
         return;
       }
 
-      const url = await getStreamUrl(credsRef.current!, song.id);
-      if (!url) return;
+      const url = getStreamUrl(credsRef.current!, song.id);
+      if (!url) {
+        throw new Error("Failed to format media stream server url location.");
+      }
 
       internalQueueRef.current.userQueue = [];
 
@@ -282,7 +286,11 @@ export function useAudioEngine() {
 
       setQueue((prev) => {
         if (prev.length === 0) {
-          setTimeout(() => playSongNow(flaggedSong), 0);
+          setTimeout(() => {
+            playSongNow(flaggedSong).catch((err) => {
+              showToast(`Unable to start queue: ${err.message || err}`);
+            });
+          }, 0);
           return [flaggedSong];
         }
 
@@ -433,7 +441,6 @@ export function useAudioEngine() {
     }
   }, [player]);
 
-  // Auto-advance track handler
   useEffect(() => {
     if (
       currentSong &&
