@@ -20,48 +20,52 @@ const generateUniqueId = (): string => {
 
 export function useAudioEngine() {
   const { navidromeCreds } = useAuth();
-  const [queue, setQueue] = useState<QueueSong[]>([]);
-  const [playingSongQueueIndex, setPlayingSongQueueIndex] =
-    useState<number>(-1);
-  const [playbackContext, setPlaybackContext] =
-    useState<PlaybackContext | null>(null);
-
-  const [lookAheadError, setLookAheadError] = useState<boolean>(false);
-
-  const player = useAudioPlayer();
-  const status = useAudioPlayerStatus(player);
-  const { showToast } = useToast();
-
-  const internalQueueRef = useRef<{
-    userQueue: QueueSong[];
-    contextQueue: Song[];
-  }>({
-    userQueue: [],
-    contextQueue: [],
-  });
-
   const credsRef = useRef(navidromeCreds);
   useEffect(() => {
     credsRef.current = navidromeCreds;
   }, [navidromeCreds]);
 
+  // Queue for items that are rendered on the UI
+  const [queue, setQueue] = useState<QueueSong[]>([]);
+  // Index on the queue for the currently playing Item
+  const [playingSongQueueIndex, setPlayingSongQueueIndex] =
+    useState<number>(-1);
+  // Context for where the command to start the song was issued from
+  const [playbackContext, setPlaybackContext] =
+    useState<PlaybackContext | null>(null);
+
+  // source of truth for queue info
+  const internalQueueRef = useRef<{
+    userQueue: QueueSong[];
+    contextQueue: Song[];
+    renderedQueue: QueueSong[];
+    playingSongQueueIndex: number;
+  }>({
+    userQueue: [],
+    contextQueue: [],
+    renderedQueue: queue,
+    playingSongQueueIndex: playingSongQueueIndex,
+  });
+
+  // AudioPlayerInfo
+  const player = useAudioPlayer();
+  const status = useAudioPlayerStatus(player);
+
+  const [lookAheadError, setLookAheadError] = useState<boolean>(false);
+  const { showToast } = useToast();
+
+  // Set Metadata for currently playing song
   const currentSong = useMemo(() => {
     return playingSongQueueIndex >= 0 && playingSongQueueIndex < queue.length
       ? queue[playingSongQueueIndex]
       : null;
   }, [playingSongQueueIndex, queue]);
 
-  const { url: currentArtworkUrl } = useArtwork(currentSong?.coverArt, 500);
+  const { url: currentArtworkUrl } = useArtwork(currentSong?.coverArt, 300);
 
-  const stateRef = useRef<{
-    queue: QueueSong[];
-    playingSongQueueIndex: number;
-  }>({
-    queue,
-    playingSongQueueIndex,
-  });
   useEffect(() => {
-    stateRef.current = { queue, playingSongQueueIndex };
+    internalQueueRef.current.renderedQueue = queue;
+    internalQueueRef.current.playingSongQueueIndex = playingSongQueueIndex;
   }, [queue, playingSongQueueIndex]);
 
   useEffect(() => {
@@ -164,7 +168,10 @@ export function useAudioEngine() {
   }, [playingSongQueueIndex]);
 
   const loadSongAtIndex = useCallback(
-    async (index: number, targetQueue = stateRef.current.queue) => {
+    async (
+      index: number,
+      targetQueue = internalQueueRef.current.renderedQueue,
+    ) => {
       if (index < 0 || index >= targetQueue.length || !credsRef.current) return;
 
       const targetSong = targetQueue[index];
@@ -185,10 +192,11 @@ export function useAudioEngine() {
     [player, showToast],
   );
 
+  // OS Native Media Control Listeners
   useEffect(() => {
     const removeListener = MediaControl.addListener((event) => {
-      const { queue: freshQueue, playingSongQueueIndex: freshIndex } =
-        stateRef.current;
+      const { renderedQueue: freshQueue, playingSongQueueIndex: freshIndex } =
+        internalQueueRef.current;
 
       switch (event.command) {
         case Command.PLAY:
@@ -246,14 +254,14 @@ export function useAudioEngine() {
       if (!credsRef.current) return;
 
       try {
-        // Set the active scope context
         const determinedContext = contextInfo || { type: "search" };
         setPlaybackContext(determinedContext);
 
-        if (
-          stateRef.current.queue[stateRef.current.playingSongQueueIndex]?.id ===
-          song.id
-        ) {
+        const currentActiveQueue = internalQueueRef.current.renderedQueue;
+        const currentActiveIndex =
+          internalQueueRef.current.playingSongQueueIndex;
+
+        if (currentActiveQueue[currentActiveIndex]?.id === song.id) {
           if (player.playing) player.pause();
           else player.play();
           return;
@@ -356,14 +364,16 @@ export function useAudioEngine() {
   );
 
   const playNext = useCallback(() => {
-    const { queue: q, playingSongQueueIndex: idx } = stateRef.current;
+    const { renderedQueue: q, playingSongQueueIndex: idx } =
+      internalQueueRef.current;
     if (idx < q.length - 1) {
       loadSongAtIndex(idx + 1, q);
     }
   }, [loadSongAtIndex]);
 
   const playPrevious = useCallback(() => {
-    const { playingSongQueueIndex: idx, queue: q } = stateRef.current;
+    const { playingSongQueueIndex: idx, renderedQueue: q } =
+      internalQueueRef.current;
     if (idx > 0) {
       loadSongAtIndex(idx - 1, q);
     }
@@ -433,7 +443,7 @@ export function useAudioEngine() {
 
   const skipToQueueIndex = useCallback(
     (index: number) => {
-      const { queue: currentQueue } = stateRef.current;
+      const currentQueue = internalQueueRef.current.renderedQueue;
       if (index >= 0 && index < currentQueue.length) {
         loadSongAtIndex(index, currentQueue);
       }
@@ -460,7 +470,12 @@ export function useAudioEngine() {
     try {
       setQueue([]);
       setPlayingSongQueueIndex(-1);
-      internalQueueRef.current = { userQueue: [], contextQueue: [] };
+      internalQueueRef.current = {
+        userQueue: [],
+        contextQueue: [],
+        renderedQueue: [],
+        playingSongQueueIndex: -1,
+      };
       player.replace("");
       player.pause();
       MediaControl.updateMetadata({
@@ -479,30 +494,33 @@ export function useAudioEngine() {
     }
   }, [player, showToast]);
 
+  //listen for end of track event to skip to next song
   useEffect(() => {
-    if (
-      currentSong &&
-      !status.playing &&
-      status.currentTime > 0 &&
-      status.currentTime >= (status.duration || 1)
-    ) {
-      const { queue: freshQueue, playingSongQueueIndex: freshIndex } =
-        stateRef.current;
-      if (freshIndex < freshQueue.length - 1) {
-        loadSongAtIndex(freshIndex + 1, freshQueue);
-      } else {
-        setPlayingSongQueueIndex(-1);
-        setQueue([]);
-        internalQueueRef.current = { userQueue: [], contextQueue: [] };
-      }
-    }
-  }, [
-    status.playing,
-    status.currentTime,
-    status.duration,
-    currentSong,
-    loadSongAtIndex,
-  ]);
+    if (!player) return;
+    const subscription = player.addListener(
+      "playbackStatusUpdate",
+      (statusUpdate) => {
+        if (statusUpdate.didJustFinish) {
+          const {
+            renderedQueue: freshQueue,
+            playingSongQueueIndex: freshIndex,
+          } = internalQueueRef.current;
+
+          if (freshIndex < freshQueue.length - 1) {
+            loadSongAtIndex(freshIndex + 1, freshQueue);
+          } else {
+            setPlayingSongQueueIndex(-1);
+            setQueue([]);
+            internalQueueRef.current.userQueue = [];
+            internalQueueRef.current.contextQueue = [];
+          }
+        }
+      },
+    );
+    return () => {
+      subscription.remove();
+    };
+  }, [player, loadSongAtIndex]);
 
   return {
     currentSong,
