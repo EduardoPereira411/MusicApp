@@ -201,7 +201,6 @@ export async function addTrackToPlaylist(
 
 export async function fetchTracks(
   creds: NavidromeCredentials,
-  imageSize: number = 300,
 ): Promise<Song[]> {
   try {
     const params = getSubsonicAuthParams(creds);
@@ -235,7 +234,6 @@ export async function fetchTracks(
 
 export async function fetchAlbums(
   creds: NavidromeCredentials,
-  imageSize: number = 300,
 ): Promise<SharedCollectionData[]> {
   try {
     const params = getSubsonicAuthParams(creds);
@@ -271,7 +269,6 @@ export async function fetchAlbums(
 export async function searchAll(
   creds: NavidromeCredentials,
   query: string,
-  imageSize: number = 300,
 ): Promise<{
   songs: Song[];
   albums: SharedCollectionData[];

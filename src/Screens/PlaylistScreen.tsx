@@ -18,8 +18,8 @@ import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 import { Image } from "expo-image";
-import { useArtwork } from "@/CustomHooks/useArtwork";
 import { ErrorDisplay } from "@/Components/ErrorDisplay";
+import { getArtworkUrl } from "@/Services/navidromeService";
 
 const APP_ICON_FALLBACK = require("@/assets/images/icon.png");
 
@@ -93,14 +93,14 @@ export default function PlaylistScreen() {
     return "";
   }, [type, songs, collections]);
 
-  const { url: resolvedArtworkUrl } = useArtwork(targetCoverArtId, 400);
-
   const headerArtworkSource = useMemo(() => {
-    if (resolvedArtworkUrl) {
-      return { uri: resolvedArtworkUrl };
+    if (!navidromeCreds || !targetCoverArtId) {
+      return APP_ICON_FALLBACK;
     }
-    return APP_ICON_FALLBACK;
-  }, [resolvedArtworkUrl]);
+
+    const url = getArtworkUrl(navidromeCreds, targetCoverArtId, 500);
+    return url ? { uri: url } : APP_ICON_FALLBACK;
+  }, [navidromeCreds, targetCoverArtId]);
 
   const handlePlaySong = useCallback(
     (item: Song, itemIndex: number, contextQueue: Song[] = songs) => {

@@ -10,7 +10,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { Ionicons } from "@expo/vector-icons";
-import { useArtwork } from "@/CustomHooks/useArtwork";
+import { useAuth } from "@/Context/AuthContext";
+import { getArtworkUrl } from "@/Services/navidromeService";
 
 interface SongItemProps {
   item: Song;
@@ -36,12 +37,16 @@ export const SongItem = React.memo(
     showTrackNumber = false,
     index,
   }: SongItemProps) => {
+    const { navidromeCreds } = useAuth();
     const displayTrackNumber =
       item.trackNumber ?? (index !== undefined ? index + 1 : null);
 
     const translateX = useSharedValue(0);
     const isGreen = useSharedValue(false);
-    const { url: artworkUrl } = useArtwork(item.coverArt, 110);
+    const artworkUrl =
+      navidromeCreds && item?.coverArt
+        ? getArtworkUrl(navidromeCreds, item.coverArt, 100)
+        : null;
 
     const panGesture = Gesture.Pan()
       .activeOffsetX([-10, 10])

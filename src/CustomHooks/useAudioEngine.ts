@@ -8,11 +8,11 @@ import MediaControl, { Command, PlaybackState } from "expo-media-control";
 import {
   getStreamUrl,
   fetchThemeOrRandomQueue,
+  getArtworkUrl,
 } from "@/Services/navidromeService";
 import { Song, QueueSong, PlaybackContext } from "@/Models/Models";
 import { useToast } from "@/Context/ToastContext";
 import { useAuth } from "@/Context/AuthContext";
-import { useArtwork } from "./useArtwork";
 
 const generateUniqueId = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
@@ -54,8 +54,6 @@ export function useAudioEngine() {
       : null;
   }, [playingSongQueueIndex, queue]);
 
-  const { url: currentArtworkUrl } = useArtwork(currentSong?.coverArt, 300);
-
   // Initialize Audio & Media Controls
   useEffect(() => {
     setAudioModeAsync({
@@ -78,9 +76,14 @@ export function useAudioEngine() {
     };
   }, []);
 
+  const currentArtworkUrl = useMemo(() => {
+    if (!navidromeCreds || !currentSong?.coverArt) return null;
+    return getArtworkUrl(navidromeCreds, currentSong.coverArt, 300);
+  }, [navidromeCreds, currentSong?.id, currentSong?.coverArt]);
   // Update OS System Tray Metadata
   useEffect(() => {
     if (!currentSong) return;
+
     MediaControl.updateMetadata({
       title: currentSong.title,
       artist: currentSong.artist,
@@ -88,7 +91,7 @@ export function useAudioEngine() {
       artwork: currentArtworkUrl ? { uri: currentArtworkUrl } : undefined,
       duration: status.duration || currentSong.duration || 0,
     }).catch(() => {});
-  }, [currentSong, status.duration, currentArtworkUrl]);
+  }, [currentSong, currentArtworkUrl, status.duration]);
 
   // Update OS System Tray Playback Play/Pause state
   useEffect(() => {

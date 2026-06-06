@@ -2,8 +2,9 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useArtwork } from "@/CustomHooks/useArtwork";
 import { SharedCollectionData } from "@/Models/Models";
+import { useAuth } from "@/Context/AuthContext";
+import { getArtworkUrl } from "@/Services/navidromeService";
 
 interface MediaCollectionItemProps {
   item: SharedCollectionData;
@@ -11,10 +12,14 @@ interface MediaCollectionItemProps {
 
 export const MediaCollectionItem = React.memo(
   ({ item }: MediaCollectionItemProps) => {
+    const { navidromeCreds } = useAuth();
     const router = useRouter();
     const isArtist = item.type === "artist";
 
-    const { url: authenticatedArtworkUrl } = useArtwork(item.coverArt, 150);
+    const artworkUrl =
+      navidromeCreds && item?.coverArt
+        ? getArtworkUrl(navidromeCreds, item.coverArt, 150)
+        : null;
 
     const handlePress = () => {
       router.push({
@@ -29,9 +34,9 @@ export const MediaCollectionItem = React.memo(
 
     return (
       <TouchableOpacity style={styles.itemCard} onPress={handlePress}>
-        {authenticatedArtworkUrl ? (
+        {artworkUrl ? (
           <Image
-            source={{ uri: authenticatedArtworkUrl }}
+            source={{ uri: artworkUrl }}
             style={[styles.cardArt, isArtist && styles.artistAvatar]}
             contentFit="cover"
             transition={200}

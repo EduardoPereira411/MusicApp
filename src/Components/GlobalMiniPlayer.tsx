@@ -8,7 +8,8 @@ import { useToast } from "@/Context/ToastContext";
 import { useAudioPlayerStatus, AudioPlayer } from "expo-audio";
 import Slider from "@react-native-community/slider";
 import { QueueModal } from "@/Components/QueueModal";
-import { useArtwork } from "@/CustomHooks/useArtwork";
+import { useAuth } from "@/Context/AuthContext";
+import { getArtworkUrl } from "@/Services/navidromeService";
 
 const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
   player,
@@ -49,8 +50,11 @@ const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
 
 const MiniPlayerMeta = React.memo(
   function MiniPlayerMeta({ song }: { song: any }) {
-    const { url: artworkUrl } = useArtwork(song?.coverArt, 100);
-
+    const { navidromeCreds } = useAuth();
+    const artworkUrl =
+      navidromeCreds && song?.coverArt
+        ? getArtworkUrl(navidromeCreds, song.coverArt, 100)
+        : null;
     return (
       <>
         <Image

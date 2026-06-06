@@ -10,12 +10,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudio } from "@/Context/AudioContext";
-import { useArtwork } from "@/CustomHooks/useArtwork";
 import { Image } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Sortable from "react-native-sortables";
 import { QueueTrack } from "@/Components/QueueTrack";
 import { ErrorDisplay } from "@/Components/ErrorDisplay";
+import { useAuth } from "@/Context/AuthContext";
+import { getArtworkUrl } from "@/Services/navidromeService";
 
 interface QueueModalProps {
   visible: boolean;
@@ -24,13 +25,17 @@ interface QueueModalProps {
 
 const NowPlayingHeaderTrack = React.memo(
   function NowPlayingHeaderTrack({ song }: { song: any }) {
-    const { url: currentArtworkUrl } = useArtwork(song?.coverArt, 150);
+    const { navidromeCreds } = useAuth();
+    const artworkUrl =
+      navidromeCreds && song?.coverArt
+        ? getArtworkUrl(navidromeCreds, song.coverArt, 150)
+        : null;
 
     return (
       <View style={[styles.trackRow, styles.playingRow]}>
         <View style={styles.trackDetails}>
           <Image
-            source={currentArtworkUrl ? { uri: currentArtworkUrl } : undefined}
+            source={artworkUrl ? { uri: artworkUrl } : undefined}
             style={styles.artwork}
             contentFit="cover"
             transition={150}

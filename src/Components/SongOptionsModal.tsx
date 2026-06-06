@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Modal,
   View,
@@ -13,11 +13,11 @@ import {
 import { Image } from "expo-image";
 import { Song } from "@/Models/Models";
 import { useAuth } from "@/Context/AuthContext";
-import { useArtwork } from "@/CustomHooks/useArtwork";
 import {
   fetchNavidromePlaylists,
   checkSongInPlaylist,
   addTrackToPlaylist,
+  getArtworkUrl,
 } from "@/Services/navidromeService";
 import { useRouter } from "expo-router";
 
@@ -36,7 +36,11 @@ export function SongOptionsModal({
 }: SongOptionsModalProps) {
   const router = useRouter();
   const { navidromeCreds } = useAuth();
-  const { url: artworkUrl } = useArtwork(song?.coverArt);
+
+  const artworkUrl = useMemo(() => {
+    if (!visible || !navidromeCreds || !song?.coverArt) return null;
+    return getArtworkUrl(navidromeCreds, song.coverArt, 100);
+  }, [visible, navidromeCreds, song?.id, song?.coverArt]);
 
   const [viewState, setViewState] = useState<"menu" | "playlists">("menu");
   const [playlists, setPlaylists] = useState<any[]>([]);
@@ -46,7 +50,7 @@ export function SongOptionsModal({
     if (visible) setViewState("menu");
   }, [visible]);
 
-  if (!song) return null;
+  if (!visible || !song) return null;
 
   const handleGoToAlbum = () => {
     if (!song.albumId) return;

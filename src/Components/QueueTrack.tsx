@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
-import { useArtwork } from "@/CustomHooks/useArtwork";
 import { QueueSong } from "@/Models/Models";
+import { useAuth } from "@/Context/AuthContext";
+import { getArtworkUrl } from "@/Services/navidromeService";
 
 interface QueueTrackProps {
   item: any;
@@ -20,8 +21,11 @@ export const QueueTrack = React.memo(function QueueTrack({
   onAddToUserQueue,
 }: QueueTrackProps) {
   const { absoluteIndex, coverArt, title, artist, origin } = item;
-
-  const { url: artworkUrl } = useArtwork(coverArt);
+  const { navidromeCreds } = useAuth();
+  const artworkUrl =
+    navidromeCreds && item?.coverArt
+      ? getArtworkUrl(navidromeCreds, item.coverArt, 100)
+      : null;
 
   return (
     <View style={styles.trackRow}>
