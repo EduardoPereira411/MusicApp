@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,58 @@ import { ErrorDisplay } from "@/Components/ErrorDisplay";
 import { getArtworkUrl } from "@/Services/navidromeService";
 
 const APP_ICON_FALLBACK = require("@/assets/images/icon.png");
+
+const MemoizedSongListItem = React.memo(
+  ({
+    trackItem,
+    index,
+    isCurrent,
+    isPlaying,
+    handleSongOptions,
+    addToQueue,
+    handlePlaySong,
+    songs,
+    type,
+    id,
+  }: {
+    trackItem: Song;
+    index: number;
+    isCurrent: boolean;
+    isPlaying: boolean;
+    handleSongOptions: (song: Song) => void;
+    addToQueue: (song: Song, context: any) => void;
+    handlePlaySong: (song: Song, index: number, songs: Song[]) => void;
+    songs: Song[];
+    type: string;
+    id: string;
+  }) => {
+    return (
+      <SongItem
+        item={trackItem}
+        index={index}
+        showTrackNumber={true}
+        isCurrent={isCurrent}
+        isPlaying={isPlaying}
+        onOptionsPress={handleSongOptions}
+        onSwipeLeftToRight={(track) =>
+          addToQueue(track, {
+            type,
+            id,
+            songIndex: index,
+          })
+        }
+        onPlay={(track) => handlePlaySong(track, index, songs)}
+      />
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.isCurrent === nextProps.isCurrent &&
+      prevProps.isPlaying === nextProps.isPlaying &&
+      prevProps.trackItem.id === nextProps.trackItem.id
+    );
+  },
+);
 
 export default function PlaylistScreen() {
   const router = useRouter();
@@ -143,38 +195,33 @@ export default function PlaylistScreen() {
       } else {
         const trackItem = item as Song;
 
-        //Match context and song
+        // Match context and song details
         const isContextMatch =
           currentSong?.playbackContext?.type === type &&
           currentSong?.playbackContext?.id === id;
         const isSongMatch = currentSong?.id === trackItem.id;
+
         let isCurrent = false;
-        //Match the index in case of duplicate songs
         if (isContextMatch && isSongMatch) {
           if (currentSong?.playbackContext?.songIndex !== undefined) {
-            const expectedListIndex = currentSong?.playbackContext.songIndex;
-            isCurrent = index === expectedListIndex;
+            isCurrent = index === currentSong.playbackContext.songIndex;
           } else {
             isCurrent = true;
           }
         }
 
         return (
-          <SongItem
-            item={trackItem}
+          <MemoizedSongListItem
+            trackItem={trackItem}
             index={index}
-            showTrackNumber={true}
             isCurrent={isCurrent}
             isPlaying={isCurrent && playing}
-            onOptionsPress={handleSongOptions}
-            onSwipeLeftToRight={(track) =>
-              addToQueue(track, {
-                type: type,
-                id: id,
-                songIndex: index,
-              })
-            }
-            onPlay={(track) => handlePlaySong(track, index, songs)}
+            handleSongOptions={handleSongOptions}
+            addToQueue={addToQueue}
+            handlePlaySong={handlePlaySong}
+            songs={songs}
+            type={type}
+            id={id}
           />
         );
       }
@@ -183,7 +230,6 @@ export default function PlaylistScreen() {
       type,
       id,
       currentSong,
-      playingSongQueueIndex,
       playing,
       handleSongOptions,
       addToQueue,

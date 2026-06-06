@@ -1,9 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import {
-  useAudioPlayer,
-  useAudioPlayerStatus,
-  setAudioModeAsync,
-} from "expo-audio";
+import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
 import MediaControl, { Command, PlaybackState } from "expo-media-control";
 import {
   getStreamUrl,
@@ -24,10 +20,11 @@ export function useAudioEngine() {
     credsRef.current = navidromeCreds;
   }, [navidromeCreds]);
 
-  // Source of truth for UI Layout
+  // UI Layout States
   const [queue, setQueue] = useState<QueueSong[]>([]);
   const [playingSongQueueIndex, setPlayingSongQueueIndex] =
     useState<number>(-1);
+  const [isPlayingState, setIsPlayingState] = useState<boolean>(false);
   const [lookAheadError, setLookAheadError] = useState<boolean>(false);
 
   // Ref for info that matters to the UI
@@ -43,7 +40,6 @@ export function useAudioEngine() {
   });
 
   const player = useAudioPlayer();
-  const status = useAudioPlayerStatus(player);
   const { showToast } = useToast();
 
   const currentSong = useMemo(() => {
@@ -52,7 +48,87 @@ export function useAudioEngine() {
       : null;
   }, [playingSongQueueIndex, queue]);
 
-  // Initialize Audio & Media Controls
+  // Tracking refs to manage lockscreen sync across native stream state fluctuations
+  const currentSongRef = useRef<QueueSong | null>(null);
+  const currentArtworkUrlRef = useRef<string | null>(null);
+  const hasUpdatedDurationRef = useRef<boolean>(false);
+
+  const currentArtworkUrl = useMemo(() => {
+    if (!navidromeCreds || !currentSong?.coverArt) return null;
+    return getArtworkUrl(navidromeCreds, currentSong.coverArt, 300);
+  }, [navidromeCreds, currentSong?.id, currentSong?.coverArt]);
+
+  useEffect(() => {
+    currentSongRef.current = currentSong;
+    currentArtworkUrlRef.current = currentArtworkUrl;
+    hasUpdatedDurationRef.current = false;
+  }, [currentSong, currentArtworkUrl]);
+
+  // Native Lock Screen data updates
+  useEffect(() => {
+    if (!player) return;
+
+    const playbackSub = player.addListener(
+      "playbackStatusUpdate",
+      (statusUpdate) => {
+        if (statusUpdate.didJustFinish) {
+          const { queue: freshQueue, playingSongQueueIndex: freshIndex } =
+            stateRef.current;
+          if (freshIndex < freshQueue.length - 1) {
+            loadSongAtIndex(freshIndex + 1, freshQueue);
+          } else {
+            setPlayingSongQueueIndex(-1);
+            setQueue([]);
+            poolsRef.current.userQueue = [];
+            poolsRef.current.contextQueue = [];
+          }
+        }
+
+        // Synchronize our static boolean flag without sending standard frame events to layout state
+        if (statusUpdate.playing !== undefined) {
+          setIsPlayingState(statusUpdate.playing);
+        }
+
+        const song = currentSongRef.current;
+        if (song) {
+          if (statusUpdate.currentTime !== undefined) {
+            const stateValue = statusUpdate.playing
+              ? PlaybackState.PLAYING
+              : PlaybackState.PAUSED;
+            const speedRate = statusUpdate.playing ? 1.0 : 0.0;
+
+            MediaControl.updatePlaybackState(
+              stateValue,
+              statusUpdate.currentTime,
+              speedRate,
+            ).catch(() => {});
+          }
+
+          // Update song time slider on lock Screen
+          if (
+            statusUpdate.duration &&
+            statusUpdate.duration > 0 &&
+            !hasUpdatedDurationRef.current
+          ) {
+            hasUpdatedDurationRef.current = true;
+            MediaControl.updateMetadata({
+              title: song.title,
+              artist: song.artist,
+              album: song.album || "Navidrome Album",
+              artwork: currentArtworkUrlRef.current
+                ? { uri: currentArtworkUrlRef.current }
+                : undefined,
+              duration: statusUpdate.duration,
+            }).catch(() => {});
+          }
+        }
+      },
+    );
+
+    return () => playbackSub.remove();
+  }, [player]);
+
+  // Audio Session Initialization
   useEffect(() => {
     setAudioModeAsync({
       playsInSilentMode: true,
@@ -74,38 +150,28 @@ export function useAudioEngine() {
     };
   }, []);
 
-  const currentArtworkUrl = useMemo(() => {
-    if (!navidromeCreds || !currentSong?.coverArt) return null;
-    return getArtworkUrl(navidromeCreds, currentSong.coverArt, 300);
-  }, [navidromeCreds, currentSong?.id, currentSong?.coverArt]);
-  // Update OS System Tray Metadata
+  // System Control Metadata Bridge (Baseline execution for track swaps)
   useEffect(() => {
     if (!currentSong) return;
+    const initialDuration = currentSong.duration || 0;
 
     MediaControl.updateMetadata({
       title: currentSong.title,
       artist: currentSong.artist,
       album: currentSong.album || "Navidrome Album",
       artwork: currentArtworkUrl ? { uri: currentArtworkUrl } : undefined,
-      duration: status.duration || currentSong.duration || 0,
+      duration: initialDuration,
     }).catch(() => {});
-  }, [currentSong, currentArtworkUrl, status.duration]);
 
-  // Update OS System Tray Playback Play/Pause state
-  useEffect(() => {
-    if (currentSong) {
-      const stateValue = status.playing
-        ? PlaybackState.PLAYING
-        : PlaybackState.PAUSED;
-      const speedRate = status.playing ? 1.0 : 0.0;
-
-      MediaControl.updatePlaybackState(
-        stateValue,
-        status.currentTime,
-        speedRate,
-      ).catch(() => {});
-    }
-  }, [status.playing, currentSong]);
+    const stateValue = player.playing
+      ? PlaybackState.PLAYING
+      : PlaybackState.PAUSED;
+    MediaControl.updatePlaybackState(
+      stateValue,
+      player.currentTime,
+      player.playing ? 1.0 : 0.0,
+    ).catch(() => {});
+  }, [currentSong, currentArtworkUrl, player]);
 
   // Look-Ahead Automation Execution
   useEffect(() => {
@@ -126,6 +192,7 @@ export function useAudioEngine() {
           ...track,
           origin: "auto" as const,
           clientQueueId: generateUniqueId(),
+          playbackContext: (track as QueueSong).playbackContext ?? undefined,
         }));
         setQueue((prev) => [...prev, ...decoratedBatch]);
         setLookAheadError(false);
@@ -176,7 +243,7 @@ export function useAudioEngine() {
     [player, showToast],
   );
 
-  // Native Listeners pulling live, atomic data from stateRef
+  // Native Tray Event Listeners
   useEffect(() => {
     const removeListener = MediaControl.addListener((event) => {
       const { queue: freshQueue, playingSongQueueIndex: freshIndex } =
@@ -332,21 +399,21 @@ export function useAudioEngine() {
   const togglePlayPause = useCallback(() => {
     player.playing ? player.pause() : player.play();
   }, [player]);
+
   const seekTo = useCallback(
     (seconds: number) => {
       player?.seekTo(seconds);
-
       if (currentSong) {
-        const stateValue = status.playing
+        const stateValue = isPlayingState
           ? PlaybackState.PLAYING
           : PlaybackState.PAUSED;
-        const speedRate = status.playing ? 1.0 : 0.0;
+        const speedRate = isPlayingState ? 1.0 : 0.0;
         MediaControl.updatePlaybackState(stateValue, seconds, speedRate).catch(
           () => {},
         );
       }
     },
-    [player, currentSong, status.playing],
+    [player, currentSong, isPlayingState],
   );
 
   const removeFromQueue = useCallback(
@@ -427,50 +494,12 @@ export function useAudioEngine() {
     );
   }, [player]);
 
-  // Handle track ending automation smoothly via up-to-date ref values
-  const onTrackEndRef = useRef<(() => void) | undefined>(undefined);
-  useEffect(() => {
-    onTrackEndRef.current = () => {
-      const { queue: freshQueue, playingSongQueueIndex: freshIndex } =
-        stateRef.current;
-
-      if (freshIndex < freshQueue.length - 1) {
-        loadSongAtIndex(freshIndex + 1, freshQueue);
-      } else {
-        setPlayingSongQueueIndex(-1);
-        setQueue([]);
-        poolsRef.current.userQueue = [];
-        poolsRef.current.contextQueue = [];
-      }
-    };
-  }, [loadSongAtIndex]);
-  useEffect(() => {
-    if (!player) return;
-    const subscription = player.addListener(
-      "playbackStatusUpdate",
-      (statusUpdate) => {
-        if (statusUpdate.didJustFinish) {
-          const { queue: freshQueue, playingSongQueueIndex: freshIndex } =
-            stateRef.current;
-          if (freshIndex < freshQueue.length - 1) {
-            loadSongAtIndex(freshIndex + 1, freshQueue);
-          } else {
-            setPlayingSongQueueIndex(-1);
-            setQueue([]);
-            poolsRef.current.userQueue = [];
-            poolsRef.current.contextQueue = [];
-          }
-        }
-      },
-    );
-    return () => subscription.remove();
-  }, [player]);
-
   return {
     currentSong,
     queue,
     playingSongQueueIndex,
-    playing: status.playing,
+    playing: isPlayingState,
+    playbackContext: currentSong?.playbackContext || null,
     player,
     playSongNow,
     addToQueue,
