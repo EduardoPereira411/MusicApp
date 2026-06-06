@@ -37,8 +37,7 @@ export default function HomeScreen() {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
-  const { currentSong, playing, playSongNow, addToQueue, playbackContext } =
-    useAudio();
+  const { currentSong, playing, playSongNow, addToQueue } = useAudio();
 
   const handleSongOptions = useCallback((song: Song) => {
     setSelectedSong(song);
@@ -113,7 +112,8 @@ export default function HomeScreen() {
         const songItem = item as Song;
 
         const isCurrent =
-          songItem.id === currentSong?.id && playbackContext?.type === "home";
+          songItem.id === currentSong?.id &&
+          currentSong?.playbackContext?.type === "home";
 
         return (
           <SongItem
@@ -122,7 +122,12 @@ export default function HomeScreen() {
             isPlaying={isCurrent && playing}
             onPlay={handlePlaySongNow}
             onOptionsPress={handleSongOptions}
-            onSwipeLeftToRight={addToQueue}
+            onSwipeLeftToRight={(track) =>
+              addToQueue(track, {
+                type: "home",
+                songIndex: 0,
+              })
+            }
           />
         );
       } else {
@@ -131,8 +136,7 @@ export default function HomeScreen() {
     },
     [
       activeSection,
-      currentSong?.id,
-      playbackContext,
+      currentSong,
       playing,
       handlePlaySongNow,
       handleSongOptions,

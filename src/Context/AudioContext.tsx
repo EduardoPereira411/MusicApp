@@ -14,8 +14,7 @@ interface AudioContextType {
     contextSongs?: Song[],
     contextInfo?: PlaybackContext,
   ) => Promise<void>;
-  playbackContext: PlaybackContext | null;
-  addToQueue: (song: Song) => void;
+  addToQueue: (song: Song, contextInfo?: PlaybackContext) => void;
   playNext: () => void;
   playPrevious: () => void;
   togglePlayPause: () => void;

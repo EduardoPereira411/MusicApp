@@ -28,8 +28,6 @@ export function useAudioEngine() {
   const [queue, setQueue] = useState<QueueSong[]>([]);
   const [playingSongQueueIndex, setPlayingSongQueueIndex] =
     useState<number>(-1);
-  const [playbackContext, setPlaybackContext] =
-    useState<PlaybackContext | null>(null);
   const [lookAheadError, setLookAheadError] = useState<boolean>(false);
 
   // Ref for info that matters to the UI
@@ -218,7 +216,6 @@ export function useAudioEngine() {
       if (!credsRef.current) return;
       try {
         const determinedContext = contextInfo || { type: "search" };
-        setPlaybackContext(determinedContext);
 
         const {
           queue: currentActiveQueue,
@@ -235,19 +232,32 @@ export function useAudioEngine() {
         poolsRef.current.userQueue = [];
         setLookAheadError(false);
 
-        //Load Context Songs into queue
+        // Load Context Songs into queue
         if (contextSongs && contextSongs.length > 0) {
           const idx = contextSongs.findIndex((s) => s.id === song.id);
           const relativeContext =
             idx !== -1 ? contextSongs.slice(idx) : contextSongs;
-          poolsRef.current.contextQueue = relativeContext;
+          const baseIndex = determinedContext.songIndex ?? 0;
+          const fullyDecoratedContext = relativeContext.map(
+            (track, offset) => ({
+              ...track,
+              playbackContext: {
+                ...determinedContext,
+                songIndex: baseIndex + offset,
+              },
+            }),
+          );
 
-          const initialChunk = relativeContext.slice(0, 5).map((s) => ({
-            ...s,
-            origin: "auto" as const,
-            clientQueueId: generateUniqueId(),
-            playbackContext: determinedContext,
-          }));
+          poolsRef.current.contextQueue = fullyDecoratedContext;
+
+          const initialChunk = fullyDecoratedContext
+            .slice(0, 5)
+            .map((track) => ({
+              ...track,
+              origin: "auto" as const,
+              clientQueueId: generateUniqueId(),
+            }));
+
           setQueue(initialChunk);
         } else {
           const userTracks: QueueSong[] = [
@@ -275,11 +285,14 @@ export function useAudioEngine() {
   );
 
   const addToQueue = useCallback(
-    (song: Song) => {
+    (song: Song, contextInfo?: PlaybackContext) => {
+      const determinedContext = contextInfo || { type: "search" };
+
       const flaggedSong: QueueSong = {
         ...song,
         origin: "user",
         clientQueueId: generateUniqueId(),
+        playbackContext: determinedContext,
       };
       poolsRef.current.userQueue.push(flaggedSong);
       setLookAheadError(false);
@@ -287,7 +300,9 @@ export function useAudioEngine() {
       setQueue((prev) => {
         if (prev.length === 0) {
           setTimeout(() => {
-            playSongNow(flaggedSong).catch(() => {});
+            playSongNow(flaggedSong, undefined, determinedContext).catch(
+              () => {},
+            );
           }, 0);
           return [flaggedSong];
         }
@@ -319,7 +334,6 @@ export function useAudioEngine() {
   }, [player]);
   const seekTo = useCallback(
     (seconds: number) => {
-      console.log("here");
       player?.seekTo(seconds);
 
       if (currentSong) {
@@ -459,7 +473,6 @@ export function useAudioEngine() {
     playing: status.playing,
     player,
     playSongNow,
-    playbackContext,
     addToQueue,
     playNext,
     playPrevious,

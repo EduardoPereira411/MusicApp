@@ -43,7 +43,6 @@ export default function PlaylistScreen() {
   const {
     currentSong,
     playingSongQueueIndex,
-    playbackContext,
     playing,
     playSongNow,
     addToQueue,
@@ -146,14 +145,14 @@ export default function PlaylistScreen() {
 
         //Match context and song
         const isContextMatch =
-          playbackContext?.type === type && playbackContext?.id === id;
+          currentSong?.playbackContext?.type === type &&
+          currentSong?.playbackContext?.id === id;
         const isSongMatch = currentSong?.id === trackItem.id;
         let isCurrent = false;
         //Match the index in case of duplicate songs
         if (isContextMatch && isSongMatch) {
-          if (playbackContext?.songIndex !== undefined) {
-            const expectedListIndex =
-              playbackContext.songIndex + playingSongQueueIndex;
+          if (currentSong?.playbackContext?.songIndex !== undefined) {
+            const expectedListIndex = currentSong?.playbackContext.songIndex;
             isCurrent = index === expectedListIndex;
           } else {
             isCurrent = true;
@@ -168,7 +167,13 @@ export default function PlaylistScreen() {
             isCurrent={isCurrent}
             isPlaying={isCurrent && playing}
             onOptionsPress={handleSongOptions}
-            onSwipeLeftToRight={addToQueue}
+            onSwipeLeftToRight={(track) =>
+              addToQueue(track, {
+                type: type,
+                id: id,
+                songIndex: index,
+              })
+            }
             onPlay={(track) => handlePlaySong(track, index, songs)}
           />
         );
@@ -179,7 +184,6 @@ export default function PlaylistScreen() {
       id,
       currentSong,
       playingSongQueueIndex,
-      playbackContext,
       playing,
       handleSongOptions,
       addToQueue,

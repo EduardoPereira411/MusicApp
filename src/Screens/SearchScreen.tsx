@@ -35,8 +35,7 @@ export default function SearchScreen() {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  const { currentSong, playing, playSongNow, addToQueue, playbackContext } =
-    useAudio();
+  const { currentSong, playing, playSongNow, addToQueue } = useAudio();
 
   useEffect(() => {
     if (!query.trim()) {
@@ -93,7 +92,8 @@ export default function SearchScreen() {
         const songItem = item as Song;
 
         const isCurrent =
-          songItem.id === currentSong?.id && playbackContext?.type === "search";
+          songItem.id === currentSong?.id &&
+          currentSong?.playbackContext?.type === "search";
 
         return (
           <SongItem
@@ -102,7 +102,12 @@ export default function SearchScreen() {
             isPlaying={isCurrent && playing}
             onPlay={handlePlaySongNow}
             onOptionsPress={handleSongOptions}
-            onSwipeLeftToRight={addToQueue}
+            onSwipeLeftToRight={(track) =>
+              addToQueue(track, {
+                type: "search",
+                songIndex: 0,
+              })
+            }
           />
         );
       } else {
@@ -112,7 +117,6 @@ export default function SearchScreen() {
     [
       activeTab,
       currentSong?.id,
-      playbackContext,
       playing,
       handlePlaySongNow,
       handleSongOptions,
