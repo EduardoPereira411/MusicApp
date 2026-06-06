@@ -494,33 +494,39 @@ export function useAudioEngine() {
     }
   }, [player, showToast]);
 
-  //listen for end of track event to skip to next song
+  //Setup for skipping track automatically when finished, whilst and avoiding bugs
+  //create Ref for function to skip track
+  const onTrackEndRef = useRef<(() => void) | undefined>(undefined);
+  useEffect(() => {
+    onTrackEndRef.current = () => {
+      const { renderedQueue: freshQueue, playingSongQueueIndex: freshIndex } =
+        internalQueueRef.current;
+
+      if (freshIndex < freshQueue.length - 1) {
+        loadSongAtIndex(freshIndex + 1, freshQueue);
+      } else {
+        setPlayingSongQueueIndex(-1);
+        setQueue([]);
+        internalQueueRef.current.userQueue = [];
+        internalQueueRef.current.contextQueue = [];
+      }
+    };
+  }, [loadSongAtIndex]);
+  //setup listener for end of track play
   useEffect(() => {
     if (!player) return;
     const subscription = player.addListener(
       "playbackStatusUpdate",
       (statusUpdate) => {
         if (statusUpdate.didJustFinish) {
-          const {
-            renderedQueue: freshQueue,
-            playingSongQueueIndex: freshIndex,
-          } = internalQueueRef.current;
-
-          if (freshIndex < freshQueue.length - 1) {
-            loadSongAtIndex(freshIndex + 1, freshQueue);
-          } else {
-            setPlayingSongQueueIndex(-1);
-            setQueue([]);
-            internalQueueRef.current.userQueue = [];
-            internalQueueRef.current.contextQueue = [];
-          }
+          onTrackEndRef.current?.();
         }
       },
     );
     return () => {
       subscription.remove();
     };
-  }, [player, loadSongAtIndex]);
+  }, [player]);
 
   return {
     currentSong,
