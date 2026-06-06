@@ -44,7 +44,7 @@ export default function GlobalMiniPlayer() {
     playNext,
     playPrevious,
     queue,
-    currentIndex,
+    playingSongQueueIndex,
     player,
   } = useAudio();
 
@@ -63,8 +63,8 @@ export default function GlobalMiniPlayer() {
       : require("../../assets/images/icon.png");
   }, [artworkUrl]);
 
-  const hasNext = currentIndex < queue.length - 1;
-  const hasPrevious = currentIndex > 0;
+  const hasNext = playingSongQueueIndex < queue.length - 1;
+  const hasPrevious = playingSongQueueIndex > 0;
 
   const handlePlayPrevious = async () => {
     try {

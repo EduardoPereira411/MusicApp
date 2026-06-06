@@ -42,7 +42,7 @@ export default function PlaylistScreen() {
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const {
     currentSong,
-    currentIndex,
+    playingSongQueueIndex,
     playbackContext,
     playing,
     playSongNow,

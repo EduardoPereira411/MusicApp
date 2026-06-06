@@ -6,7 +6,7 @@ import { useAudioEngine } from "@/CustomHooks/useAudioEngine";
 interface AudioContextType {
   currentSong: QueueSong | null;
   queue: QueueSong[];
-  currentIndex: number;
+  playingSongQueueIndex: number;
   playing: boolean;
   player: AudioPlayer;
   playSongNow: (

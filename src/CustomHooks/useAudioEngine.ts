@@ -21,7 +21,8 @@ const generateUniqueId = (): string => {
 export function useAudioEngine() {
   const { navidromeCreds } = useAuth();
   const [queue, setQueue] = useState<QueueSong[]>([]);
-  const [currentIndex, setCurrentIndex] = useState<number>(-1);
+  const [playingSongQueueIndex, setPlayingSongQueueIndex] =
+    useState<number>(-1);
   const [playbackContext, setPlaybackContext] =
     useState<PlaybackContext | null>(null);
 
@@ -45,20 +46,23 @@ export function useAudioEngine() {
   }, [navidromeCreds]);
 
   const currentSong = useMemo(() => {
-    return currentIndex >= 0 && currentIndex < queue.length
-      ? queue[currentIndex]
+    return playingSongQueueIndex >= 0 && playingSongQueueIndex < queue.length
+      ? queue[playingSongQueueIndex]
       : null;
-  }, [currentIndex, queue]);
+  }, [playingSongQueueIndex, queue]);
 
   const { url: currentArtworkUrl } = useArtwork(currentSong?.coverArt, 500);
 
-  const stateRef = useRef<{ queue: QueueSong[]; currentIndex: number }>({
+  const stateRef = useRef<{
+    queue: QueueSong[];
+    playingSongQueueIndex: number;
+  }>({
     queue,
-    currentIndex,
+    playingSongQueueIndex,
   });
   useEffect(() => {
-    stateRef.current = { queue, currentIndex };
-  }, [queue, currentIndex]);
+    stateRef.current = { queue, playingSongQueueIndex };
+  }, [queue, playingSongQueueIndex]);
 
   useEffect(() => {
     setAudioModeAsync({
@@ -102,9 +106,9 @@ export function useAudioEngine() {
 
   // LOOK-AHEAD AUTOMATION
   useEffect(() => {
-    if (currentIndex === -1 || queue.length === 0) return;
+    if (playingSongQueueIndex === -1 || queue.length === 0) return;
 
-    const songsRemaining = queue.length - 1 - currentIndex;
+    const songsRemaining = queue.length - 1 - playingSongQueueIndex;
 
     if (songsRemaining <= 2) {
       const storage = internalQueueRef.current;
@@ -151,13 +155,13 @@ export function useAudioEngine() {
           });
       }
     }
-  }, [currentIndex, queue.length, showToast, lookAheadError]);
+  }, [playingSongQueueIndex, queue.length, showToast, lookAheadError]);
 
   useEffect(() => {
     if (lookAheadError) {
       setLookAheadError(false);
     }
-  }, [currentIndex]);
+  }, [playingSongQueueIndex]);
 
   const loadSongAtIndex = useCallback(
     async (index: number, targetQueue = stateRef.current.queue) => {
@@ -170,7 +174,7 @@ export function useAudioEngine() {
         if (!url)
           throw new Error("Could not construct a valid stream endpoint URL.");
 
-        setCurrentIndex(index);
+        setPlayingSongQueueIndex(index);
         setLookAheadError(false);
         player.replace({ uri: url });
         player.play();
@@ -183,7 +187,8 @@ export function useAudioEngine() {
 
   useEffect(() => {
     const removeListener = MediaControl.addListener((event) => {
-      const { queue: freshQueue, currentIndex: freshIndex } = stateRef.current;
+      const { queue: freshQueue, playingSongQueueIndex: freshIndex } =
+        stateRef.current;
 
       switch (event.command) {
         case Command.PLAY:
@@ -246,7 +251,8 @@ export function useAudioEngine() {
         setPlaybackContext(determinedContext);
 
         if (
-          stateRef.current.queue[stateRef.current.currentIndex]?.id === song.id
+          stateRef.current.queue[stateRef.current.playingSongQueueIndex]?.id ===
+          song.id
         ) {
           if (player.playing) player.pause();
           else player.play();
@@ -275,7 +281,7 @@ export function useAudioEngine() {
           }));
 
           setQueue(initialChunk);
-          setCurrentIndex(0);
+          setPlayingSongQueueIndex(0);
         } else {
           const userTracks: QueueSong[] = [
             {
@@ -287,7 +293,7 @@ export function useAudioEngine() {
           ];
           internalQueueRef.current.contextQueue = [];
           setQueue(userTracks);
-          setCurrentIndex(0);
+          setPlayingSongQueueIndex(0);
         }
 
         player.replace({ uri: url });
@@ -329,7 +335,7 @@ export function useAudioEngine() {
         const updated = [...prev];
 
         let insertionIndex = -1;
-        for (let i = currentIndex + 1; i < updated.length; i++) {
+        for (let i = playingSongQueueIndex + 1; i < updated.length; i++) {
           if (updated[i].origin === "auto") {
             insertionIndex = i;
             break;
@@ -346,18 +352,18 @@ export function useAudioEngine() {
 
       showToast(`Added "${song.title}" to queue`);
     },
-    [currentIndex, playSongNow, showToast],
+    [playingSongQueueIndex, playSongNow, showToast],
   );
 
   const playNext = useCallback(() => {
-    const { queue: q, currentIndex: idx } = stateRef.current;
+    const { queue: q, playingSongQueueIndex: idx } = stateRef.current;
     if (idx < q.length - 1) {
       loadSongAtIndex(idx + 1, q);
     }
   }, [loadSongAtIndex]);
 
   const playPrevious = useCallback(() => {
-    const { currentIndex: idx, queue: q } = stateRef.current;
+    const { playingSongQueueIndex: idx, queue: q } = stateRef.current;
     if (idx > 0) {
       loadSongAtIndex(idx - 1, q);
     }
@@ -405,9 +411,9 @@ export function useAudioEngine() {
           }
         }
 
-        if (currentIndex === indexToRemove) {
+        if (playingSongQueueIndex === indexToRemove) {
           if (updatedQueue.length === 0) {
-            setCurrentIndex(-1);
+            setPlayingSongQueueIndex(-1);
             player.pause();
           } else {
             const nextIndex =
@@ -416,13 +422,13 @@ export function useAudioEngine() {
                 : indexToRemove;
             setTimeout(() => loadSongAtIndex(nextIndex, updatedQueue), 0);
           }
-        } else if (currentIndex > indexToRemove) {
-          setCurrentIndex((prev) => prev - 1);
+        } else if (playingSongQueueIndex > indexToRemove) {
+          setPlayingSongQueueIndex((prev) => prev - 1);
         }
         return updatedQueue;
       });
     },
-    [currentIndex, loadSongAtIndex, player],
+    [playingSongQueueIndex, loadSongAtIndex, player],
   );
 
   const skipToQueueIndex = useCallback(
@@ -439,7 +445,7 @@ export function useAudioEngine() {
     (newQueue: QueueSong[]) => {
       setQueue(newQueue);
 
-      const upcoming = newQueue.slice(currentIndex + 1);
+      const upcoming = newQueue.slice(playingSongQueueIndex + 1);
       internalQueueRef.current.userQueue = upcoming.filter(
         (s) => s.origin === "user",
       );
@@ -447,13 +453,13 @@ export function useAudioEngine() {
         (s) => s.origin === "auto",
       );
     },
-    [currentIndex],
+    [playingSongQueueIndex],
   );
 
   const logoutCleanUp = useCallback(() => {
     try {
       setQueue([]);
-      setCurrentIndex(-1);
+      setPlayingSongQueueIndex(-1);
       internalQueueRef.current = { userQueue: [], contextQueue: [] };
       player.replace("");
       player.pause();
@@ -480,11 +486,12 @@ export function useAudioEngine() {
       status.currentTime > 0 &&
       status.currentTime >= (status.duration || 1)
     ) {
-      const { queue: freshQueue, currentIndex: freshIndex } = stateRef.current;
+      const { queue: freshQueue, playingSongQueueIndex: freshIndex } =
+        stateRef.current;
       if (freshIndex < freshQueue.length - 1) {
         loadSongAtIndex(freshIndex + 1, freshQueue);
       } else {
-        setCurrentIndex(-1);
+        setPlayingSongQueueIndex(-1);
         setQueue([]);
         internalQueueRef.current = { userQueue: [], contextQueue: [] };
       }
@@ -500,7 +507,7 @@ export function useAudioEngine() {
   return {
     currentSong,
     queue,
-    currentIndex,
+    playingSongQueueIndex,
     playing: status.playing,
     player,
     playSongNow,

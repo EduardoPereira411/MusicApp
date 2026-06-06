@@ -25,7 +25,7 @@ interface QueueModalProps {
 export function QueueModal({ visible, onClose }: QueueModalProps) {
   const {
     queue,
-    currentIndex,
+    playingSongQueueIndex,
     currentSong,
     skipToQueueIndex,
     removeFromQueue,
@@ -37,13 +37,14 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
   const { url: currentArtworkUrl } = useArtwork(currentSong?.coverArt, 150);
 
   const { userUpcoming, autoUpcoming } = useMemo(() => {
-    if (currentIndex < 0) return { userUpcoming: [], autoUpcoming: [] };
+    if (playingSongQueueIndex < 0)
+      return { userUpcoming: [], autoUpcoming: [] };
 
     const userList: any[] = [];
     const autoList: any[] = [];
 
-    queue.slice(currentIndex + 1).forEach((item: any, localIdx) => {
-      const absoluteIndex = currentIndex + 1 + localIdx;
+    queue.slice(playingSongQueueIndex + 1).forEach((item: any, localIdx) => {
+      const absoluteIndex = playingSongQueueIndex + 1 + localIdx;
       const itemWithMeta = { ...item, absoluteIndex };
 
       if (item.origin === "auto") {
@@ -54,7 +55,7 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
     });
 
     return { userUpcoming: userList, autoUpcoming: autoList };
-  }, [queue, currentIndex]);
+  }, [queue, playingSongQueueIndex]);
 
   const handleTrackPress = useCallback(
     (idx: number) => {
@@ -84,7 +85,10 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
     (newUpcomingSegment: any[]) => {
       setPipelineError(null);
       try {
-        const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
+        const unchangedPastAndCurrent = queue.slice(
+          0,
+          playingSongQueueIndex + 1,
+        );
 
         let lastUserIndex = -1;
         newUpcomingSegment.forEach((item, idx) => {
@@ -111,7 +115,7 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
         );
       }
     },
-    [queue, currentIndex, updateQueueOrder],
+    [queue, playingSongQueueIndex, updateQueueOrder],
   );
 
   const handleUserDragEnd = useCallback(
@@ -137,7 +141,7 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
         const cleanSong = { ...trackToPromote, origin: "user" as const };
         delete cleanSong.absoluteIndex;
         const currentUpcomingClean = queue
-          .slice(currentIndex + 1)
+          .slice(playingSongQueueIndex + 1)
           .map((s: any) => {
             const copy = { ...s };
             delete copy.absoluteIndex;
@@ -151,7 +155,10 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
         const userPart = remainingUpcoming.filter((s) => s.origin === "user");
         const autoPart = remainingUpcoming.filter((s) => s.origin === "auto");
         const targetUpcomingSegment = [...userPart, cleanSong, ...autoPart];
-        const unchangedPastAndCurrent = queue.slice(0, currentIndex + 1);
+        const unchangedPastAndCurrent = queue.slice(
+          0,
+          playingSongQueueIndex + 1,
+        );
 
         updateQueueOrder([
           ...unchangedPastAndCurrent,
@@ -161,7 +168,7 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
         setPipelineError("Unable to prioritize recommendation index.");
       }
     },
-    [queue, currentIndex, updateQueueOrder],
+    [queue, playingSongQueueIndex, updateQueueOrder],
   );
 
   const renderUserQueueTrack = useCallback(
