@@ -103,17 +103,21 @@ export default function PlaylistScreen() {
   }, [resolvedArtworkUrl]);
 
   const handlePlaySong = useCallback(
-    (item: Song, contextQueue: Song[] = songs) => {
-      playSongNow(item, contextQueue, { type: type, id: id }).catch((err) => {
+    (item: Song, itemIndex: number, contextQueue: Song[] = songs) => {
+      playSongNow(item, contextQueue, {
+        type: type,
+        id: id,
+        songIndex: itemIndex,
+      }).catch((err) => {
         showToast(err.message || "Failed playback execution.", "error");
       });
     },
-    [songs, playSongNow, showToast, type, id], // added type, id to deps
+    [songs, playSongNow, showToast, type, id],
   );
 
   const playCollectionStandard = useCallback(() => {
     if (songs.length === 0) return;
-    handlePlaySong(songs[0], songs);
+    handlePlaySong(songs[0], 0, songs);
   }, [songs, handlePlaySong]);
 
   const playCollectionShuffled = useCallback(() => {
@@ -125,7 +129,7 @@ export default function PlaylistScreen() {
       [shuffledList[i], shuffledList[j]] = [shuffledList[j], shuffledList[i]];
     }
 
-    handlePlaySong(shuffledList[0], shuffledList);
+    handlePlaySong(shuffledList[0], 0, shuffledList);
   }, [songs, handlePlaySong]);
 
   const handleSongOptions = useCallback((song: Song) => {
@@ -140,11 +144,21 @@ export default function PlaylistScreen() {
       } else {
         const trackItem = item as Song;
 
-        // 1. Core Match: Is it the right song in the right playlist?
-        const isCurrent =
-          currentSong?.id === trackItem.id &&
-          playbackContext?.type === type &&
-          playbackContext?.id === id;
+        //Match context and song
+        const isContextMatch =
+          playbackContext?.type === type && playbackContext?.id === id;
+        const isSongMatch = currentSong?.id === trackItem.id;
+        let isCurrent = false;
+        //Match the index in case of duplicate songs
+        if (isContextMatch && isSongMatch) {
+          if (playbackContext?.songIndex !== undefined) {
+            const expectedListIndex =
+              playbackContext.songIndex + playingSongQueueIndex;
+            isCurrent = index === expectedListIndex;
+          } else {
+            isCurrent = true;
+          }
+        }
 
         return (
           <SongItem
@@ -155,7 +169,7 @@ export default function PlaylistScreen() {
             isPlaying={isCurrent && playing}
             onOptionsPress={handleSongOptions}
             onSwipeLeftToRight={addToQueue}
-            onPlay={(track) => handlePlaySong(track, songs)}
+            onPlay={(track) => handlePlaySong(track, index, songs)}
           />
         );
       }
@@ -163,7 +177,8 @@ export default function PlaylistScreen() {
     [
       type,
       id,
-      currentSong?.id,
+      currentSong,
+      playingSongQueueIndex,
       playbackContext,
       playing,
       handleSongOptions,

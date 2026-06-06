@@ -4,3 +4,5 @@
 - Make it so shuffle button on albums/playlists shuffles songs when clicked
 - Make it so when songs end on album/playlist it doesn't recommend random songs, but either ends or repeats the album
 - Optimize AudioEngine
+- Make so add to queue also adds info about playbackContext
+- Create Listen Along functionality so queues can be shared with other users :)

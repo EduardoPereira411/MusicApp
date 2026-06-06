@@ -19,17 +19,29 @@ const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
 }) {
   const status = useAudioPlayerStatus(player);
 
+  const [isSliding, setIsSliding] = useState(false);
+  const [localValue, setLocalValue] = useState(0);
+
   return (
     <View style={styles.sliderContainer}>
       <Slider
         style={styles.slider}
         minimumValue={0}
         maximumValue={status.duration || 1}
-        value={status.currentTime}
+        value={isSliding ? localValue : status.currentTime}
         minimumTrackTintColor="#1DB954"
         maximumTrackTintColor="#535353"
         thumbTintColor="#1DB954"
-        onSlidingComplete={seekTo}
+        onValueChange={(val) => {
+          setIsSliding(true);
+          setLocalValue(val);
+        }}
+        onSlidingComplete={(val) => {
+          seekTo(val);
+          setTimeout(() => {
+            setIsSliding(false);
+          }, 150);
+        }}
       />
     </View>
   );
