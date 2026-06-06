@@ -47,6 +47,35 @@ const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
   );
 });
 
+const MiniPlayerMeta = React.memo(
+  function MiniPlayerMeta({ song }: { song: any }) {
+    const { url: artworkUrl } = useArtwork(song?.coverArt, 100);
+
+    return (
+      <>
+        <Image
+          source={
+            artworkUrl
+              ? { uri: artworkUrl }
+              : require("../../assets/images/icon.png")
+          }
+          style={styles.coverImage}
+          cachePolicy="disk"
+        />
+        <View style={styles.songInfo}>
+          <Text style={styles.title} numberOfLines={1}>
+            {song.title}
+          </Text>
+          <Text style={styles.artist} numberOfLines={1}>
+            {song.artist}
+          </Text>
+        </View>
+      </>
+    );
+  },
+  (prev, next) => prev.song?.id === next.song?.id,
+);
+
 export default function GlobalMiniPlayer() {
   const {
     currentSong,
@@ -63,17 +92,10 @@ export default function GlobalMiniPlayer() {
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const [queueVisible, setQueueVisible] = useState(false);
-  const { url: artworkUrl } = useArtwork(currentSong?.coverArt, 100);
 
   if (!currentSong) return null;
 
   const dynamicBottom = 49 + insets.bottom + 8;
-
-  const coverSource = useMemo(() => {
-    return artworkUrl
-      ? { uri: artworkUrl }
-      : require("../../assets/images/icon.png");
-  }, [artworkUrl]);
 
   const hasNext = playingSongQueueIndex < queue.length - 1;
   const hasPrevious = playingSongQueueIndex > 0;
@@ -119,20 +141,7 @@ export default function GlobalMiniPlayer() {
             onPress={() => setQueueVisible(true)}
             activeOpacity={0.7}
           >
-            <Image
-              source={coverSource}
-              style={styles.coverImage}
-              cachePolicy="disk"
-            />
-
-            <View style={styles.songInfo}>
-              <Text style={styles.title} numberOfLines={1}>
-                {currentSong.title}
-              </Text>
-              <Text style={styles.artist} numberOfLines={1}>
-                {currentSong.artist}
-              </Text>
-            </View>
+            <MiniPlayerMeta song={currentSong} />
           </TouchableOpacity>
 
           <View style={styles.controlsContainer}>

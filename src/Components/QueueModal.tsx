@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import {
   Modal,
   View,
@@ -22,6 +22,37 @@ interface QueueModalProps {
   onClose: () => void;
 }
 
+const NowPlayingHeaderTrack = React.memo(
+  function NowPlayingHeaderTrack({ song }: { song: any }) {
+    const { url: currentArtworkUrl } = useArtwork(song?.coverArt, 150);
+
+    return (
+      <View style={[styles.trackRow, styles.playingRow]}>
+        <View style={styles.trackDetails}>
+          <Image
+            source={currentArtworkUrl ? { uri: currentArtworkUrl } : undefined}
+            style={styles.artwork}
+            contentFit="cover"
+            transition={150}
+          />
+          <View style={styles.textContainer}>
+            <Text style={[styles.title, styles.playingText]} numberOfLines={1}>
+              {song.title}
+            </Text>
+            <Text style={styles.artist} numberOfLines={1}>
+              {song.artist}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.playingIndicator}>
+          <Ionicons name="musical-notes" size={18} color="#1DB954" />
+        </View>
+      </View>
+    );
+  },
+  (prev, next) => prev.song?.id === next.song?.id,
+);
+
 export function QueueModal({ visible, onClose }: QueueModalProps) {
   const {
     queue,
@@ -34,7 +65,6 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
   const insets = useSafeAreaInsets();
 
   const [pipelineError, setPipelineError] = useState<string | null>(null);
-  const { url: currentArtworkUrl } = useArtwork(currentSong?.coverArt, 150);
 
   const { userUpcoming, autoUpcoming } = useMemo(() => {
     if (playingSongQueueIndex < 0)
@@ -237,34 +267,7 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
             {currentSong && (
               <View style={styles.nowPlayingSection}>
                 <Text style={styles.sectionTitle}>Now Playing</Text>
-                <View style={[styles.trackRow, styles.playingRow]}>
-                  <View style={styles.trackDetails}>
-                    <Image
-                      source={
-                        currentArtworkUrl
-                          ? { uri: currentArtworkUrl }
-                          : undefined
-                      }
-                      style={styles.artwork}
-                      contentFit="cover"
-                      transition={150}
-                    />
-                    <View style={styles.textContainer}>
-                      <Text
-                        style={[styles.title, styles.playingText]}
-                        numberOfLines={1}
-                      >
-                        {currentSong.title}
-                      </Text>
-                      <Text style={styles.artist} numberOfLines={1}>
-                        {currentSong.artist}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.playingIndicator}>
-                    <Ionicons name="musical-notes" size={18} color="#1DB954" />
-                  </View>
-                </View>
+                <NowPlayingHeaderTrack song={currentSong} />
               </View>
             )}
 
