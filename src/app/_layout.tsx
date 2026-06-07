@@ -35,11 +35,6 @@ function InnerRootLayout() {
   const initializePlayer = useAudioStore((s) => s.initializePlayer);
   const setCachedCreds = useAudioStore((s) => s.setCachedCreds);
   const logoutCleanUp = useAudioStore((s) => s.logoutCleanUp);
-  const triggerLookAhead = useAudioStore((s) => s.triggerLookAhead);
-
-  const queueLength = useAudioStore((s) => s.queue.length);
-  const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
-  const lookAheadError = useAudioStore((s) => s.lookAheadError);
 
   const isLoginScreen = segments[0] === "login";
 
@@ -55,12 +50,9 @@ function InnerRootLayout() {
     };
   }, [nativePlayerInstance, initializePlayer]);
 
-  // Setup Look Ahead automation
   useEffect(() => {
-    if (playingSongQueueIndex === -1 || queueLength === 0) return;
-    triggerLookAhead();
-  }, [playingSongQueueIndex, queueLength, lookAheadError, triggerLookAhead]);
-
+    console.log("re render here");
+  });
   useEffect(() => {
     if (isLoading) return;
 
@@ -101,11 +93,26 @@ function InnerRootLayout() {
   );
 }
 
+export function RecommendationsOrchestrator() {
+  const triggerLookAhead = useAudioStore((s) => s.triggerLookAhead);
+  const queueLength = useAudioStore((s) => s.queue.length);
+  const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
+  const lookAheadError = useAudioStore((s) => s.lookAheadError);
+
+  useEffect(() => {
+    if (playingSongQueueIndex === -1 || queueLength === 0) return;
+    triggerLookAhead();
+  }, [playingSongQueueIndex, queueLength, lookAheadError, triggerLookAhead]);
+
+  return null;
+}
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <ToastProvider>
+          <RecommendationsOrchestrator />
           <InnerRootLayout />
         </ToastProvider>
       </AuthProvider>
