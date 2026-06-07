@@ -32,6 +32,7 @@ interface AudioState {
   hasUpdatedDuration: boolean;
 
   // Actions
+  getArtworkForSong: (coverArtId: string, size: number) => string | null;
   initializePlayer: (playerInstance: AudioPlayer) => () => void;
   setCachedCreds: (authCreds: any | null) => void;
   playSongNow: (
@@ -78,6 +79,12 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   cachedCreds: null,
   pools: { userQueue: [], contextQueue: [] },
   hasUpdatedDuration: false,
+
+  getArtworkForSong: (coverArtId, size) => {
+    const { cachedCreds } = get();
+    if (!cachedCreds || !coverArtId) return null;
+    return getArtworkUrl(cachedCreds, coverArtId, size);
+  },
 
   initializePlayer: (playerInstance) => {
     set({ player: playerInstance });

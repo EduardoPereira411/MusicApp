@@ -1,43 +1,37 @@
 import { useAudioStore } from "@/Stores/useAudioStore";
-import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
 import { useMemo } from "react";
-import { getArtworkUrl } from "@/Services/navidromeService";
 
 type AudioStoreType = ReturnType<typeof useAudioStore>;
 
 type AudioHookState = AudioStoreType & {
   currentSong: any;
-  currentArtworkUrl: string | null;
 };
 
 export function useAudio<T = AudioHookState>(
   selector?: (state: AudioHookState) => T,
 ): T {
-  const store = useAudioStore();
-  const { navidromeCreds } = useAuth();
+  const store = useAudioStore((s) => s);
   const { showToast } = useToast();
 
-  const currentSong = useMemo(() => {
-    return store.playingSongQueueIndex >= 0 &&
-      store.playingSongQueueIndex < store.queue.length
-      ? store.queue[store.playingSongQueueIndex]
-      : null;
-  }, [store.playingSongQueueIndex, store.queue]);
+  const queue = useAudioStore((s) => s.queue);
+  const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
 
-  const currentArtworkUrl = useMemo(() => {
-    if (!navidromeCreds || !currentSong?.coverArt) return null;
-    return getArtworkUrl(navidromeCreds, currentSong.coverArt, 300);
-  }, [navidromeCreds, currentSong]);
+  const currentSong = useMemo(() => {
+    return playingSongQueueIndex >= 0 && playingSongQueueIndex < queue.length
+      ? queue[playingSongQueueIndex]
+      : null;
+  }, [playingSongQueueIndex]);
 
   // Consolidate the entire state map
   const fullState = useMemo<AudioHookState>(
     () => ({
       ...store,
       currentSong,
-      currentArtworkUrl,
 
       // Overriding the actions with your automatically injected context dependencies
+      getArtworkForSong: (coverArtId: string, size: number) =>
+        store.getArtworkForSong(coverArtId, size),
       playSongNow: (song: any, contextSongs?: any[], contextInfo?: any) =>
         store.playSongNow(song, contextSongs, contextInfo, showToast),
 
@@ -57,7 +51,7 @@ export function useAudio<T = AudioHookState>(
 
       triggerLookAhead: () => store.triggerLookAhead(showToast),
     }),
-    [store, currentSong, currentArtworkUrl, navidromeCreds, showToast],
+    [store, currentSong, showToast],
   );
 
   // Execute selector optimization if passed, otherwise fall back to full state object

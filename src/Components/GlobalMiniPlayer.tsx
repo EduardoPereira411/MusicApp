@@ -4,19 +4,19 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useToast } from "@/Context/ToastContext";
-import { useAudioPlayerStatus, AudioPlayer } from "expo-audio";
+import { useAudioPlayerStatus } from "expo-audio";
 import Slider from "@react-native-community/slider";
 import { QueueModal } from "@/Components/QueueModal";
 import { useAudioStore } from "@/Stores/useAudioStore";
-import { useAudio } from "@/Hooks/useAudio";
+import { PlayPauseButton } from "@/Components/Optimized/PlayPauseButton";
 
 const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
-  player,
   seekTo,
 }: {
-  player: AudioPlayer;
   seekTo: (v: number) => void;
 }) {
+  const player = useAudioStore((s) => s.player);
+  if (!player) return null;
   const status = useAudioPlayerStatus(player);
   const [isSliding, setIsSliding] = useState(false);
   const [localValue, setLocalValue] = useState(0);
@@ -47,19 +47,21 @@ const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
 });
 
 const MiniPlayerMeta = React.memo(
-  function MiniPlayerMeta({
-    song,
-    artworkUrl,
-  }: {
-    song: any;
-    artworkUrl: string | null;
-  }) {
+  function MiniPlayerMeta({ song }: { song: any }) {
+    const getArtworkForSong = useAudioStore((s) => s.getArtworkForSong);
+    const artworkURL = useMemo(
+      () => getArtworkForSong(song.coverArt, 300),
+      [song, getArtworkForSong],
+    );
+    React.useEffect(() => {
+      console.log("MiniPlayerMeta re-rendered. New URL:", artworkURL);
+    });
     return (
       <>
         <Image
           source={
-            artworkUrl
-              ? { uri: artworkUrl }
+            artworkURL
+              ? { uri: artworkURL }
               : require("../../assets/images/icon.png")
           }
           style={styles.coverImage}
@@ -76,8 +78,7 @@ const MiniPlayerMeta = React.memo(
       </>
     );
   },
-  (prev, next) =>
-    prev.song?.id === next.song?.id && prev.artworkUrl === next.artworkUrl,
+  (prev, next) => prev.song?.id === next.song?.id,
 );
 
 export default function GlobalMiniPlayer() {
@@ -87,11 +88,7 @@ export default function GlobalMiniPlayer() {
 
   const queue = useAudioStore((s) => s.queue);
   const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
-  const currentArtworkUrl = useAudio((s) => s.currentArtworkUrl);
-  const playing = useAudioStore((s) => s.playing);
-  const player = useAudioStore((s) => s.player);
 
-  const togglePlayPause = useAudioStore((s) => s.togglePlayPause);
   const seekTo = useAudioStore((s) => s.seekTo);
   const playNext = useAudioStore((s) => s.playNext);
   const playPrevious = useAudioStore((s) => s.playPrevious);
@@ -114,14 +111,6 @@ export default function GlobalMiniPlayer() {
       await playPrevious(showToast);
     } catch (error: any) {
       showToast(`Couldn't change track: ${error.message || error}`, "error");
-    }
-  };
-
-  const handleTogglePlayPause = async () => {
-    try {
-      await togglePlayPause();
-    } catch (error: any) {
-      showToast(`Playback action failed: ${error.message || error}`, "error");
     }
   };
 
@@ -150,7 +139,7 @@ export default function GlobalMiniPlayer() {
             onPress={() => setQueueVisible(true)}
             activeOpacity={0.7}
           >
-            <MiniPlayerMeta song={currentSong} artworkUrl={currentArtworkUrl} />
+            <MiniPlayerMeta song={currentSong} />
           </TouchableOpacity>
 
           <View style={styles.controlsContainer}>
@@ -166,16 +155,7 @@ export default function GlobalMiniPlayer() {
               />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={handleTogglePlayPause}
-              style={styles.playButton}
-            >
-              <Ionicons
-                name={playing ? "pause-circle" : "play-circle"}
-                size={38}
-                color="#1DB954"
-              />
-            </TouchableOpacity>
+            <PlayPauseButton size={38} style={styles.playButton} />
 
             <TouchableOpacity
               onPress={handlePlayNext}
@@ -191,7 +171,7 @@ export default function GlobalMiniPlayer() {
           </View>
         </View>
 
-        {player && <MiniPlayerSlider player={player} seekTo={handleSeek} />}
+        <MiniPlayerSlider seekTo={handleSeek} />
       </View>
 
       <QueueModal
