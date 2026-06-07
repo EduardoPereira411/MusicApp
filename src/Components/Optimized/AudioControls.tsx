@@ -6,6 +6,7 @@ import { useToast } from "@/Context/ToastContext";
 import { useAudioPlayerStatus } from "expo-audio";
 import Slider from "@react-native-community/slider";
 import { useState, useCallback } from "react";
+import { Song } from "@/Models/Models";
 
 interface ControlProps {
   size?: number;
@@ -15,16 +16,40 @@ interface ControlProps {
 }
 
 // 1. Play/Pause Button
+interface PlayPauseButtonProps {
+  size?: number;
+  style?: StyleProp<ViewStyle>;
+  color?: string;
+  // Optional props for List Item Mode
+  item?: Song;
+  onPlay?: (song: Song) => void;
+  isCurrent?: boolean;
+}
+
 export const PlayPauseButton = React.memo(function PlayPauseButton({
   size = 38,
   style,
-  color = "#fff",
-}: ControlProps) {
-  const playing = useAudioStore((s) => s.playing);
+  color = "#1DB954",
+  item,
+  onPlay,
+  isCurrent = false,
+}: PlayPauseButtonProps) {
   const togglePlayPause = useAudioStore((s) => s.togglePlayPause);
 
+  // OPTIMIZATION: Only subscribe to 'playing' if this button is the active one.
+  // If it's not the active one, we use 'false' as a constant.
+  const playing = useAudioStore((s) => (isCurrent ? s.playing : false));
+
+  const handlePress = () => {
+    if (item && !isCurrent) {
+      onPlay!(item);
+    } else {
+      togglePlayPause();
+    }
+  };
+
   return (
-    <TouchableOpacity onPress={() => togglePlayPause()} style={style}>
+    <TouchableOpacity onPress={handlePress} style={style}>
       <Ionicons
         name={playing ? "pause-circle" : "play-circle"}
         size={size}
@@ -33,6 +58,44 @@ export const PlayPauseButton = React.memo(function PlayPauseButton({
     </TouchableOpacity>
   );
 });
+
+export const ItemPlayPauseButton = React.memo(
+  ({
+    item,
+
+    onPlay,
+
+    isCurrent,
+  }: {
+    item: Song;
+
+    onPlay: (song: Song) => void;
+
+    isCurrent: boolean;
+  }) => {
+    const showAsPlaying = useAudioStore((s) => s.playing && isCurrent);
+
+    const togglePlayPause = useAudioStore((s) => s.togglePlayPause);
+
+    const handlePress = () => {
+      if (isCurrent) {
+        togglePlayPause();
+      } else {
+        onPlay(item);
+      }
+    };
+
+    return (
+      <TouchableOpacity onPress={handlePress}>
+        <Ionicons
+          name={showAsPlaying ? "pause-circle" : "play-circle"}
+          size={28}
+          color={"#1DB954"}
+        />
+      </TouchableOpacity>
+    );
+  },
+);
 
 export const NextButton = React.memo(function NextButton({
   size = 24,

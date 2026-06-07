@@ -9,9 +9,9 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
-import { Ionicons } from "@expo/vector-icons";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import { getArtworkUrl } from "@/Services/navidromeService";
+import { PlayPauseButton } from "./Optimized/AudioControls";
 
 interface SongItemProps {
   item: Song;
@@ -50,8 +50,6 @@ export const SongItem = React.memo(
         (index === undefined || ctx?.songIndex === index)
       );
     });
-
-    const isPlaying = useAudioStore((state) => state.playing && isCurrent);
 
     const displayTrackNumber =
       item.trackNumber ?? (index !== undefined ? index + 1 : null);
@@ -156,10 +154,13 @@ export const SongItem = React.memo(
               </View>
 
               <View style={styles.actionStatusContainer}>
-                <Ionicons
-                  name={isPlaying ? "pause-circle" : "play-circle"}
+                <PlayPauseButton
                   size={28}
-                  color={"#1DB954"}
+                  style={styles.actionStatusContainer}
+                  color="#1DB954"
+                  item={item}
+                  isCurrent={isCurrent}
+                  onPlay={onPlay}
                 />
               </View>
             </TouchableOpacity>

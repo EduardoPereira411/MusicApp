@@ -1,11 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useToast } from "@/Context/ToastContext";
-import { useAudioPlayerStatus } from "expo-audio";
-import Slider from "@react-native-community/slider";
 import { QueueModal } from "@/Components/QueueModal";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import {
@@ -48,14 +44,11 @@ const MiniPlayerMeta = React.memo(
 );
 
 export default function GlobalMiniPlayer() {
-  const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const [queueVisible, setQueueVisible] = useState(false);
 
   const queue = useAudioStore((s) => s.queue);
   const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
-
-  const seekTo = useAudioStore((s) => s.seekTo);
 
   const currentSong = useMemo(() => {
     if (playingSongQueueIndex >= 0 && playingSongQueueIndex < queue.length) {
@@ -67,14 +60,6 @@ export default function GlobalMiniPlayer() {
   if (!currentSong) return null;
 
   const dynamicBottom = 49 + insets.bottom + 8;
-
-  const handleSeek = async (value: number) => {
-    try {
-      await seekTo(value);
-    } catch (error: any) {
-      showToast(`Failed to seek: ${error.message || error}`, "error");
-    }
-  };
 
   return (
     <>
@@ -94,6 +79,7 @@ export default function GlobalMiniPlayer() {
               size={38}
               style={styles.playButton}
               color="#1DB954"
+              isCurrent={true}
             />
             <NextButton style={styles.controlButton} />
           </View>
