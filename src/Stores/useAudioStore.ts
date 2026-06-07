@@ -403,9 +403,13 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   },
 
   playNext: (showToast) => {
-    const { queue, playingSongQueueIndex, loadSongAtIndex } = get();
-    if (playingSongQueueIndex < queue.length - 1)
-      loadSongAtIndex(playingSongQueueIndex + 1, showToast);
+    try {
+      const { queue, playingSongQueueIndex, loadSongAtIndex } = get();
+      if (playingSongQueueIndex < queue.length - 1)
+        loadSongAtIndex(playingSongQueueIndex + 1, showToast);
+    } catch (error: any) {
+      showToast?.(`Error: ${error.message}`, "error");
+    }
   },
 
   playPrevious: (showToast) => {

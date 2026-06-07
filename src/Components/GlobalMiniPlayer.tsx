@@ -8,43 +8,12 @@ import { useAudioPlayerStatus } from "expo-audio";
 import Slider from "@react-native-community/slider";
 import { QueueModal } from "@/Components/QueueModal";
 import { useAudioStore } from "@/Stores/useAudioStore";
-import { PlayPauseButton } from "@/Components/Optimized/PlayPauseButton";
-
-const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
-  seekTo,
-}: {
-  seekTo: (v: number) => void;
-}) {
-  const player = useAudioStore((s) => s.player);
-  if (!player) return null;
-  const status = useAudioPlayerStatus(player);
-  const [isSliding, setIsSliding] = useState(false);
-  const [localValue, setLocalValue] = useState(0);
-
-  return (
-    <View style={styles.sliderContainer}>
-      <Slider
-        style={styles.slider}
-        minimumValue={0}
-        maximumValue={status.duration || 1}
-        value={isSliding ? localValue : status.currentTime}
-        minimumTrackTintColor="#1DB954"
-        maximumTrackTintColor="#535353"
-        thumbTintColor="#1DB954"
-        onValueChange={(val) => {
-          setIsSliding(true);
-          setLocalValue(val);
-        }}
-        onSlidingComplete={(val) => {
-          seekTo(val);
-          setTimeout(() => {
-            setIsSliding(false);
-          }, 150);
-        }}
-      />
-    </View>
-  );
-});
+import {
+  PlayPauseButton,
+  PreviousButton,
+  NextButton,
+  AudioSlider,
+} from "@/Components/Optimized/AudioControls";
 
 const MiniPlayerMeta = React.memo(
   function MiniPlayerMeta({ song }: { song: any }) {
@@ -53,9 +22,6 @@ const MiniPlayerMeta = React.memo(
       () => getArtworkForSong(song.coverArt, 300),
       [song, getArtworkForSong],
     );
-    React.useEffect(() => {
-      console.log("MiniPlayerMeta re-rendered. New URL:", artworkURL);
-    });
     return (
       <>
         <Image
@@ -90,8 +56,6 @@ export default function GlobalMiniPlayer() {
   const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
 
   const seekTo = useAudioStore((s) => s.seekTo);
-  const playNext = useAudioStore((s) => s.playNext);
-  const playPrevious = useAudioStore((s) => s.playPrevious);
 
   const currentSong = useMemo(() => {
     if (playingSongQueueIndex >= 0 && playingSongQueueIndex < queue.length) {
@@ -103,24 +67,6 @@ export default function GlobalMiniPlayer() {
   if (!currentSong) return null;
 
   const dynamicBottom = 49 + insets.bottom + 8;
-  const hasNext = playingSongQueueIndex < queue.length - 1;
-  const hasPrevious = playingSongQueueIndex > 0;
-
-  const handlePlayPrevious = async () => {
-    try {
-      await playPrevious(showToast);
-    } catch (error: any) {
-      showToast(`Couldn't change track: ${error.message || error}`, "error");
-    }
-  };
-
-  const handlePlayNext = async () => {
-    try {
-      await playNext();
-    } catch (error: any) {
-      showToast(`Skipping track failed: ${error.message || error}`, "error");
-    }
-  };
 
   const handleSeek = async (value: number) => {
     try {
@@ -143,35 +89,19 @@ export default function GlobalMiniPlayer() {
           </TouchableOpacity>
 
           <View style={styles.controlsContainer}>
-            <TouchableOpacity
-              onPress={handlePlayPrevious}
-              disabled={!hasPrevious}
-              style={styles.controlButton}
-            >
-              <Ionicons
-                name="play-back"
-                size={24}
-                color={hasPrevious ? "#fff" : "#555"}
-              />
-            </TouchableOpacity>
-
-            <PlayPauseButton size={38} style={styles.playButton} />
-
-            <TouchableOpacity
-              onPress={handlePlayNext}
-              disabled={!hasNext}
-              style={styles.controlButton}
-            >
-              <Ionicons
-                name="play-forward"
-                size={24}
-                color={hasNext ? "#fff" : "#555"}
-              />
-            </TouchableOpacity>
+            <PreviousButton style={styles.controlButton} />
+            <PlayPauseButton
+              size={38}
+              style={styles.playButton}
+              color="#1DB954"
+            />
+            <NextButton style={styles.controlButton} />
           </View>
         </View>
 
-        <MiniPlayerSlider seekTo={handleSeek} />
+        <View style={styles.sliderContainer}>
+          <AudioSlider style={styles.slider} />
+        </View>
       </View>
 
       <QueueModal
