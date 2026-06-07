@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Image } from "expo-image";
-import { Song } from "@/Models/Models";
+import { Song, PlaybackContext } from "@/Models/Models";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
@@ -10,18 +10,17 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@/Context/AuthContext";
+import { useAudioStore } from "@/Stores/useAudioStore";
 import { getArtworkUrl } from "@/Services/navidromeService";
 
 interface SongItemProps {
   item: Song;
-  isCurrent: boolean;
-  isPlaying: boolean;
   onPlay: (song: Song) => void;
   onOptionsPress: (song: Song) => void;
   onSwipeLeftToRight?: (song: Song) => void;
   showTrackNumber?: boolean;
   index?: number;
+  currentContext?: PlaybackContext;
 }
 
 const SWIPE_THRESHOLD = 80;
@@ -29,23 +28,40 @@ const SWIPE_THRESHOLD = 80;
 export const SongItem = React.memo(
   ({
     item,
-    isCurrent,
-    isPlaying,
     onPlay,
     onOptionsPress,
     onSwipeLeftToRight,
     showTrackNumber = false,
     index,
+    currentContext,
   }: SongItemProps) => {
-    const { navidromeCreds } = useAuth();
+    const cachedCreds = useAudioStore((s) => s.cachedCreds);
+
+    const isCurrent = useAudioStore((state) => {
+      const activeTrack = state.queue[state.playingSongQueueIndex];
+      if (activeTrack?.id !== item.id) return false;
+
+      if (!currentContext) return true;
+
+      const ctx = activeTrack.playbackContext;
+      return (
+        ctx?.type === currentContext.type &&
+        ctx?.id === currentContext.id &&
+        (index === undefined || ctx?.songIndex === index)
+      );
+    });
+
+    const isPlaying = useAudioStore((state) => state.playing && isCurrent);
+
     const displayTrackNumber =
       item.trackNumber ?? (index !== undefined ? index + 1 : null);
 
     const translateX = useSharedValue(0);
     const isGreen = useSharedValue(false);
+
     const artworkUrl =
-      navidromeCreds && item?.coverArt
-        ? getArtworkUrl(navidromeCreds, item.coverArt, 100)
+      cachedCreds && item?.coverArt
+        ? getArtworkUrl(cachedCreds, item.coverArt, 100)
         : null;
 
     const panGesture = Gesture.Pan()
@@ -159,6 +175,11 @@ export const SongItem = React.memo(
       </GestureDetector>
     );
   },
+  (prev, next) =>
+    prev.item?.id === next.item?.id &&
+    prev.index === next.index &&
+    prev.currentContext?.id === next.currentContext?.id &&
+    prev.currentContext?.type === next.currentContext?.type,
 );
 
 const styles = StyleSheet.create({

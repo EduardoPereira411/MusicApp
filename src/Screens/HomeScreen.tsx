@@ -8,8 +8,9 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
-import { useAudio } from "@/Context/AudioContext";
+import { useAudioStore } from "@/Stores/useAudioStore";
 import { useAuth } from "@/Context/AuthContext";
+import { useToast } from "@/Context/ToastContext";
 import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
@@ -25,6 +26,8 @@ type SectionType = "tracks" | "albums" | "artists";
 
 export default function HomeScreen() {
   const { navidromeCreds } = useAuth();
+  const { showToast } = useToast();
+
   const [activeSection, setActiveSection] = useState<SectionType>("tracks");
   const [songs, setSongs] = useState<Song[]>([]);
   const [albums, setAlbums] = useState<SharedCollectionData[]>([]);
@@ -37,7 +40,8 @@ export default function HomeScreen() {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
-  const { currentSong, playing, playSongNow, addToQueue } = useAudio();
+  const storePlaySongNow = useAudioStore((state) => state.playSongNow);
+  const storeAddToQueue = useAudioStore((state) => state.addToQueue);
 
   const handleSongOptions = useCallback((song: Song) => {
     setSelectedSong(song);
@@ -100,10 +104,21 @@ export default function HomeScreen() {
   const handlePlaySongNow = useCallback(
     async (song: Song, contextSongs?: Song[]) => {
       try {
-        await playSongNow(song, contextSongs, { type: "home" });
+        const songContext = contextSongs || [song];
+        await storePlaySongNow(song, songContext, { type: "home" }, showToast);
       } catch {}
     },
-    [playSongNow],
+    [storePlaySongNow, showToast],
+  );
+
+  const handleSwipeAddToQueue = useCallback(
+    (song: Song) => {
+      storeAddToQueue(song, showToast, {
+        type: "home",
+        songIndex: 0,
+      });
+    },
+    [storeAddToQueue, showToast],
   );
 
   const renderSongItem = useCallback(
@@ -111,23 +126,15 @@ export default function HomeScreen() {
       if (activeSection === "tracks") {
         const songItem = item as Song;
 
-        const isCurrent =
-          songItem.id === currentSong?.id &&
-          currentSong?.playbackContext?.type === "home";
-
         return (
           <SongItem
             item={songItem}
-            isCurrent={isCurrent}
-            isPlaying={isCurrent && playing}
             onPlay={handlePlaySongNow}
             onOptionsPress={handleSongOptions}
-            onSwipeLeftToRight={(track) =>
-              addToQueue(track, {
-                type: "home",
-                songIndex: 0,
-              })
-            }
+            currentContext={{
+              type: "home",
+            }}
+            onSwipeLeftToRight={handleSwipeAddToQueue}
           />
         );
       } else {
@@ -136,11 +143,9 @@ export default function HomeScreen() {
     },
     [
       activeSection,
-      currentSong,
-      playing,
       handlePlaySongNow,
       handleSongOptions,
-      addToQueue,
+      handleSwipeAddToQueue,
     ],
   );
 
@@ -236,7 +241,7 @@ export default function HomeScreen() {
         visible={isModalVisible}
         song={selectedSong}
         onClose={() => setIsModalVisible(false)}
-        onAddToQueue={addToQueue}
+        onAddToQueue={(song) => storeAddToQueue(song, showToast)}
       />
     </View>
   );

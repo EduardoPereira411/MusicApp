@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/Context/AuthContext";
-import { useAudio } from "@/Context/AudioContext";
+import { useAudioStore } from "@/Stores/useAudioStore"; // Directly interface store core
 import { fetchNavidromePlaylists } from "@/Services/navidromeService";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 import { SharedCollectionData } from "@/Models/Models";
@@ -22,7 +22,8 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { navidromeCreds, downloadCreds, setNavidromeAuth, setDownloadAuth } =
     useAuth();
-  const { logoutCleanUp } = useAudio();
+
+  const logoutCleanUp = useAudioStore((state) => state.logoutCleanUp);
 
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -43,7 +44,6 @@ export default function ProfileScreen() {
 
   const username = navidromeCreds?.username || "";
 
-  // Combined Initializer
   useEffect(() => {
     if (!navidromeCreds) return;
 
@@ -278,12 +278,14 @@ export default function ProfileScreen() {
 
             <View style={styles.divider} />
 
-            <ErrorDisplay
-              title="Playlist Service Sync Error"
-              message={pipelineError}
-              onRetry={handleRefresh}
-              retryButtonTitle="Re-sync Playlists"
-            />
+            {pipelineError && (
+              <ErrorDisplay
+                title="Playlist Service Sync Error"
+                message={pipelineError}
+                onRetry={handleRefresh}
+                retryButtonTitle="Re-sync Playlists"
+              />
+            )}
 
             <Text style={styles.sectionHeader}>Your Playlists</Text>
           </View>

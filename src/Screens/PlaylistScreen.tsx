@@ -10,70 +10,20 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/Context/AuthContext";
-import { fetchCollectionDetails } from "@/Services/navidromeService";
-import { useAudio } from "@/Context/AudioContext";
 import { useToast } from "@/Context/ToastContext";
+import { useAudioStore } from "@/Stores/useAudioStore"; // Connect directly to the store
 import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 import { Image } from "expo-image";
 import { ErrorDisplay } from "@/Components/ErrorDisplay";
-import { getArtworkUrl } from "@/Services/navidromeService";
+import {
+  fetchCollectionDetails,
+  getArtworkUrl,
+} from "@/Services/navidromeService";
 
 const APP_ICON_FALLBACK = require("@/assets/images/icon.png");
-
-const MemoizedSongListItem = React.memo(
-  ({
-    trackItem,
-    index,
-    isCurrent,
-    isPlaying,
-    handleSongOptions,
-    addToQueue,
-    handlePlaySong,
-    songs,
-    type,
-    id,
-  }: {
-    trackItem: Song;
-    index: number;
-    isCurrent: boolean;
-    isPlaying: boolean;
-    handleSongOptions: (song: Song) => void;
-    addToQueue: (song: Song, context: any) => void;
-    handlePlaySong: (song: Song, index: number, songs: Song[]) => void;
-    songs: Song[];
-    type: string;
-    id: string;
-  }) => {
-    return (
-      <SongItem
-        item={trackItem}
-        index={index}
-        showTrackNumber={true}
-        isCurrent={isCurrent}
-        isPlaying={isPlaying}
-        onOptionsPress={handleSongOptions}
-        onSwipeLeftToRight={(track) =>
-          addToQueue(track, {
-            type,
-            id,
-            songIndex: index,
-          })
-        }
-        onPlay={(track) => handlePlaySong(track, index, songs)}
-      />
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.isCurrent === nextProps.isCurrent &&
-      prevProps.isPlaying === nextProps.isPlaying &&
-      prevProps.trackItem.id === nextProps.trackItem.id
-    );
-  },
-);
 
 export default function PlaylistScreen() {
   const router = useRouter();
@@ -92,13 +42,10 @@ export default function PlaylistScreen() {
 
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
-  const {
-    currentSong,
-    playingSongQueueIndex,
-    playing,
-    playSongNow,
-    addToQueue,
-  } = useAudio();
+
+  // Pull stable action methods directly from the state-slice core
+  const storePlaySongNow = useAudioStore((state) => state.playSongNow);
+  const storeAddToQueue = useAudioStore((state) => state.addToQueue);
 
   useEffect(() => {
     if (id && type && navidromeCreds) {
@@ -148,22 +95,26 @@ export default function PlaylistScreen() {
     if (!navidromeCreds || !targetCoverArtId) {
       return APP_ICON_FALLBACK;
     }
-
     const url = getArtworkUrl(navidromeCreds, targetCoverArtId, 500);
     return url ? { uri: url } : APP_ICON_FALLBACK;
   }, [navidromeCreds, targetCoverArtId]);
 
   const handlePlaySong = useCallback(
     (item: Song, itemIndex: number, contextQueue: Song[] = songs) => {
-      playSongNow(item, contextQueue, {
-        type: type,
-        id: id,
-        songIndex: itemIndex,
-      }).catch((err) => {
+      storePlaySongNow(
+        item,
+        contextQueue,
+        {
+          type: type,
+          id: id,
+          songIndex: itemIndex,
+        },
+        showToast,
+      ).catch((err) => {
         showToast(err.message || "Failed playback execution.", "error");
       });
     },
-    [songs, playSongNow, showToast, type, id],
+    [songs, storePlaySongNow, showToast, type, id],
   );
 
   const playCollectionStandard = useCallback(() => {
@@ -179,7 +130,6 @@ export default function PlaylistScreen() {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffledList[i], shuffledList[j]] = [shuffledList[j], shuffledList[i]];
     }
-
     handlePlaySong(shuffledList[0], 0, shuffledList);
   }, [songs, handlePlaySong]);
 
@@ -188,6 +138,17 @@ export default function PlaylistScreen() {
     setIsModalVisible(true);
   }, []);
 
+  const handleSwipeAddToQueue = useCallback(
+    (track: Song, index: number) => {
+      storeAddToQueue(track, showToast, {
+        type,
+        id,
+        songIndex: index,
+      });
+    },
+    [storeAddToQueue, showToast, type, id],
+  );
+
   const renderListItem = useCallback(
     ({ item, index }: { item: Song | SharedCollectionData; index: number }) => {
       if (type === "artist") {
@@ -195,47 +156,24 @@ export default function PlaylistScreen() {
       } else {
         const trackItem = item as Song;
 
-        // Match context and song details
-        const isContextMatch =
-          currentSong?.playbackContext?.type === type &&
-          currentSong?.playbackContext?.id === id;
-        const isSongMatch = currentSong?.id === trackItem.id;
-
-        let isCurrent = false;
-        if (isContextMatch && isSongMatch) {
-          if (currentSong?.playbackContext?.songIndex !== undefined) {
-            isCurrent = index === currentSong.playbackContext.songIndex;
-          } else {
-            isCurrent = true;
-          }
-        }
-
         return (
-          <MemoizedSongListItem
-            trackItem={trackItem}
+          <SongItem
+            item={trackItem}
             index={index}
-            isCurrent={isCurrent}
-            isPlaying={isCurrent && playing}
-            handleSongOptions={handleSongOptions}
-            addToQueue={addToQueue}
-            handlePlaySong={handlePlaySong}
-            songs={songs}
-            type={type}
-            id={id}
+            showTrackNumber={true}
+            onOptionsPress={handleSongOptions}
+            onSwipeLeftToRight={(track) => handleSwipeAddToQueue(track, index)}
+            onPlay={(track) => handlePlaySong(track, index, songs)}
+            currentContext={{
+              type: type,
+              id: id,
+              songIndex: index,
+            }}
           />
         );
       }
     },
-    [
-      type,
-      id,
-      currentSong,
-      playing,
-      handleSongOptions,
-      addToQueue,
-      handlePlaySong,
-      songs,
-    ],
+    [type, id, handleSongOptions, handleSwipeAddToQueue, handlePlaySong, songs],
   );
 
   const keyExtractor = useCallback(
@@ -373,7 +311,7 @@ export default function PlaylistScreen() {
         visible={isModalVisible}
         song={selectedSong}
         onClose={() => setIsModalVisible(false)}
-        onAddToQueue={addToQueue}
+        onAddToQueue={(song) => storeAddToQueue(song, showToast)}
       />
     </View>
   );

@@ -9,13 +9,12 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAudio } from "@/Context/AudioContext";
+import { useAudioStore } from "@/Stores/useAudioStore"; // Directly targeting your new store
 import { Image } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Sortable from "react-native-sortables";
 import { QueueTrack } from "@/Components/QueueTrack";
 import { ErrorDisplay } from "@/Components/ErrorDisplay";
-import { useAuth } from "@/Context/AuthContext";
 import { getArtworkUrl } from "@/Services/navidromeService";
 
 interface QueueModalProps {
@@ -25,10 +24,11 @@ interface QueueModalProps {
 
 const NowPlayingHeaderTrack = React.memo(
   function NowPlayingHeaderTrack({ song }: { song: any }) {
-    const { navidromeCreds } = useAuth();
+    const cachedCreds = useAudioStore((s) => s.cachedCreds);
+
     const artworkUrl =
-      navidromeCreds && song?.coverArt
-        ? getArtworkUrl(navidromeCreds, song.coverArt, 150)
+      cachedCreds && song?.coverArt
+        ? getArtworkUrl(cachedCreds, song.coverArt, 150)
         : null;
 
     return (
@@ -59,16 +59,18 @@ const NowPlayingHeaderTrack = React.memo(
 );
 
 export function QueueModal({ visible, onClose }: QueueModalProps) {
-  const {
-    queue,
-    playingSongQueueIndex,
-    currentSong,
-    skipToQueueIndex,
-    removeFromQueue,
-    updateQueueOrder,
-  } = useAudio();
-  const insets = useSafeAreaInsets();
+  const queue = useAudioStore((s) => s.queue);
+  const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
 
+  const currentSong = useMemo(() => {
+    return queue[playingSongQueueIndex] || null;
+  }, [queue, playingSongQueueIndex]);
+
+  const skipToQueueIndex = useAudioStore((s) => s.skipToQueueIndex);
+  const removeFromQueue = useAudioStore((s) => s.removeFromQueue);
+  const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
+
+  const insets = useSafeAreaInsets();
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   const { userUpcoming, autoUpcoming } = useMemo(() => {

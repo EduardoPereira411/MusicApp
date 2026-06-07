@@ -9,7 +9,8 @@ import {
 } from "react-native";
 import { searchAll } from "@/Services/navidromeService";
 import { useAuth } from "@/Context/AuthContext";
-import { useAudio } from "@/Context/AudioContext";
+import { useToast } from "@/Context/ToastContext";
+import { useAudioStore } from "@/Stores/useAudioStore";
 import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
@@ -23,6 +24,7 @@ type SearchType = "tracks" | "albums" | "artists";
 export default function SearchScreen() {
   const router = useRouter();
   const { navidromeCreds } = useAuth();
+  const { showToast } = useToast();
 
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<SearchType>("tracks");
@@ -35,7 +37,8 @@ export default function SearchScreen() {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  const { currentSong, playing, playSongNow, addToQueue } = useAudio();
+  const storePlaySongNow = useAudioStore((state) => state.playSongNow);
+  const storeAddToQueue = useAudioStore((state) => state.addToQueue);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -80,10 +83,20 @@ export default function SearchScreen() {
   const handlePlaySongNow = useCallback(
     async (song: Song) => {
       try {
-        await playSongNow(song, undefined, { type: "search" });
+        await storePlaySongNow(song, [song], { type: "search" }, showToast);
       } catch {}
     },
-    [playSongNow],
+    [storePlaySongNow, showToast],
+  );
+
+  const handleSwipeAddToQueue = useCallback(
+    (track: Song) => {
+      storeAddToQueue(track, showToast, {
+        type: "search",
+        songIndex: 0,
+      });
+    },
+    [storeAddToQueue, showToast],
   );
 
   const renderSearchItem = useCallback(
@@ -91,37 +104,23 @@ export default function SearchScreen() {
       if (activeTab === "tracks") {
         const songItem = item as Song;
 
-        const isCurrent =
-          songItem.id === currentSong?.id &&
-          currentSong?.playbackContext?.type === "search";
-
         return (
           <SongItem
             item={songItem}
-            isCurrent={isCurrent}
-            isPlaying={isCurrent && playing}
             onPlay={handlePlaySongNow}
             onOptionsPress={handleSongOptions}
-            onSwipeLeftToRight={(track) =>
-              addToQueue(track, {
-                type: "search",
-                songIndex: 0,
-              })
-            }
+            onSwipeLeftToRight={handleSwipeAddToQueue}
+            currentContext={{
+              type: "search",
+              songIndex: 0,
+            }}
           />
         );
       } else {
         return <MediaCollectionItem item={item as SharedCollectionData} />;
       }
     },
-    [
-      activeTab,
-      currentSong?.id,
-      playing,
-      handlePlaySongNow,
-      handleSongOptions,
-      addToQueue,
-    ],
+    [activeTab, handlePlaySongNow, handleSongOptions, handleSwipeAddToQueue],
   );
 
   const listConfig = useMemo(() => {
@@ -183,12 +182,14 @@ export default function SearchScreen() {
         ))}
       </View>
 
-      <ErrorDisplay
-        title="Search Routine Exception"
-        message={pipelineError}
-        onRetry={executeSearch}
-        retryButtonTitle="Re-run Search Query"
-      />
+      {pipelineError && (
+        <ErrorDisplay
+          title="Search Routine Exception"
+          message={pipelineError}
+          onRetry={executeSearch}
+          retryButtonTitle="Re-run Search Query"
+        />
+      )}
 
       <View style={{ flex: 1 }}>
         {loading ? (
@@ -226,7 +227,7 @@ export default function SearchScreen() {
         visible={isModalVisible}
         song={selectedSong}
         onClose={() => setIsModalVisible(false)}
-        onAddToQueue={addToQueue}
+        onAddToQueue={(song) => storeAddToQueue(song, showToast)}
       />
     </View>
   );

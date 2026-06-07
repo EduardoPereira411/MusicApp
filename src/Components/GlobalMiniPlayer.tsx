@@ -1,15 +1,14 @@
-import React, { useMemo, useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAudio } from "@/Context/AudioContext";
 import { useToast } from "@/Context/ToastContext";
 import { useAudioPlayerStatus, AudioPlayer } from "expo-audio";
 import Slider from "@react-native-community/slider";
 import { QueueModal } from "@/Components/QueueModal";
-import { useAuth } from "@/Context/AuthContext";
-import { getArtworkUrl } from "@/Services/navidromeService";
+import { useAudioStore } from "@/Stores/useAudioStore";
+import { useAudio } from "@/Hooks/useAudio";
 
 const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
   player,
@@ -19,7 +18,6 @@ const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
   seekTo: (v: number) => void;
 }) {
   const status = useAudioPlayerStatus(player);
-
   const [isSliding, setIsSliding] = useState(false);
   const [localValue, setLocalValue] = useState(0);
 
@@ -49,12 +47,13 @@ const MiniPlayerSlider = React.memo(function MiniPlayerSlider({
 });
 
 const MiniPlayerMeta = React.memo(
-  function MiniPlayerMeta({ song }: { song: any }) {
-    const { navidromeCreds } = useAuth();
-    const artworkUrl =
-      navidromeCreds && song?.coverArt
-        ? getArtworkUrl(navidromeCreds, song.coverArt, 100)
-        : null;
+  function MiniPlayerMeta({
+    song,
+    artworkUrl,
+  }: {
+    song: any;
+    artworkUrl: string | null;
+  }) {
     return (
       <>
         <Image
@@ -77,36 +76,42 @@ const MiniPlayerMeta = React.memo(
       </>
     );
   },
-  (prev, next) => prev.song?.id === next.song?.id,
+  (prev, next) =>
+    prev.song?.id === next.song?.id && prev.artworkUrl === next.artworkUrl,
 );
 
 export default function GlobalMiniPlayer() {
-  const {
-    currentSong,
-    playing,
-    togglePlayPause,
-    seekTo,
-    playNext,
-    playPrevious,
-    queue,
-    playingSongQueueIndex,
-    player,
-  } = useAudio();
-
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const [queueVisible, setQueueVisible] = useState(false);
 
+  const queue = useAudioStore((s) => s.queue);
+  const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
+  const currentArtworkUrl = useAudio((s) => s.currentArtworkUrl);
+  const playing = useAudioStore((s) => s.playing);
+  const player = useAudioStore((s) => s.player);
+
+  const togglePlayPause = useAudioStore((s) => s.togglePlayPause);
+  const seekTo = useAudioStore((s) => s.seekTo);
+  const playNext = useAudioStore((s) => s.playNext);
+  const playPrevious = useAudioStore((s) => s.playPrevious);
+
+  const currentSong = useMemo(() => {
+    if (playingSongQueueIndex >= 0 && playingSongQueueIndex < queue.length) {
+      return queue[playingSongQueueIndex];
+    }
+    return null;
+  }, [queue, playingSongQueueIndex]);
+
   if (!currentSong) return null;
 
   const dynamicBottom = 49 + insets.bottom + 8;
-
   const hasNext = playingSongQueueIndex < queue.length - 1;
   const hasPrevious = playingSongQueueIndex > 0;
 
   const handlePlayPrevious = async () => {
     try {
-      await playPrevious();
+      await playPrevious(showToast);
     } catch (error: any) {
       showToast(`Couldn't change track: ${error.message || error}`, "error");
     }
@@ -145,7 +150,7 @@ export default function GlobalMiniPlayer() {
             onPress={() => setQueueVisible(true)}
             activeOpacity={0.7}
           >
-            <MiniPlayerMeta song={currentSong} />
+            <MiniPlayerMeta song={currentSong} artworkUrl={currentArtworkUrl} />
           </TouchableOpacity>
 
           <View style={styles.controlsContainer}>
@@ -186,7 +191,7 @@ export default function GlobalMiniPlayer() {
           </View>
         </View>
 
-        <MiniPlayerSlider player={player} seekTo={handleSeek} />
+        {player && <MiniPlayerSlider player={player} seekTo={handleSeek} />}
       </View>
 
       <QueueModal

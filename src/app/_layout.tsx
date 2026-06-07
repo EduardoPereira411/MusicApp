@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { LogBox, View, ActivityIndicator, StyleSheet } from "react-native";
 import { Stack, useSegments, useRouter } from "expo-router";
-import { AuthProvider, useAuth } from "@/Context/AuthContext"; // Import Auth Context hooks
-import { AudioProvider, useAudio } from "@/Context/AudioContext";
+import { useAudioPlayer } from "expo-audio";
+import { AuthProvider, useAuth } from "@/Context/AuthContext";
 import { ToastProvider } from "@/Context/ToastContext";
+import { useAudioStore } from "@/Stores/useAudioStore";
 import GlobalMiniPlayer from "@/Components/GlobalMiniPlayer";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
@@ -21,18 +22,44 @@ console.log = (...args) => {
       return;
     }
   } catch (e) {}
-
   originalLog(...args);
 };
 
 function InnerRootLayout() {
   const segments = useSegments();
   const router = useRouter();
-  const { logoutCleanUp } = useAudio();
-
   const { navidromeCreds, isLoading } = useAuth();
 
+  const nativePlayerInstance = useAudioPlayer();
+
+  const initializePlayer = useAudioStore((s) => s.initializePlayer);
+  const setCachedCreds = useAudioStore((s) => s.setCachedCreds);
+  const logoutCleanUp = useAudioStore((s) => s.logoutCleanUp);
+  const triggerLookAhead = useAudioStore((s) => s.triggerLookAhead);
+
+  const queueLength = useAudioStore((s) => s.queue.length);
+  const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
+  const lookAheadError = useAudioStore((s) => s.lookAheadError);
+
   const isLoginScreen = segments[0] === "login";
+
+  useEffect(() => {
+    setCachedCreds(navidromeCreds);
+  }, [navidromeCreds, setCachedCreds]);
+
+  useEffect(() => {
+    if (!nativePlayerInstance) return;
+    const teardownNativeControls = initializePlayer(nativePlayerInstance);
+    return () => {
+      teardownNativeControls();
+    };
+  }, [nativePlayerInstance, initializePlayer]);
+
+  // Setup Look Ahead automation
+  useEffect(() => {
+    if (playingSongQueueIndex === -1 || queueLength === 0) return;
+    triggerLookAhead();
+  }, [playingSongQueueIndex, queueLength, lookAheadError, triggerLookAhead]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -79,9 +106,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <ToastProvider>
-          <AudioProvider>
-            <InnerRootLayout />
-          </AudioProvider>
+          <InnerRootLayout />
         </ToastProvider>
       </AuthProvider>
     </GestureHandlerRootView>
