@@ -67,8 +67,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authStorage.clearCredentials(),
       downloadAuthStorage.clearCredentials(),
     ]);
-    setNavidromeCreds(null);
-    setDownloadCreds(null);
+    const savedNavidromeCreds = await authStorage.getCredentials();
+    const savedDownloadCreds = await downloadAuthStorage.getCredentials();
+
+    setNavidromeCreds(
+      savedNavidromeCreds
+        ? {
+            serverUrl: savedNavidromeCreds.serverUrl,
+            username: "",
+            password: "",
+          }
+        : null,
+    );
+    setDownloadCreds(
+      savedDownloadCreds
+        ? {
+            serverUrl: savedDownloadCreds.serverUrl,
+            username: "",
+            password: "",
+          }
+        : null,
+    );
   };
 
   return (

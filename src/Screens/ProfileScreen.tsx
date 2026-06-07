@@ -20,8 +20,7 @@ import { ErrorDisplay } from "@/Components/ErrorDisplay";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { navidromeCreds, downloadCreds, setNavidromeAuth, setDownloadAuth } =
-    useAuth();
+  const { navidromeCreds, downloadCreds, logout, setDownloadAuth } = useAuth();
 
   const logoutCleanUp = useAudioStore((state) => state.logoutCleanUp);
 
@@ -124,13 +123,12 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           logoutCleanUp();
-          await setNavidromeAuth(null);
-          await setDownloadAuth(null);
+          await logout();
           router.replace("/login");
         },
       },
     ]);
-  }, [router, setNavidromeAuth, setDownloadAuth, logoutCleanUp]);
+  }, [router, logout, logoutCleanUp]);
 
   const formattedPlaylists = useMemo<SharedCollectionData[]>(() => {
     return playlists.map((pl) => ({
