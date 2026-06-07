@@ -51,9 +51,6 @@ function InnerRootLayout() {
   }, [nativePlayerInstance, initializePlayer]);
 
   useEffect(() => {
-    console.log("re render here");
-  });
-  useEffect(() => {
     if (isLoading) return;
 
     const isLoggedIn = !!navidromeCreds?.username;
