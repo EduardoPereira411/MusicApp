@@ -8,6 +8,7 @@ import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { ItemFlatList } from "@/Components/Optimized/ItemListDisplay";
 
 type SectionType = "tracks" | "albums" | "artists";
+const HOME_PLAYBACK_CONTEXT = { type: "home" as const };
 
 export default function HomeScreen() {
   const { navidromeCreds } = useAuth();
@@ -39,6 +40,11 @@ export default function HomeScreen() {
     [storeAddToQueue, showToast],
   );
 
+  const handleOptionsPress = useCallback((song: Song) => {
+    setSelectedSong(song);
+    setIsModalVisible(true);
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Dashboard Feed</Text>
@@ -51,9 +57,7 @@ export default function HomeScreen() {
               styles.tabButton,
               activeSection === section && styles.tabButtonActive,
             ]}
-            onPress={() => {
-              setActiveSection(section);
-            }}
+            onPress={() => setActiveSection(section)}
           >
             <Text
               style={[
@@ -67,17 +71,58 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      <ItemFlatList
-        activeSection={activeSection}
-        navidromeCreds={navidromeCreds}
-        onPlay={handlePlaySongNow}
-        onOptionsPress={(s) => {
-          setSelectedSong(s);
-          setIsModalVisible(true);
-        }}
-        onSwipe={handleSwipeAddToQueue}
-        context={{ type: "home" }}
-      />
+      <View style={styles.screenWrapper}>
+        <View
+          style={
+            activeSection === "tracks"
+              ? styles.visibleContainer
+              : styles.hiddenContainer
+          }
+        >
+          <ItemFlatList
+            activeSection={"tracks"}
+            navidromeCreds={navidromeCreds}
+            onPlay={handlePlaySongNow}
+            onOptionsPress={handleOptionsPress}
+            onSwipe={handleSwipeAddToQueue}
+            context={HOME_PLAYBACK_CONTEXT}
+          />
+        </View>
+
+        <View
+          style={
+            activeSection === "albums"
+              ? styles.visibleContainer
+              : styles.hiddenContainer
+          }
+        >
+          <ItemFlatList
+            activeSection={"albums"}
+            navidromeCreds={navidromeCreds}
+            onPlay={handlePlaySongNow}
+            onOptionsPress={handleOptionsPress}
+            onSwipe={handleSwipeAddToQueue}
+            context={HOME_PLAYBACK_CONTEXT}
+          />
+        </View>
+
+        <View
+          style={
+            activeSection === "artists"
+              ? styles.visibleContainer
+              : styles.hiddenContainer
+          }
+        >
+          <ItemFlatList
+            activeSection={"artists"}
+            navidromeCreds={navidromeCreds}
+            onPlay={handlePlaySongNow}
+            onOptionsPress={handleOptionsPress}
+            onSwipe={handleSwipeAddToQueue}
+            context={HOME_PLAYBACK_CONTEXT}
+          />
+        </View>
+      </View>
 
       <SongOptionsModal
         visible={isModalVisible}
@@ -95,6 +140,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#121212",
     paddingTop: 60,
     paddingHorizontal: 16,
+  },
+  visibleContainer: {
+    flex: 1,
+  },
+  hiddenContainer: {
+    display: "none",
   },
   header: {
     color: "#fff",
@@ -125,5 +176,8 @@ const styles = StyleSheet.create({
   },
   tabButtonTextActive: {
     color: "#1DB954",
+  },
+  screenWrapper: {
+    flex: 1,
   },
 });

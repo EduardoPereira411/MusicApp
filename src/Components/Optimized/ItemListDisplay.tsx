@@ -65,24 +65,15 @@ export const ItemFlatList = React.memo(
       [navidromeCreds],
     );
 
-    const init = useCallback(async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        await Promise.all([
-          fetchData("tracks"),
-          fetchData("albums"),
-          fetchData("artists"),
-        ]);
-      } catch (e) {
-      } finally {
-        setLoading(false);
-      }
-    }, [fetchData]);
-
     useEffect(() => {
-      init();
-    }, [init]);
+      const initSingleSection = async () => {
+        setLoading(true);
+        await fetchData(activeSection);
+        setLoading(false);
+      };
+
+      initSingleSection();
+    }, [fetchData, activeSection]);
 
     const handleRefresh = useCallback(async () => {
       setIsRefreshing(true);
