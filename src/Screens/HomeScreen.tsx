@@ -1,105 +1,23 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-} from "react-native";
+import { useState, useCallback } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
-import { Song, SharedCollectionData } from "@/Models/Models";
-import { SongItem } from "@/Components/SongItem";
+import { Song } from "@/Models/Models";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
-import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
-import { ErrorDisplay } from "@/Components/ErrorDisplay";
-import {
-  fetchTracks,
-  fetchAlbums,
-  fetchArtists,
-} from "@/Services/navidromeService";
+import { ItemFlatList } from "@/Components/Optimized/ItemListDisplay";
 
 type SectionType = "tracks" | "albums" | "artists";
 
 export default function HomeScreen() {
   const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
-
   const [activeSection, setActiveSection] = useState<SectionType>("tracks");
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [albums, setAlbums] = useState<SharedCollectionData[]>([]);
-  const [artists, setArtists] = useState<SharedCollectionData[]>([]);
-
-  const [initialLoading, setInitialLoading] = useState<boolean>(true);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [pipelineError, setPipelineError] = useState<string | null>(null);
-
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
   const storePlaySongNow = useAudioStore((state) => state.playSongNow);
   const storeAddToQueue = useAudioStore((state) => state.addToQueue);
-
-  const handleSongOptions = useCallback((song: Song) => {
-    setSelectedSong(song);
-    setIsModalVisible(true);
-  }, []);
-
-  const fetchAllDataInitial = useCallback(async () => {
-    if (!navidromeCreds) return;
-    setInitialLoading(true);
-    setPipelineError(null);
-    try {
-      const [tracksData, albumsData, artistsData] = await Promise.all([
-        fetchTracks(navidromeCreds),
-        fetchAlbums(navidromeCreds),
-        fetchArtists(navidromeCreds),
-      ]);
-      setSongs(tracksData);
-      setAlbums(albumsData);
-      setArtists(artistsData);
-    } catch (err: any) {
-      setPipelineError(err.message || "An unexpected network error occurred.");
-    } finally {
-      setInitialLoading(false);
-    }
-  }, [navidromeCreds]);
-
-  useEffect(() => {
-    fetchAllDataInitial();
-  }, [fetchAllDataInitial]);
-
-  async function handleRefresh() {
-    if (!navidromeCreds) return;
-    setIsRefreshing(true);
-    setPipelineError(null);
-    if (activeSection === "tracks") {
-      setSongs([]);
-    } else if (activeSection === "albums") {
-      setAlbums([]);
-    } else if (activeSection === "artists") {
-      setArtists([]);
-    }
-
-    try {
-      if (activeSection === "tracks") {
-        setSongs(await fetchTracks(navidromeCreds));
-      } else if (activeSection === "albums") {
-        setAlbums(await fetchAlbums(navidromeCreds));
-      } else if (activeSection === "artists") {
-        setArtists(await fetchArtists(navidromeCreds));
-      }
-    } catch (err: any) {
-      setPipelineError(
-        err.message || "Failed to update target feed section components.",
-      );
-    } finally {
-      setIsRefreshing(false);
-    }
-  }
 
   const handlePlaySongNow = useCallback(
     async (song: Song, contextSongs?: Song[]) => {
@@ -120,58 +38,6 @@ export default function HomeScreen() {
     },
     [storeAddToQueue, showToast],
   );
-
-  const renderSongItem = useCallback(
-    ({ item }: { item: Song | SharedCollectionData }) => {
-      if (activeSection === "tracks") {
-        const songItem = item as Song;
-
-        return (
-          <SongItem
-            item={songItem}
-            onPlay={handlePlaySongNow}
-            onOptionsPress={handleSongOptions}
-            currentContext={{
-              type: "home",
-            }}
-            onSwipeLeftToRight={handleSwipeAddToQueue}
-          />
-        );
-      } else {
-        return <MediaCollectionItem item={item as SharedCollectionData} />;
-      }
-    },
-    [
-      activeSection,
-      handlePlaySongNow,
-      handleSongOptions,
-      handleSwipeAddToQueue,
-    ],
-  );
-
-  const listConfig = useMemo(() => {
-    switch (activeSection) {
-      case "tracks":
-        return { data: songs, emptyText: "No tracks found." };
-      case "albums":
-        return { data: albums, emptyText: "No albums found." };
-      case "artists":
-        return { data: artists, emptyText: "No artists found." };
-    }
-  }, [activeSection, songs, albums, artists]);
-
-  const keyExtractor = useCallback(
-    (item: Song | SharedCollectionData) => item.id,
-    [],
-  );
-
-  if (initialLoading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#1DB954" />
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -201,47 +67,23 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      {pipelineError && (
-        <View style={styles.errorWrapper}>
-          <ErrorDisplay
-            title="Synchronization Point Interrupted"
-            message={pipelineError}
-            onRetry={handleRefresh}
-            retryButtonTitle="Re-sync Pipeline"
-          />
-        </View>
-      )}
-
-      <View style={{ flex: 1 }}>
-        <FlatList<Song | SharedCollectionData>
-          data={pipelineError ? [] : listConfig.data}
-          keyExtractor={keyExtractor}
-          renderItem={renderSongItem}
-          contentContainerStyle={styles.listContainer}
-          initialNumToRender={7}
-          maxToRenderPerBatch={5}
-          windowSize={2}
-          removeClippedSubviews={true}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor="#1DB954"
-            />
-          }
-          ListEmptyComponent={
-            !pipelineError && !isRefreshing ? (
-              <Text style={styles.emptyText}>{listConfig.emptyText}</Text>
-            ) : null
-          }
-        />
-      </View>
+      <ItemFlatList
+        activeSection={activeSection}
+        navidromeCreds={navidromeCreds}
+        onPlay={handlePlaySongNow}
+        onOptionsPress={(s) => {
+          setSelectedSong(s);
+          setIsModalVisible(true);
+        }}
+        onSwipe={handleSwipeAddToQueue}
+        context={{ type: "home" }}
+      />
 
       <SongOptionsModal
         visible={isModalVisible}
         song={selectedSong}
         onClose={() => setIsModalVisible(false)}
-        onAddToQueue={(song) => storeAddToQueue(song, showToast)}
+        onAddToQueue={(s) => storeAddToQueue(s, showToast)}
       />
     </View>
   );
@@ -253,12 +95,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#121212",
     paddingTop: 60,
     paddingHorizontal: 16,
-  },
-  centerContainer: {
-    flex: 1,
-    backgroundColor: "#121212",
-    justifyContent: "center",
-    alignItems: "center",
   },
   header: {
     color: "#fff",
@@ -289,16 +125,5 @@ const styles = StyleSheet.create({
   },
   tabButtonTextActive: {
     color: "#1DB954",
-  },
-  errorWrapper: {
-    marginBottom: 16,
-  },
-  listContainer: {
-    paddingBottom: 120,
-  },
-  emptyText: {
-    color: "#b3b3b3",
-    textAlign: "center",
-    marginTop: 40,
   },
 });
