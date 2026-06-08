@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import { useAuth } from "@/Context/AuthContext";
@@ -10,10 +10,75 @@ import { ItemFlatList } from "@/Components/Optimized/ItemListDisplay";
 type SectionType = "tracks" | "albums" | "artists";
 const HOME_PLAYBACK_CONTEXT = { type: "home" as const };
 
+const tabEventEmitter = {
+  listeners: new Set<(section: SectionType) => void>(),
+  subscribe(callback: (section: SectionType) => void) {
+    this.listeners.add(callback);
+    return () => this.listeners.delete(callback);
+  },
+  emit(section: SectionType) {
+    this.listeners.forEach((cb) => cb(section));
+  },
+};
+
+function SectionHeader() {
+  const [activeSection, setActiveSection] = useState<SectionType>("tracks");
+
+  const handlePress = (section: SectionType) => {
+    setActiveSection(section);
+    tabEventEmitter.emit(section);
+  };
+
+  return (
+    <View style={styles.tabBar}>
+      {(["tracks", "albums", "artists"] as SectionType[]).map((section) => (
+        <TouchableOpacity
+          key={section}
+          style={[
+            styles.tabButton,
+            activeSection === section && styles.tabButtonActive,
+          ]}
+          onPress={() => handlePress(section)}
+        >
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeSection === section && styles.tabButtonTextActive,
+            ]}
+          >
+            {section.toUpperCase()}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+function SectionHeaderVisibilityContainer({
+  targetSection,
+  children,
+}: {
+  targetSection: SectionType;
+  children: React.ReactNode;
+}) {
+  const [isVisible, setIsVisible] = useState(targetSection === "tracks");
+
+  useEffect(() => {
+    tabEventEmitter.subscribe((currentActiveSection) => {
+      setIsVisible(currentActiveSection === targetSection);
+    });
+  }, [targetSection]);
+
+  return (
+    <View style={isVisible ? styles.visibleContainer : styles.hiddenContainer}>
+      {children}
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
-  const [activeSection, setActiveSection] = useState<SectionType>("tracks");
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
@@ -44,84 +109,46 @@ export default function HomeScreen() {
     setSelectedSong(song);
     setIsModalVisible(true);
   }, []);
-
+  console.log("HomeScreen Rendered!");
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Dashboard Feed</Text>
 
-      <View style={styles.tabBar}>
-        {(["tracks", "albums", "artists"] as SectionType[]).map((section) => (
-          <TouchableOpacity
-            key={section}
-            style={[
-              styles.tabButton,
-              activeSection === section && styles.tabButtonActive,
-            ]}
-            onPress={() => setActiveSection(section)}
-          >
-            <Text
-              style={[
-                styles.tabButtonText,
-                activeSection === section && styles.tabButtonTextActive,
-              ]}
-            >
-              {section.toUpperCase()}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <SectionHeader />
 
       <View style={styles.screenWrapper}>
-        <View
-          style={
-            activeSection === "tracks"
-              ? styles.visibleContainer
-              : styles.hiddenContainer
-          }
-        >
+        <SectionHeaderVisibilityContainer targetSection="tracks">
           <ItemFlatList
-            activeSection={"tracks"}
+            activeSection="tracks"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
             onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={HOME_PLAYBACK_CONTEXT}
           />
-        </View>
+        </SectionHeaderVisibilityContainer>
 
-        <View
-          style={
-            activeSection === "albums"
-              ? styles.visibleContainer
-              : styles.hiddenContainer
-          }
-        >
+        <SectionHeaderVisibilityContainer targetSection="albums">
           <ItemFlatList
-            activeSection={"albums"}
+            activeSection="albums"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
             onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={HOME_PLAYBACK_CONTEXT}
           />
-        </View>
+        </SectionHeaderVisibilityContainer>
 
-        <View
-          style={
-            activeSection === "artists"
-              ? styles.visibleContainer
-              : styles.hiddenContainer
-          }
-        >
+        <SectionHeaderVisibilityContainer targetSection="artists">
           <ItemFlatList
-            activeSection={"artists"}
+            activeSection="artists"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
             onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={HOME_PLAYBACK_CONTEXT}
           />
-        </View>
+        </SectionHeaderVisibilityContainer>
       </View>
 
       <SongOptionsModal
