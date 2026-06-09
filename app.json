@@ -54,7 +54,12 @@
         }
       ],
       "expo-image",
-      "expo-media-control",
+      [
+        "expo-media-control",
+        {
+          "notificationIcon": "./assets/images/mini_icon_monochrome.png"
+        }
+      ],
       "expo-asset"
     ],
     "experiments": {
