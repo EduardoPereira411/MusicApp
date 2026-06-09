@@ -6,28 +6,23 @@ import { useToast } from "@/Context/ToastContext";
 import { Song } from "@/Models/Models";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { ItemFlatList } from "@/Components/Optimized/ItemListDisplay";
+import { create } from "zustand";
 
 type SectionType = "tracks" | "albums" | "artists";
 const HOME_PLAYBACK_CONTEXT = { type: "home" as const };
 
-const tabEventEmitter = {
-  listeners: new Set<(section: SectionType) => void>(),
-  subscribe(callback: (section: SectionType) => void) {
-    this.listeners.add(callback);
-    return () => this.listeners.delete(callback);
-  },
-  emit(section: SectionType) {
-    this.listeners.forEach((cb) => cb(section));
-  },
-};
+interface TabState {
+  activeSection: SectionType;
+  setActiveSection: (section: SectionType) => void;
+}
+const useTabStore = create<TabState>((set) => ({
+  activeSection: "tracks",
+  setActiveSection: (section) => set({ activeSection: section }),
+}));
 
 function SectionHeader() {
-  const [activeSection, setActiveSection] = useState<SectionType>("tracks");
-
-  const handlePress = (section: SectionType) => {
-    setActiveSection(section);
-    tabEventEmitter.emit(section);
-  };
+  const activeSection = useTabStore((state) => state.activeSection);
+  const setActiveSection = useTabStore((state) => state.setActiveSection);
 
   return (
     <View style={styles.tabBar}>
@@ -38,7 +33,7 @@ function SectionHeader() {
             styles.tabButton,
             activeSection === section && styles.tabButtonActive,
           ]}
-          onPress={() => handlePress(section)}
+          onPress={() => setActiveSection(section)}
         >
           <Text
             style={[
@@ -61,13 +56,8 @@ function SectionHeaderVisibilityContainer({
   targetSection: SectionType;
   children: React.ReactNode;
 }) {
-  const [isVisible, setIsVisible] = useState(targetSection === "tracks");
-
-  useEffect(() => {
-    tabEventEmitter.subscribe((currentActiveSection) => {
-      setIsVisible(currentActiveSection === targetSection);
-    });
-  }, [targetSection]);
+  const activeSection = useTabStore((state) => state.activeSection);
+  const isVisible = activeSection === targetSection;
 
   return (
     <View style={isVisible ? styles.visibleContainer : styles.hiddenContainer}>
@@ -94,7 +84,6 @@ export default function HomeScreen() {
     },
     [storePlaySongNow, showToast],
   );
-
   const handleSwipeAddToQueue = useCallback(
     (song: Song) => {
       storeAddToQueue(song, showToast, {
@@ -104,12 +93,11 @@ export default function HomeScreen() {
     },
     [storeAddToQueue, showToast],
   );
-
   const handleOptionsPress = useCallback((song: Song) => {
     setSelectedSong(song);
     setIsModalVisible(true);
   }, []);
-  console.log("HomeScreen Rendered!");
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Dashboard Feed</Text>
