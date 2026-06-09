@@ -7,18 +7,28 @@ import {
   Text,
 } from "react-native";
 import { useSearchStore } from "@/Stores/useSearchStore";
+import { useEffect, useState } from "react";
 
 interface SearchBarProps {
   placeholder?: string;
   containerStyle?: ViewStyle;
+  onChangeDelay?: number;
 }
 
 export function SearchBar({
   placeholder = "Search...",
   containerStyle,
+  onChangeDelay = 600,
 }: SearchBarProps) {
-  const query = useSearchStore((state) => state.query);
+  const [userInput, setUserInput] = useState(useSearchStore.getState().query);
   const setQuery = useSearchStore((state) => state.setQuery);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setQuery(userInput);
+    }, onChangeDelay);
+    return () => clearTimeout(handler);
+  }, [userInput, setQuery]);
 
   return (
     <View style={[styles.searchBarContainer, containerStyle]}>
@@ -26,12 +36,12 @@ export function SearchBar({
         style={styles.searchInput}
         placeholder={placeholder}
         placeholderTextColor="#888"
-        value={query}
-        onChangeText={setQuery}
+        value={userInput}
+        onChangeText={(val) => setUserInput(val)}
         autoCorrect={false}
       />
 
-      {query.length > 0 && (
+      {userInput.length > 0 && (
         <TouchableOpacity
           onPress={() => setQuery("")}
           style={styles.clearButton}

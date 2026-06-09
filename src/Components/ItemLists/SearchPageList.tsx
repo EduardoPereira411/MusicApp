@@ -73,17 +73,7 @@ export const SearchPageList = ({
 
   // Handle Debounce internally
   useEffect(() => {
-    if (!query.trim()) {
-      setDataStore({ tracks: [], albums: [], artists: [] });
-      setPipelineError(null);
-      return;
-    }
-
-    const delayDebounce = setTimeout(() => {
-      executeSearch();
-    }, 600);
-
-    return () => clearTimeout(delayDebounce);
+    executeSearch();
   }, [query, executeSearch]);
 
   if (loading) {

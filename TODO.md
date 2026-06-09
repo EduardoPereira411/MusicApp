@@ -11,7 +11,6 @@
   - MediaCollectionItem and perhaps SongItem
   - SongOptionsModal - Re renders everything when opened
   - DownloadSongItem and DownloadAlbumItem
-  - AudioControls?
 - Screens to optimize
   - Download Search and Search - maybe also find a way to merge them into one?
   - LOginScreen - Everything re renders whilst user is typing on text inputs
