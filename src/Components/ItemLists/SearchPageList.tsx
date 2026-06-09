@@ -35,7 +35,7 @@ export const SearchPageList = ({
   onSwipe,
   context,
 }: SearchPageListProps) => {
-  const query = useSearchStore((state) => state.query);
+  const query = useSearchStore((state) => state.queries["search-menu"] || "");
   const [dataStore, setDataStore] = useState<{
     tracks: Song[];
     albums: SharedCollectionData[];

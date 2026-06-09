@@ -1,11 +1,18 @@
 import { create } from "zustand";
+import { SearchContextID } from "@/Models/Models";
 
 interface SearchState {
-  query: string;
-  setQuery: (query: string) => void;
+  queries: Record<SearchContextID, string>;
+  setQuery: (id: SearchContextID, query: string) => void;
 }
 
 export const useSearchStore = create<SearchState>((set) => ({
-  query: "",
-  setQuery: (query) => set({ query }),
+  queries: {
+    "search-menu": "",
+    "download-search": "",
+  },
+  setQuery: (id, query) =>
+    set((state) => ({
+      queries: { ...state.queries, [id]: query },
+    })),
 }));

@@ -63,7 +63,10 @@ export default function SearchScreen() {
         </TouchableOpacity>
       </View>
 
-      <SearchBar placeholder="Artists, songs, or albums" />
+      <SearchBar
+        placeholder="Artists, songs, or albums"
+        searchBarID="search-menu"
+      />
 
       <SearchSectionHeader />
 
