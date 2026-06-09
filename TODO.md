@@ -9,7 +9,6 @@
 - Components to Optimize
   - QueueModal and QueueTrack
   - MediaCollectionItem and perhaps SongItem
-  - Search bar - re renders everything when typed on
   - SongOptionsModal - Re renders everything when opened
   - DownloadSongItem and DownloadAlbumItem
   - AudioControls?

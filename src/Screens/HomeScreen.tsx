@@ -5,66 +5,13 @@ import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
 import { Song } from "@/Models/Models";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
-import { ItemFlatList } from "@/Components/Optimized/ItemListDisplay";
-import { create } from "zustand";
+import {
+  SectionHeader,
+  SectionHeaderVisibilityContainer,
+} from "@/Components/Headers/TopBarSectionSelector";
+import { HomepageList } from "@/Components/ItemLists/HomePageList";
 
-type SectionType = "tracks" | "albums" | "artists";
-const HOME_PLAYBACK_CONTEXT = { type: "home" as const };
-
-interface TabState {
-  activeSection: SectionType;
-  setActiveSection: (section: SectionType) => void;
-}
-const useTabStore = create<TabState>((set) => ({
-  activeSection: "tracks",
-  setActiveSection: (section) => set({ activeSection: section }),
-}));
-
-function SectionHeader() {
-  const activeSection = useTabStore((state) => state.activeSection);
-  const setActiveSection = useTabStore((state) => state.setActiveSection);
-
-  return (
-    <View style={styles.tabBar}>
-      {(["tracks", "albums", "artists"] as SectionType[]).map((section) => (
-        <TouchableOpacity
-          key={section}
-          style={[
-            styles.tabButton,
-            activeSection === section && styles.tabButtonActive,
-          ]}
-          onPress={() => setActiveSection(section)}
-        >
-          <Text
-            style={[
-              styles.tabButtonText,
-              activeSection === section && styles.tabButtonTextActive,
-            ]}
-          >
-            {section.toUpperCase()}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-}
-
-function SectionHeaderVisibilityContainer({
-  targetSection,
-  children,
-}: {
-  targetSection: SectionType;
-  children: React.ReactNode;
-}) {
-  const activeSection = useTabStore((state) => state.activeSection);
-  const isVisible = activeSection === targetSection;
-
-  return (
-    <View style={isVisible ? styles.visibleContainer : styles.hiddenContainer}>
-      {children}
-    </View>
-  );
-}
+export const HOME_PLAYBACK_CONTEXT = { type: "home" as const };
 
 export default function HomeScreen() {
   const { navidromeCreds } = useAuth();
@@ -106,7 +53,7 @@ export default function HomeScreen() {
 
       <View style={styles.screenWrapper}>
         <SectionHeaderVisibilityContainer targetSection="tracks">
-          <ItemFlatList
+          <HomepageList
             activeSection="tracks"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
@@ -117,7 +64,7 @@ export default function HomeScreen() {
         </SectionHeaderVisibilityContainer>
 
         <SectionHeaderVisibilityContainer targetSection="albums">
-          <ItemFlatList
+          <HomepageList
             activeSection="albums"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
@@ -128,7 +75,7 @@ export default function HomeScreen() {
         </SectionHeaderVisibilityContainer>
 
         <SectionHeaderVisibilityContainer targetSection="artists">
-          <ItemFlatList
+          <HomepageList
             activeSection="artists"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
@@ -156,41 +103,11 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 16,
   },
-  visibleContainer: {
-    flex: 1,
-  },
-  hiddenContainer: {
-    display: "none",
-  },
   header: {
     color: "#fff",
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 16,
-  },
-  tabBar: {
-    flexDirection: "row",
-    marginBottom: 20,
-    backgroundColor: "#1e1e1e",
-    borderRadius: 8,
-    padding: 4,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: "center",
-    borderRadius: 6,
-  },
-  tabButtonActive: {
-    backgroundColor: "#282828",
-  },
-  tabButtonText: {
-    color: "#888888",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  tabButtonTextActive: {
-    color: "#1DB954",
   },
   screenWrapper: {
     flex: 1,
