@@ -47,15 +47,10 @@ export default function GlobalMiniPlayer() {
   const insets = useSafeAreaInsets();
   const [queueVisible, setQueueVisible] = useState(false);
 
-  const queue = useAudioStore((s) => s.queue);
-  const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
-
-  const currentSong = useMemo(() => {
-    if (playingSongQueueIndex >= 0 && playingSongQueueIndex < queue.length) {
-      return queue[playingSongQueueIndex];
-    }
-    return null;
-  }, [queue, playingSongQueueIndex]);
+  const currentSong = useAudioStore((s) => {
+    const idx = s.playingSongQueueIndex;
+    return idx >= 0 && idx < s.queue.length ? s.queue[idx] : null;
+  });
 
   if (!currentSong) return null;
 
