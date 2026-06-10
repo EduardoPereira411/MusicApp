@@ -1,17 +1,15 @@
 import {
   View,
-  TextInput,
   StyleSheet,
   ViewStyle,
   TouchableOpacity,
   Text,
 } from "react-native";
-import { useSearchStore } from "@/Stores/useSearchStore";
-import { useEffect, useState } from "react";
-import { SearchContextID } from "@/Models/Models";
+import { useTextInputStore } from "@/Stores/useTextInputStore";
+import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
 
 interface SearchBarProps {
-  searchBarID: SearchContextID;
+  searchBarID: string;
   placeholder?: string;
   containerStyle?: ViewStyle;
   onChangeDelay?: number;
@@ -23,34 +21,28 @@ export function SearchBar({
   containerStyle,
   onChangeDelay = 600,
 }: SearchBarProps) {
-  const [userInput, setUserInput] = useState(
-    useSearchStore.getState().queries[searchBarID] || "",
+  const currentSearchValue = useTextInputStore(
+    (state) => state.texts[searchBarID] || "",
   );
-  const setQuery = useSearchStore((state) => state.setQuery);
+  const setQuery = useTextInputStore((state) => state.setTexts);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setQuery(searchBarID, userInput);
-    }, onChangeDelay);
-    return () => clearTimeout(handler);
-  }, [userInput, setQuery]);
+  const handleClear = () => {
+    setQuery(searchBarID, "");
+  };
 
   return (
     <View style={[styles.searchBarContainer, containerStyle]}>
-      <TextInput
+      <IndependentUpdateTextInput
+        textId={searchBarID}
+        debounceDelay={onChangeDelay}
         style={styles.searchInput}
         placeholder={placeholder}
         placeholderTextColor="#888"
-        value={userInput}
-        onChangeText={(val) => setUserInput(val)}
         autoCorrect={false}
       />
 
-      {userInput.length > 0 && (
-        <TouchableOpacity
-          onPress={() => setQuery(searchBarID, userInput)}
-          style={styles.clearButton}
-        >
+      {currentSearchValue.length > 0 && (
+        <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
           <Text style={styles.clearButtonText}>✕</Text>
         </TouchableOpacity>
       )}

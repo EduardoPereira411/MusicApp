@@ -1,12 +1,6 @@
 // @/Components/ItemLists/SearchPageList.tsx
-import React, { useCallback, useState, useEffect } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { useCallback, useState, useEffect } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import {
   Song,
   SharedCollectionData,
@@ -16,7 +10,7 @@ import {
 import { searchAll } from "@/Services/navidromeService";
 import { ErrorDisplay } from "@/Components/ErrorDisplay";
 import { ItemFlatList } from "@/Components/ItemLists/ItemFlatList";
-import { useSearchStore } from "@/Stores/useSearchStore";
+import { useTextInputStore } from "@/Stores/useTextInputStore";
 
 interface SearchPageListProps {
   activeSection: "tracks" | "albums" | "artists";
@@ -35,7 +29,7 @@ export const SearchPageList = ({
   onSwipe,
   context,
 }: SearchPageListProps) => {
-  const query = useSearchStore((state) => state.queries["search-menu"] || "");
+  const query = useTextInputStore((state) => state.texts["search-menu"] || "");
   const [dataStore, setDataStore] = useState<{
     tracks: Song[];
     albums: SharedCollectionData[];

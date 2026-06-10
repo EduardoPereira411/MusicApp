@@ -66,5 +66,3 @@ export interface DownloadTrackMetadata {
   song_duration?: number;
   source: string;
 }
-
-export type SearchContextID = "search-menu" | "download-search";

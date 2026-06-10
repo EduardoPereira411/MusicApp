@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import {
   StyleSheet,
   Text,
-  TextInput,
   View,
   TouchableOpacity,
   ActivityIndicator,
@@ -15,23 +14,17 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/Context/AuthContext";
 import { buildSubsonicAuthParams } from "@/Services/navidromeService";
+import { useTextInputStore } from "@/Stores/useTextInputStore";
+import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { navidromeCreds, downloadCreds, setNavidromeAuth, setDownloadAuth } =
     useAuth();
 
-  // Navidrome settings
-  const [serverUrl, setServerUrl] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const setStoreField = useTextInputStore((state) => state.setTexts);
 
-  // Download API settings
   const [showDownloadConfig, setShowDownloadConfig] = useState(false);
-  const [dlBaseUrl, setDlBaseUrl] = useState("");
-  const [dlUsername, setDlUsername] = useState("");
-  const [dlPassword, setDlPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -52,18 +45,18 @@ export default function LoginScreen() {
     };
   }, []);
 
-  // Pre-seed inputs synchronously if credentials already live inside memory context
   useEffect(() => {
-    if (navidromeCreds?.serverUrl) {
-      setServerUrl(navidromeCreds.serverUrl);
-    }
-    if (navidromeCreds?.username) {
-      setUsername(navidromeCreds.username);
-    }
+    if (navidromeCreds?.serverUrl)
+      setStoreField("serverUrl", navidromeCreds.serverUrl);
+    if (navidromeCreds?.username)
+      setStoreField("username", navidromeCreds.username);
+    if (navidromeCreds?.password)
+      setStoreField("password", navidromeCreds.password);
+
     if (downloadCreds?.serverUrl) {
-      setDlBaseUrl(downloadCreds.serverUrl);
-      setDlUsername(downloadCreds.username || "");
-      setDlPassword(downloadCreds.username || "");
+      setStoreField("dlBaseUrl", downloadCreds.serverUrl);
+      setStoreField("dlUsername", downloadCreds.username || "");
+      setStoreField("dlPassword", downloadCreds.password || "");
       setShowDownloadConfig(true);
     }
   }, [navidromeCreds, downloadCreds]);
@@ -75,6 +68,14 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
+    const storeState = useTextInputStore.getState().texts;
+    const serverUrl = storeState["serverUrl"] || "";
+    const username = storeState["username"] || "";
+    const password = storeState["password"] || "";
+    const dlBaseUrl = storeState["dlBaseUrl"] || "";
+    const dlUsername = storeState["dlUsername"] || "";
+    const dlPassword = storeState["dlPassword"] || "";
+
     if (!serverUrl || !username || !password) {
       Alert.alert("Error", "Please fill in all core Navidrome fields.");
       return;
@@ -168,34 +169,31 @@ export default function LoginScreen() {
         <Text style={styles.title}>Navidrome Subsonic Client</Text>
 
         <Text style={styles.sectionHeader}>Navidrome Settings</Text>
-        <TextInput
+        <IndependentUpdateTextInput
+          textId="serverUrl"
           style={styles.input}
           placeholder="Server URL (e.g., https://music.myhost.com)"
           placeholderTextColor="#888"
-          value={serverUrl}
-          onChangeText={setServerUrl}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="url"
           editable={!loading}
         />
-        <TextInput
+        <IndependentUpdateTextInput
+          textId="username"
           style={styles.input}
           placeholder="Username"
           placeholderTextColor="#888"
-          value={username}
-          onChangeText={setUsername}
           autoCapitalize="none"
           autoCorrect={false}
           editable={!loading}
         />
-        <TextInput
+        <IndependentUpdateTextInput
+          textId="password"
           style={styles.input}
           placeholder="Password"
           placeholderTextColor="#888"
           secureTextEntry
-          value={password}
-          onChangeText={setPassword}
           autoCapitalize="none"
           autoCorrect={false}
           editable={!loading}
@@ -214,34 +212,31 @@ export default function LoginScreen() {
 
         {showDownloadConfig && (
           <View style={styles.optionalContainer}>
-            <TextInput
+            <IndependentUpdateTextInput
+              textId="dlBaseUrl"
               style={styles.input}
               placeholder="Proxy Base URL (https://proxy-domain.com)"
               placeholderTextColor="#888"
-              value={dlBaseUrl}
-              onChangeText={setDlBaseUrl}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
               editable={!loading}
             />
-            <TextInput
+            <IndependentUpdateTextInput
+              textId="dlUsername"
               style={styles.input}
               placeholder="Proxy Username (Optional)"
               placeholderTextColor="#888"
-              value={dlUsername}
-              onChangeText={setDlUsername}
               autoCapitalize="none"
               autoCorrect={false}
               editable={!loading}
             />
-            <TextInput
+            <IndependentUpdateTextInput
+              textId="dlPassword"
               style={styles.input}
               placeholder="Proxy Password (Optional)"
               placeholderTextColor="#888"
               secureTextEntry
-              value={dlPassword}
-              onChangeText={setDlPassword}
               autoCapitalize="none"
               autoCorrect={false}
               editable={!loading}
