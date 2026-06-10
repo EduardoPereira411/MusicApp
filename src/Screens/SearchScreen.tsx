@@ -7,12 +7,12 @@ import { useAudioStore } from "@/Stores/useAudioStore";
 import { Song } from "@/Models/Models";
 import { SongOptionsModal } from "@/Components/SongOptionsModal";
 import { useRouter } from "expo-router";
-import { SearchBar } from "@/Components/SearchBar";
 import { SearchPageList } from "@/Components/ItemLists/SearchPageList";
 import {
   SearchSectionHeader,
   SearchSectionVisibilityContainer,
 } from "@/Components/Headers/SearchSectionSelector";
+import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
 
 export const SEARCH_PLAYBACK_CONTEXT = {
   type: "search" as const,
@@ -63,9 +63,10 @@ export default function SearchScreen() {
         </TouchableOpacity>
       </View>
 
-      <SearchBar
+      <IndependentUpdateTextInput
+        textId="search-menu"
         placeholder="Artists, songs, or albums"
-        searchBarID="search-menu"
+        debounceDelay={600}
       />
 
       <SearchSectionHeader />

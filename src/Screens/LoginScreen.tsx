@@ -171,7 +171,6 @@ export default function LoginScreen() {
         <Text style={styles.sectionHeader}>Navidrome Settings</Text>
         <IndependentUpdateTextInput
           textId="serverUrl"
-          style={styles.input}
           placeholder="Server URL (e.g., https://music.myhost.com)"
           placeholderTextColor="#888"
           autoCapitalize="none"
@@ -181,7 +180,6 @@ export default function LoginScreen() {
         />
         <IndependentUpdateTextInput
           textId="username"
-          style={styles.input}
           placeholder="Username"
           placeholderTextColor="#888"
           autoCapitalize="none"
@@ -190,7 +188,6 @@ export default function LoginScreen() {
         />
         <IndependentUpdateTextInput
           textId="password"
-          style={styles.input}
           placeholder="Password"
           placeholderTextColor="#888"
           secureTextEntry
@@ -214,7 +211,6 @@ export default function LoginScreen() {
           <View style={styles.optionalContainer}>
             <IndependentUpdateTextInput
               textId="dlBaseUrl"
-              style={styles.input}
               placeholder="Proxy Base URL (https://proxy-domain.com)"
               placeholderTextColor="#888"
               autoCapitalize="none"
@@ -224,7 +220,6 @@ export default function LoginScreen() {
             />
             <IndependentUpdateTextInput
               textId="dlUsername"
-              style={styles.input}
               placeholder="Proxy Username (Optional)"
               placeholderTextColor="#888"
               autoCapitalize="none"
@@ -233,7 +228,6 @@ export default function LoginScreen() {
             />
             <IndependentUpdateTextInput
               textId="dlPassword"
-              style={styles.input}
               placeholder="Proxy Password (Optional)"
               placeholderTextColor="#888"
               secureTextEntry

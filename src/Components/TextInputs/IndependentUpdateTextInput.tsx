@@ -1,10 +1,19 @@
 import { memo, useEffect, useState } from "react";
-import { TextInput, TextInputProps } from "react-native";
+import {
+  TextInput,
+  TextInputProps,
+  View,
+  StyleSheet,
+  ViewStyle,
+  TouchableOpacity,
+  Text,
+} from "react-native";
 import { useTextInputStore } from "@/Stores/useTextInputStore";
 
 interface IndependentUpdateTextInputProps extends TextInputProps {
   textId: string;
   debounceDelay?: number;
+  containerStyle?: ViewStyle;
 }
 
 const IndependentUpdateTextInput = memo(
@@ -12,6 +21,9 @@ const IndependentUpdateTextInput = memo(
     textId,
     debounceDelay = 0,
     onChangeText,
+    containerStyle,
+    style,
+    placeholder = "Search...",
     ...props
   }: IndependentUpdateTextInputProps) => {
     const [userInput, setUserInput] = useState(
@@ -37,17 +49,62 @@ const IndependentUpdateTextInput = memo(
       setUserInput(globalValue);
     }, [globalValue]);
 
+    const handleClear = () => {
+      setUserInput("");
+      setField(textId, "");
+    };
+
     return (
-      <TextInput
-        {...props}
-        value={userInput}
-        onChangeText={(text) => {
-          setUserInput(text);
-          if (onChangeText) onChangeText(text);
-        }}
-      />
+      <View style={[styles.componentContainer, containerStyle]}>
+        <TextInput
+          {...props}
+          value={userInput}
+          placeholder={placeholder}
+          placeholderTextColor="#888"
+          autoCorrect={false}
+          style={[styles.input, style]}
+          onChangeText={(text) => {
+            setUserInput(text);
+            if (onChangeText) onChangeText(text);
+          }}
+        />
+
+        {userInput.length > 0 && (
+          <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
+            <Text style={styles.clearButtonText}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     );
   },
 );
+
+const styles = StyleSheet.create({
+  componentContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1e1e1e",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  input: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 16,
+    paddingRight: 8,
+  },
+  clearButton: {
+    padding: 4,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  clearButtonText: {
+    color: "#888",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+});
 
 export default IndependentUpdateTextInput;

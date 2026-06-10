@@ -11,9 +11,9 @@ import {
 import { downloadService } from "@/Services/downloadService";
 import { DownloadSongItem } from "@/Components/DownloadSongItem";
 import { DownloadAlbumItem } from "@/Components/DownloadAlbumItem";
-import { SearchBar } from "@/Components/SearchBar";
 import { useAuth } from "@/Context/AuthContext";
 import { ErrorDisplay } from "@/Components/ErrorDisplay";
+import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
 
 type SearchType = "tracks" | "albums";
 
@@ -99,7 +99,9 @@ export default function DownloadSearchScreen() {
         Search & import tracks directly into your server
       </Text>
 
-      <SearchBar
+      <IndependentUpdateTextInput
+        textId="download-search"
+        debounceDelay={600}
         placeholder="Search YouTube Music..."
         value={query}
         onChangeText={setQuery}
