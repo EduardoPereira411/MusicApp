@@ -2,30 +2,18 @@ import React, { useEffect, useRef } from "react";
 import { Text, StyleSheet, Animated } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { ToastType } from "@/Context/ToastContext";
+import { useToastStore } from "@/Stores/useToastStore";
 
-interface ToastNotificationProps {
-  visible: boolean;
-  message: string;
-  type: ToastType;
-  toastId: number;
-  onDismiss: () => void;
-}
+export function ToastNotification() {
+  const { visible, message, type, toastId, dismissToast } = useToastStore();
 
-export function ToastNotification({
-  visible,
-  message,
-  type,
-  toastId,
-  onDismiss,
-}: ToastNotificationProps) {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(-100)).current;
 
   useEffect(() => {
     if (!visible) return;
 
-    // @ts-ignore - Safe internal lookup for active native driver value
+    // @ts-ignore
     const currentY = slideAnim.__getValue();
 
     if (currentY <= -100) {
@@ -56,11 +44,13 @@ export function ToastNotification({
         toValue: -100,
         duration: 220,
         useNativeDriver: true,
-      }).start(() => onDismiss());
+      }).start(() => dismissToast());
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [visible, toastId, insets.top, slideAnim, onDismiss]);
+  }, [visible, toastId, insets.top, slideAnim, dismissToast]);
+
+  if (!visible && message === "") return null;
 
   const isError = type === "error";
 
