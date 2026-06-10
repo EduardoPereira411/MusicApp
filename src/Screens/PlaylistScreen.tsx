@@ -11,10 +11,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
-import { useAudioStore } from "@/Stores/useAudioStore"; // Connect directly to the store
+import { useAudioStore } from "@/Stores/useAudioStore";
 import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
-import { SongOptionsModal } from "@/Components/SongOptionsModal";
+import { SongOptionsModal } from "@/Components/Modals/SongOptionsModal";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 import { Image } from "expo-image";
 import { ErrorDisplay } from "@/Components/ErrorDisplay";
@@ -22,6 +22,7 @@ import {
   fetchCollectionDetails,
   getArtworkUrl,
 } from "@/Services/navidromeService";
+import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
 
 const APP_ICON_FALLBACK = require("@/assets/images/icon.png");
 
@@ -40,8 +41,7 @@ export default function PlaylistScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+  const openSongOptions = useSongOptionsStore((state) => state.openSongOptions);
 
   // Pull stable action methods directly from the state-slice core
   const storePlaySongNow = useAudioStore((state) => state.playSongNow);
@@ -133,10 +133,12 @@ export default function PlaylistScreen() {
     handlePlaySong(shuffledList[0], 0, shuffledList);
   }, [songs, handlePlaySong]);
 
-  const handleSongOptions = useCallback((song: Song) => {
-    setSelectedSong(song);
-    setIsModalVisible(true);
-  }, []);
+  const handleOptionsPress = useCallback(
+    (song: Song) => {
+      openSongOptions(song);
+    },
+    [openSongOptions],
+  );
 
   const handleSwipeAddToQueue = useCallback(
     (track: Song, index: number) => {
@@ -161,7 +163,7 @@ export default function PlaylistScreen() {
             item={trackItem}
             index={index}
             showTrackNumber={true}
-            onOptionsPress={handleSongOptions}
+            onOptionsPress={handleOptionsPress}
             onSwipeLeftToRight={(track) => handleSwipeAddToQueue(track, index)}
             onPlay={(track) => handlePlaySong(track, index, songs)}
             currentContext={{
@@ -173,7 +175,14 @@ export default function PlaylistScreen() {
         );
       }
     },
-    [type, id, handleSongOptions, handleSwipeAddToQueue, handlePlaySong, songs],
+    [
+      type,
+      id,
+      handleOptionsPress,
+      handleSwipeAddToQueue,
+      handlePlaySong,
+      songs,
+    ],
   );
 
   const keyExtractor = useCallback(
@@ -307,12 +316,7 @@ export default function PlaylistScreen() {
         }
       />
 
-      <SongOptionsModal
-        visible={isModalVisible}
-        song={selectedSong}
-        onClose={() => setIsModalVisible(false)}
-        onAddToQueue={(song) => storeAddToQueue(song, showToast)}
-      />
+      <SongOptionsModal />
     </View>
   );
 }

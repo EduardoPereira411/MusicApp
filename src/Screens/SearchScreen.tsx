@@ -5,7 +5,7 @@ import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import { Song } from "@/Models/Models";
-import { SongOptionsModal } from "@/Components/SongOptionsModal";
+import { SongOptionsModal } from "@/Components/Modals/SongOptionsModal";
 import { useRouter } from "expo-router";
 import { SearchPageList } from "@/Components/ItemLists/SearchPageList";
 import {
@@ -13,6 +13,7 @@ import {
   SearchSectionVisibilityContainer,
 } from "@/Components/Headers/SearchSectionSelector";
 import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
+import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
 
 export const SEARCH_PLAYBACK_CONTEXT = {
   type: "search" as const,
@@ -24,8 +25,7 @@ export default function SearchScreen() {
   const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
 
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const openSongOptions = useSongOptionsStore((state) => state.openSongOptions);
 
   const storePlaySongNow = useAudioStore((state) => state.playSongNow);
   const storeAddToQueue = useAudioStore((state) => state.addToQueue);
@@ -46,10 +46,12 @@ export default function SearchScreen() {
     [storeAddToQueue, showToast],
   );
 
-  const handleSongOptions = useCallback((song: Song) => {
-    setSelectedSong(song);
-    setIsModalVisible(true);
-  }, []);
+  const handleOptionsPress = useCallback(
+    (song: Song) => {
+      openSongOptions(song);
+    },
+    [openSongOptions],
+  );
 
   return (
     <View style={styles.container}>
@@ -77,7 +79,7 @@ export default function SearchScreen() {
             activeSection="tracks"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
-            onOptionsPress={handleSongOptions}
+            onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={SEARCH_PLAYBACK_CONTEXT}
           />
@@ -88,7 +90,7 @@ export default function SearchScreen() {
             activeSection="albums"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
-            onOptionsPress={handleSongOptions}
+            onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={SEARCH_PLAYBACK_CONTEXT}
           />
@@ -99,19 +101,14 @@ export default function SearchScreen() {
             activeSection="artists"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
-            onOptionsPress={handleSongOptions}
+            onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={SEARCH_PLAYBACK_CONTEXT}
           />
         </SearchSectionVisibilityContainer>
       </View>
 
-      <SongOptionsModal
-        visible={isModalVisible}
-        song={selectedSong}
-        onClose={() => setIsModalVisible(false)}
-        onAddToQueue={(song) => storeAddToQueue(song, showToast)}
-      />
+      <SongOptionsModal />
     </View>
   );
 }

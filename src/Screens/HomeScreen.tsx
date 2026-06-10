@@ -5,7 +5,7 @@ import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
 import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
 import { Song } from "@/Models/Models";
-import { SongOptionsModal } from "@/Components/SongOptionsModal";
+import { SongOptionsModal } from "@/Components/Modals/SongOptionsModal";
 import {
   SectionHeader,
   SectionHeaderVisibilityContainer,
