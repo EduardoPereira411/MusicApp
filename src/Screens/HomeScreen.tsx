@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { useCallback } from "react";
+import { View, Text, StyleSheet } from "react-native";
 import { useAudioStore } from "@/Stores/useAudioStore";
+import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
 import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
 import { Song } from "@/Models/Models";
@@ -16,8 +17,8 @@ export const HOME_PLAYBACK_CONTEXT = { type: "home" as const };
 export default function HomeScreen() {
   const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+
+  const openSongOptions = useSongOptionsStore((state) => state.openSongOptions);
 
   const storePlaySongNow = useAudioStore((state) => state.playSongNow);
   const storeAddToQueue = useAudioStore((state) => state.addToQueue);
@@ -31,6 +32,7 @@ export default function HomeScreen() {
     },
     [storePlaySongNow, showToast],
   );
+
   const handleSwipeAddToQueue = useCallback(
     (song: Song) => {
       storeAddToQueue(song, showToast, {
@@ -40,10 +42,13 @@ export default function HomeScreen() {
     },
     [storeAddToQueue, showToast],
   );
-  const handleOptionsPress = useCallback((song: Song) => {
-    setSelectedSong(song);
-    setIsModalVisible(true);
-  }, []);
+
+  const handleOptionsPress = useCallback(
+    (song: Song) => {
+      openSongOptions(song);
+    },
+    [openSongOptions],
+  );
 
   return (
     <View style={styles.container}>
@@ -86,12 +91,7 @@ export default function HomeScreen() {
         </SectionHeaderVisibilityContainer>
       </View>
 
-      <SongOptionsModal
-        visible={isModalVisible}
-        song={selectedSong}
-        onClose={() => setIsModalVisible(false)}
-        onAddToQueue={(s) => storeAddToQueue(s, showToast)}
-      />
+      <SongOptionsModal />
     </View>
   );
 }

@@ -11,8 +11,10 @@ import {
   Alert,
 } from "react-native";
 import { Image } from "expo-image";
-import { Song } from "@/Models/Models";
 import { useAuth } from "@/Context/AuthContext";
+import { useToast } from "@/Context/ToastContext";
+import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
+import { useAudioStore } from "@/Stores/useAudioStore";
 import {
   fetchNavidromePlaylists,
   checkSongInPlaylist,
@@ -21,21 +23,15 @@ import {
 } from "@/Services/navidromeService";
 import { useRouter } from "expo-router";
 
-interface SongOptionsModalProps {
-  visible: boolean;
-  song: Song | null;
-  onClose: () => void;
-  onAddToQueue: (song: Song) => void;
-}
-
-export function SongOptionsModal({
-  visible,
-  song,
-  onClose,
-  onAddToQueue,
-}: SongOptionsModalProps) {
+export function SongOptionsModal() {
   const router = useRouter();
   const { navidromeCreds } = useAuth();
+  const { showToast } = useToast();
+
+  const visible = useSongOptionsStore((state) => state.isModalVisible);
+  const song = useSongOptionsStore((state) => state.selectedSong);
+  const onClose = useSongOptionsStore((state) => state.closeSongOptions);
+  const storeAddToQueue = useAudioStore((state) => state.addToQueue);
 
   const artworkUrl = useMemo(() => {
     if (!visible || !navidromeCreds || !song?.coverArt) return null;
@@ -54,7 +50,6 @@ export function SongOptionsModal({
 
   const handleGoToAlbum = () => {
     if (!song.albumId) return;
-
     onClose();
     router.push({
       pathname: "/playlist",
@@ -71,7 +66,6 @@ export function SongOptionsModal({
       Alert.alert("Error", "You must be logged in to manage playlists.");
       return;
     }
-
     setViewState("playlists");
     setLoadingPlaylists(true);
     try {
@@ -117,7 +111,6 @@ export function SongOptionsModal({
         playlistId,
         song.id,
       );
-
       if (isAlreadyInPlaylist) {
         Alert.alert(
           "Already in Playlist",
@@ -129,15 +122,13 @@ export function SongOptionsModal({
             },
             {
               text: "Add Anyway",
-              onPress: async () => {
-                await executeAddProcess(playlistId, playlistName);
-              },
+              onPress: async () =>
+                await executeAddProcess(playlistId, playlistName),
             },
           ],
         );
         return;
       }
-
       await executeAddProcess(playlistId, playlistName);
     } catch (e) {
       Alert.alert("Error", "Could not verify playlist status.");
@@ -179,7 +170,7 @@ export function SongOptionsModal({
             <TouchableOpacity
               style={styles.optionRow}
               onPress={() => {
-                onAddToQueue(song);
+                storeAddToQueue(song, showToast);
                 onClose();
               }}
             >
