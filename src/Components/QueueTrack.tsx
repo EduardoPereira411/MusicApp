@@ -1,79 +1,123 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
-import { QueueSong } from "@/Models/Models";
+import { useAudioStore } from "@/Stores/useAudioStore";
 import { useAuth } from "@/Context/AuthContext";
 import { getArtworkUrl } from "@/Services/navidromeService";
+import { QueueSong } from "@/Models/Models";
 
 interface QueueTrackProps {
-  item: any;
-  onTrackPress: (index: number) => void;
-  onRemovePress: (index: number) => void;
-  onAddToUserQueue?: (item: any) => void;
+  item: QueueSong;
 }
 
-export const QueueTrack = React.memo(function QueueTrack({
-  item,
-  onTrackPress,
-  onRemovePress,
-  onAddToUserQueue,
-}: QueueTrackProps) {
-  const { absoluteIndex, coverArt, title, artist, origin } = item;
-  const { navidromeCreds } = useAuth();
-  const artworkUrl =
-    navidromeCreds && item?.coverArt
-      ? getArtworkUrl(navidromeCreds, item.coverArt, 100)
-      : null;
+export const QueueTrack = React.memo(
+  function QueueTrack({ item }: QueueTrackProps) {
+    const { clientQueueId, coverArt, title, artist, origin } = item;
+    const { navidromeCreds } = useAuth();
 
-  return (
-    <View style={styles.trackRow}>
-      <View style={styles.dragHandle}>
-        <Ionicons name="menu" size={20} color="#555" />
-      </View>
+    const skipToQueueIndex = useAudioStore((s) => s.skipToQueueIndex);
+    const removeFromQueue = useAudioStore((s) => s.removeFromQueue);
+    const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
+    const queue = useAudioStore((s) => s.queue);
+    const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
 
-      <TouchableOpacity
-        style={styles.trackDetails}
-        onPress={() => onTrackPress(absoluteIndex)}
-      >
-        {artworkUrl ? (
-          <Image
-            source={{ uri: artworkUrl }}
-            style={styles.artwork}
-            cachePolicy="disk"
-          />
-        ) : (
-          <View style={[styles.artwork, styles.fallbackArtwork]} />
-        )}
-        <View style={styles.textContainer}>
-          <Text style={styles.title} numberOfLines={1}>
-            {title}
-          </Text>
-          <Text style={styles.artist} numberOfLines={1}>
-            {artist}
-          </Text>
+    const artworkUrl = useMemo(() => {
+      return navidromeCreds && coverArt
+        ? getArtworkUrl(navidromeCreds, coverArt, 100)
+        : null;
+    }, [navidromeCreds, coverArt]);
+
+    const handleTrackPress = () => {
+      const freshIndex = queue.findIndex(
+        (s) => s.clientQueueId === clientQueueId,
+      );
+      if (freshIndex !== -1) skipToQueueIndex(freshIndex);
+    };
+
+    const handleRemovePress = () => {
+      removeFromQueue(clientQueueId);
+    };
+
+    const handleAddToUserQueue = () => {
+      const freshIndex = queue.findIndex(
+        (s) => s.clientQueueId === clientQueueId,
+      );
+      if (freshIndex === -1) return;
+
+      const targetTrack = queue[freshIndex];
+      const cleanSong = { ...targetTrack, origin: "user" as const };
+
+      const remainingUpcoming = queue
+        .slice(playingSongQueueIndex + 1)
+        .filter((s) => s.clientQueueId !== clientQueueId);
+
+      const userPart = remainingUpcoming.filter((s) => s.origin === "user");
+      const autoPart = remainingUpcoming.filter((s) => s.origin === "auto");
+
+      const targetUpcomingSegment = [...userPart, cleanSong, ...autoPart];
+      const unchangedPastAndCurrent = queue.slice(0, playingSongQueueIndex + 1);
+
+      updateQueueOrder([...unchangedPastAndCurrent, ...targetUpcomingSegment]);
+    };
+
+    return (
+      <View style={styles.trackRow}>
+        <View style={styles.dragHandle}>
+          <Ionicons name="menu" size={20} color="#555" />
         </View>
-      </TouchableOpacity>
 
-      {origin === "auto" && onAddToUserQueue && (
         <TouchableOpacity
-          style={{ paddingHorizontal: 12, justifyContent: "center" }}
-          onPress={() => onAddToUserQueue(item)}
+          style={styles.trackDetails}
+          onPress={handleTrackPress}
         >
-          <MaterialIcons name="queue-music" size={22} color="#1DB954" />
+          {artworkUrl ? (
+            <Image
+              source={{ uri: artworkUrl }}
+              style={styles.artwork}
+              cachePolicy="disk"
+            />
+          ) : (
+            <View style={[styles.artwork, styles.fallbackArtwork]} />
+          )}
+          <View style={styles.textContainer}>
+            <Text style={styles.title} numberOfLines={1}>
+              {title}
+            </Text>
+            <Text style={styles.artist} numberOfLines={1}>
+              {artist}
+            </Text>
+          </View>
         </TouchableOpacity>
-      )}
 
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => onRemovePress(absoluteIndex)}
-      >
-        <Ionicons name="trash-outline" size={20} color="#ff4d4d" />
-      </TouchableOpacity>
-    </View>
-  );
-});
+        {origin === "auto" && (
+          <TouchableOpacity
+            style={{ paddingHorizontal: 12, justifyContent: "center" }}
+            onPress={handleAddToUserQueue}
+          >
+            <MaterialIcons name="queue-music" size={22} color="#1DB954" />
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={styles.removeButton}
+          onPress={handleRemovePress}
+        >
+          <Ionicons name="trash-outline" size={20} color="#ff4d4d" />
+        </TouchableOpacity>
+      </View>
+    );
+  },
+  (prev, next) => {
+    return (
+      prev.item.clientQueueId === next.item.clientQueueId &&
+      prev.item.origin === next.item.origin &&
+      prev.item.title === next.item.title &&
+      prev.item.artist === next.item.artist
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   trackRow: {

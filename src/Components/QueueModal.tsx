@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAudioStore } from "@/Stores/useAudioStore"; // Directly targeting your new store
+import { useAudioStore } from "@/Stores/useAudioStore";
 import { Image } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Sortable from "react-native-sortables";
@@ -22,14 +22,16 @@ interface QueueModalProps {
   onClose: () => void;
 }
 
+const keyExtractor = (item: any) => item.clientQueueId;
+
 const NowPlayingHeaderTrack = React.memo(
   function NowPlayingHeaderTrack({ song }: { song: any }) {
     const cachedCreds = useAudioStore((s) => s.cachedCreds);
-
-    const artworkUrl =
-      cachedCreds && song?.coverArt
+    const artworkUrl = useMemo(() => {
+      return cachedCreds && song?.coverArt
         ? getArtworkUrl(cachedCreds, song.coverArt, 150)
         : null;
+    }, [cachedCreds, song?.coverArt]);
 
     return (
       <View style={[styles.trackRow, styles.playingRow]}>
@@ -55,23 +57,82 @@ const NowPlayingHeaderTrack = React.memo(
       </View>
     );
   },
-  (prev, next) => prev.song?.id === next.song?.id,
+  (prev, next) => prev.song?.clientQueueId === next.song?.clientQueueId,
+);
+
+const UserUpcomingList = React.memo(
+  ({
+    userUpcoming,
+    onDragEnd,
+  }: {
+    userUpcoming: any[];
+    onDragEnd: (e: { data: any[] }) => void;
+  }) => {
+    const renderItem = useCallback(
+      ({ item }: { item: any }) => <QueueTrack item={item} />,
+      [],
+    );
+
+    if (userUpcoming.length === 0) return null;
+
+    return (
+      <View style={styles.sectionBlock}>
+        <Text style={styles.sectionTitle}>Added by You</Text>
+        <Sortable.Grid
+          columns={1}
+          data={userUpcoming}
+          keyExtractor={keyExtractor}
+          onDragEnd={onDragEnd}
+          renderItem={renderItem}
+        />
+      </View>
+    );
+  },
+);
+
+const AutoUpcomingList = React.memo(
+  ({
+    autoUpcoming,
+    onDragEnd,
+  }: {
+    autoUpcoming: any[];
+    onDragEnd: (e: { data: any[] }) => void;
+  }) => {
+    const renderItem = useCallback(
+      ({ item }: { item: any }) => <QueueTrack item={item} />,
+      [],
+    );
+
+    if (autoUpcoming.length === 0) return null;
+
+    return (
+      <View style={[styles.sectionBlock, { marginTop: 16 }]}>
+        <View style={styles.autoHeaderRow}>
+          <Text style={styles.sectionTitle}>Autoplay Recommendations</Text>
+        </View>
+        <Sortable.Grid
+          columns={1}
+          data={autoUpcoming}
+          keyExtractor={keyExtractor}
+          onDragEnd={onDragEnd}
+          renderItem={renderItem}
+        />
+      </View>
+    );
+  },
 );
 
 export function QueueModal({ visible, onClose }: QueueModalProps) {
+  const insets = useSafeAreaInsets();
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
+
   const queue = useAudioStore((s) => s.queue);
   const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
+  const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
 
   const currentSong = useMemo(() => {
     return queue[playingSongQueueIndex] || null;
   }, [queue, playingSongQueueIndex]);
-
-  const skipToQueueIndex = useAudioStore((s) => s.skipToQueueIndex);
-  const removeFromQueue = useAudioStore((s) => s.removeFromQueue);
-  const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
-
-  const insets = useSafeAreaInsets();
-  const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   const { userUpcoming, autoUpcoming } = useMemo(() => {
     if (playingSongQueueIndex < 0)
@@ -80,43 +141,16 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
     const userList: any[] = [];
     const autoList: any[] = [];
 
-    queue.slice(playingSongQueueIndex + 1).forEach((item: any, localIdx) => {
-      const absoluteIndex = playingSongQueueIndex + 1 + localIdx;
-      const itemWithMeta = { ...item, absoluteIndex };
-
+    queue.slice(playingSongQueueIndex + 1).forEach((item: any) => {
       if (item.origin === "auto") {
-        autoList.push(itemWithMeta);
+        autoList.push(item);
       } else {
-        userList.push(itemWithMeta);
+        userList.push(item);
       }
     });
 
     return { userUpcoming: userList, autoUpcoming: autoList };
   }, [queue, playingSongQueueIndex]);
-
-  const handleTrackPress = useCallback(
-    (idx: number) => {
-      try {
-        setPipelineError(null);
-        skipToQueueIndex(idx);
-      } catch (err: any) {
-        setPipelineError("Failed to switch tracks inside current playlist.");
-      }
-    },
-    [skipToQueueIndex],
-  );
-
-  const handleRemovePress = useCallback(
-    (idx: number) => {
-      try {
-        setPipelineError(null);
-        removeFromQueue(idx);
-      } catch (err: any) {
-        setPipelineError("Could not remove the selected item from queue.");
-      }
-    },
-    [removeFromQueue],
-  );
 
   const applyQueueUpdate = useCallback(
     (newUpcomingSegment: any[]) => {
@@ -126,30 +160,25 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
           0,
           playingSongQueueIndex + 1,
         );
-
         let lastUserIndex = -1;
+
         newUpcomingSegment.forEach((item, idx) => {
           if (item.origin === "user") lastUserIndex = idx;
         });
 
         const validatedUpcoming = newUpcomingSegment.map((item, index) => {
-          const cleanSong = { ...item };
-          delete cleanSong.absoluteIndex;
-
           if (
             item.origin === "auto" &&
             (index <= lastUserIndex || (lastUserIndex === -1 && index === 0))
           ) {
-            return { ...cleanSong, origin: "user" as const };
+            return { ...item, origin: "user" as const };
           }
-          return cleanSong;
+          return item;
         });
 
         updateQueueOrder([...unchangedPastAndCurrent, ...validatedUpcoming]);
-      } catch (err: any) {
-        setPipelineError(
-          "Failed to synchronize the modified queue arrangement.",
-        );
+      } catch (err) {
+        setPipelineError("Failed to synchronize modified layout.");
       }
     },
     [queue, playingSongQueueIndex, updateQueueOrder],
@@ -157,85 +186,19 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
 
   const handleUserDragEnd = useCallback(
     ({ data }: { data: any[] }) => {
-      const combinedUpcoming = [...data, ...autoUpcoming];
-      applyQueueUpdate(combinedUpcoming);
+      applyQueueUpdate([...data, ...autoUpcoming]);
     },
     [autoUpcoming, applyQueueUpdate],
   );
 
   const handleAutoDragEnd = useCallback(
     ({ data }: { data: any[] }) => {
-      const combinedUpcoming = [...userUpcoming, ...data];
-      applyQueueUpdate(combinedUpcoming);
+      applyQueueUpdate([...userUpcoming, ...data]);
     },
     [userUpcoming, applyQueueUpdate],
   );
 
-  const handleAddToUserQueue = useCallback(
-    (trackToPromote: any) => {
-      setPipelineError(null);
-      try {
-        const cleanSong = { ...trackToPromote, origin: "user" as const };
-        delete cleanSong.absoluteIndex;
-        const currentUpcomingClean = queue
-          .slice(playingSongQueueIndex + 1)
-          .map((s: any) => {
-            const copy = { ...s };
-            delete copy.absoluteIndex;
-            return copy;
-          });
-
-        const remainingUpcoming = currentUpcomingClean.filter(
-          (s) => s.clientQueueId !== cleanSong.clientQueueId,
-        );
-
-        const userPart = remainingUpcoming.filter((s) => s.origin === "user");
-        const autoPart = remainingUpcoming.filter((s) => s.origin === "auto");
-        const targetUpcomingSegment = [...userPart, cleanSong, ...autoPart];
-        const unchangedPastAndCurrent = queue.slice(
-          0,
-          playingSongQueueIndex + 1,
-        );
-
-        updateQueueOrder([
-          ...unchangedPastAndCurrent,
-          ...targetUpcomingSegment,
-        ]);
-      } catch (err: any) {
-        setPipelineError("Unable to prioritize recommendation index.");
-      }
-    },
-    [queue, playingSongQueueIndex, updateQueueOrder],
-  );
-
-  const renderUserQueueTrack = useCallback(
-    ({ item }: { item: any }) => (
-      <QueueTrack
-        item={item}
-        onTrackPress={handleTrackPress}
-        onRemovePress={handleRemovePress}
-      />
-    ),
-    [handleTrackPress, handleRemovePress],
-  );
-
-  const renderAutoQueueTrack = useCallback(
-    ({ item }: { item: any }) => (
-      <QueueTrack
-        item={item}
-        onTrackPress={handleTrackPress}
-        onRemovePress={handleRemovePress}
-        onAddToUserQueue={handleAddToUserQueue}
-      />
-    ),
-    [handleTrackPress, handleRemovePress, handleAddToUserQueue],
-  );
-
-  const keyExtractor = useCallback((item: any) => item.clientQueueId, []);
-
-  const clearPipelineErrors = useCallback(() => {
-    setPipelineError(null);
-  }, []);
+  const clearPipelineErrors = useCallback(() => setPipelineError(null), []);
 
   if (!visible) return null;
 
@@ -257,6 +220,7 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
             <Text style={styles.headerTitle}>Play Queue</Text>
             <View style={styles.headerSpacer} />
           </View>
+
           <ErrorDisplay
             title="Queue Mutation Exception"
             message={pipelineError}
@@ -278,35 +242,14 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
               </View>
             )}
 
-            {userUpcoming.length > 0 && (
-              <View style={styles.sectionBlock}>
-                <Text style={styles.sectionTitle}>Added by You</Text>
-                <Sortable.Grid
-                  columns={1}
-                  data={userUpcoming}
-                  keyExtractor={keyExtractor}
-                  onDragEnd={handleUserDragEnd}
-                  renderItem={renderUserQueueTrack}
-                />
-              </View>
-            )}
-
-            {autoUpcoming.length > 0 && (
-              <View style={[styles.sectionBlock, { marginTop: 16 }]}>
-                <View style={styles.autoHeaderRow}>
-                  <Text style={styles.sectionTitle}>
-                    Autoplay Recommendations
-                  </Text>
-                </View>
-                <Sortable.Grid
-                  columns={1}
-                  data={autoUpcoming}
-                  keyExtractor={keyExtractor}
-                  onDragEnd={handleAutoDragEnd}
-                  renderItem={renderAutoQueueTrack}
-                />
-              </View>
-            )}
+            <UserUpcomingList
+              userUpcoming={userUpcoming}
+              onDragEnd={handleUserDragEnd}
+            />
+            <AutoUpcomingList
+              autoUpcoming={autoUpcoming}
+              onDragEnd={handleAutoDragEnd}
+            />
 
             {userUpcoming.length === 0 && autoUpcoming.length === 0 && (
               <Text style={styles.emptyText}>No upcoming songs in queue</Text>

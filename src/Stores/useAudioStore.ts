@@ -7,7 +7,7 @@ import {
   fetchThemeOrRandomQueue,
   getArtworkUrl,
 } from "@/Services/navidromeService";
-import { ToastType } from "@/Context/ToastContext";
+import { ToastType } from "@/Stores/useToastStore";
 
 const generateUniqueId = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
@@ -55,7 +55,7 @@ interface AudioState {
   togglePlayPause: () => void;
   seekTo: (seconds: number) => void;
   removeFromQueue: (
-    indexToRemove: number,
+    queueId: string,
     showToast?: (m: string, t?: ToastType) => void,
   ) => void;
   skipToQueueIndex: (
@@ -437,43 +437,18 @@ export const useAudioStore = create<AudioState>((set, get) => ({
     }
   },
 
-  removeFromQueue: (indexToRemove, showToast) => {
-    const { queue, playingSongQueueIndex, pools, player, loadSongAtIndex } =
-      get();
-    if (indexToRemove < 0 || indexToRemove >= queue.length) return;
+  removeFromQueue: (queueId) => {
+    const { queue, pools } = get();
+    const updatedQueue = queue.filter((s) => s.clientQueueId !== queueId);
 
-    const updatedQueue = queue.filter((_, idx) => idx !== indexToRemove);
+    pools.userQueue = pools.userQueue.filter(
+      (s) => s.clientQueueId !== queueId,
+    );
+    pools.contextQueue = pools.contextQueue.filter(
+      (s) => s.clientQueueId !== queueId,
+    );
 
-    if (indexToRemove < pools.userQueue.length) {
-      pools.userQueue.splice(indexToRemove, 1);
-    } else {
-      const adjustedContextIdx = indexToRemove - pools.userQueue.length;
-      if (adjustedContextIdx < pools.contextQueue.length) {
-        pools.contextQueue.splice(adjustedContextIdx, 1);
-      }
-    }
-
-    if (playingSongQueueIndex === indexToRemove) {
-      if (updatedQueue.length === 0) {
-        set({ queue: [], playingSongQueueIndex: -1, currentArtworkUrl: null });
-        if (player) player.pause();
-      } else {
-        const nextIndex =
-          indexToRemove >= updatedQueue.length
-            ? updatedQueue.length - 1
-            : indexToRemove;
-        set({ queue: updatedQueue });
-        loadSongAtIndex(nextIndex, showToast);
-      }
-    } else {
-      set({
-        queue: updatedQueue,
-        playingSongQueueIndex:
-          playingSongQueueIndex > indexToRemove
-            ? playingSongQueueIndex - 1
-            : playingSongQueueIndex,
-      });
-    }
+    set({ queue: updatedQueue });
   },
 
   skipToQueueIndex: (index, showToast) => {
