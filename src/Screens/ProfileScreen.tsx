@@ -8,40 +8,39 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/Context/AuthContext";
-import { useAudioStore } from "@/Stores/useAudioStore"; // Directly interface store core
+import { useAudioStore } from "@/Stores/useAudioStore";
+import { useTextInputStore } from "@/Stores/useTextInputStore";
 import { fetchNavidromePlaylists } from "@/Services/navidromeService";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
 import { SharedCollectionData } from "@/Models/Models";
 import { ErrorDisplay } from "@/Components/ErrorDisplay";
+import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { navidromeCreds, downloadCreds, logout, setDownloadAuth } = useAuth();
-
   const logoutCleanUp = useAudioStore((state) => state.logoutCleanUp);
+  const setStoreText = useTextInputStore((state) => state.setTexts);
 
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
-
   const [showDlConfig, setShowDlConfig] = useState<boolean>(false);
-  const [dlBaseUrl, setDlBaseUrl] = useState<string>(
-    downloadCreds?.serverUrl || "",
-  );
-  const [dlUsername, setDlUsername] = useState<string>(
-    downloadCreds?.username || "",
-  );
-  const [dlPassword, setDlPassword] = useState<string>(
-    downloadCreds?.password || "",
-  );
   const [isSavingDl, setIsSavingDl] = useState<boolean>(false);
 
   const username = navidromeCreds?.username || "";
+
+  useEffect(() => {
+    if (downloadCreds) {
+      setStoreText("dlBaseUrl", downloadCreds.serverUrl || "");
+      setStoreText("dlUsername", downloadCreds.username || "");
+      setStoreText("dlPassword", downloadCreds.password || "");
+    }
+  }, [downloadCreds, setStoreText]);
 
   useEffect(() => {
     if (!navidromeCreds) return;
@@ -72,7 +71,12 @@ export default function ProfileScreen() {
   }, [navidromeCreds]);
 
   const handleSaveDownloadConfig = useCallback(async () => {
-    if (!dlBaseUrl) {
+    const currentTexts = useTextInputStore.getState().texts;
+    const url = currentTexts["dlBaseUrl"] || "";
+    const user = currentTexts["dlUsername"] || "";
+    const pass = currentTexts["dlPassword"] || "";
+
+    if (!url) {
       Alert.alert("Error", "Proxy Base URL is required.");
       return;
     }
@@ -80,9 +84,9 @@ export default function ProfileScreen() {
     setIsSavingDl(true);
     try {
       await setDownloadAuth({
-        serverUrl: dlBaseUrl,
-        username: dlUsername || undefined,
-        password: dlPassword || undefined,
+        serverUrl: url,
+        username: user || undefined,
+        password: pass || undefined,
       });
       Alert.alert("Success", "Download API settings updated successfully!");
       setShowDlConfig(false);
@@ -91,7 +95,7 @@ export default function ProfileScreen() {
     } finally {
       setIsSavingDl(false);
     }
-  }, [dlBaseUrl, dlUsername, dlPassword, setDownloadAuth]);
+  }, [setDownloadAuth]);
 
   const handleClearDownloadConfig = useCallback(async () => {
     Alert.alert(
@@ -104,16 +108,17 @@ export default function ProfileScreen() {
           style: "destructive",
           onPress: async () => {
             await setDownloadAuth(null);
-            setDlBaseUrl("");
-            setDlUsername("");
-            setDlPassword("");
+            // Clear the global store fields
+            setStoreText("dlBaseUrl", "");
+            setStoreText("dlUsername", "");
+            setStoreText("dlPassword", "");
             setShowDlConfig(false);
             Alert.alert("Cleared", "Proxy configuration has been removed.");
           },
         },
       ],
     );
-  }, [setDownloadAuth]);
+  }, [setDownloadAuth, setStoreText]);
 
   const handleLogout = useCallback(async () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -217,38 +222,29 @@ export default function ProfileScreen() {
             {showDlConfig && (
               <View style={styles.configContainer}>
                 <Text style={styles.configLabel}>Base URL</Text>
-                <TextInput
-                  style={styles.input}
+                <IndependentUpdateTextInput
+                  textId="dlBaseUrl"
                   placeholder="https://your-proxy-domain.com"
-                  placeholderTextColor="#888"
-                  value={dlBaseUrl}
-                  onChangeText={setDlBaseUrl}
                   autoCapitalize="none"
-                  autoCorrect={false}
+                  containerStyle={styles.input}
                   keyboardType="url"
                 />
 
                 <Text style={styles.configLabel}>Username (Basic Auth)</Text>
-                <TextInput
-                  style={styles.input}
+                <IndependentUpdateTextInput
+                  textId="dlUsername"
                   placeholder="Optional proxy access list user"
-                  placeholderTextColor="#888"
-                  value={dlUsername}
-                  onChangeText={setDlUsername}
                   autoCapitalize="none"
-                  autoCorrect={false}
+                  containerStyle={styles.input}
                 />
 
                 <Text style={styles.configLabel}>Password (Basic Auth)</Text>
-                <TextInput
-                  style={styles.input}
+                <IndependentUpdateTextInput
+                  textId="dlPassword"
                   placeholder="Optional proxy access list password"
-                  placeholderTextColor="#888"
                   secureTextEntry
-                  value={dlPassword}
-                  onChangeText={setDlPassword}
                   autoCapitalize="none"
-                  autoCorrect={false}
+                  containerStyle={styles.input}
                 />
 
                 <View style={styles.actionRow}>
@@ -369,11 +365,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   input: {
-    backgroundColor: "#282828",
+    backgroundColor: "#363636",
     color: "#fff",
-    padding: 12,
     borderRadius: 6,
-    marginBottom: 14,
     fontSize: 15,
   },
   actionRow: {
