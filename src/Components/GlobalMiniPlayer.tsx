@@ -10,6 +10,7 @@ import {
   NextButton,
   AudioSlider,
 } from "@/Components/Optimized/AudioControls";
+import { useQueueManagementStore } from "@/Stores/useQueueManagementStore";
 
 const MiniPlayerMeta = React.memo(
   function MiniPlayerMeta({ song }: { song: any }) {
@@ -47,6 +48,10 @@ export default function GlobalMiniPlayer() {
   const insets = useSafeAreaInsets();
   const [queueVisible, setQueueVisible] = useState(false);
 
+  const openSongOptions = useQueueManagementStore(
+    (state) => state.openQueueModal,
+  );
+
   const currentSong = useAudioStore((s) => {
     const idx = s.playingSongQueueIndex;
     return idx >= 0 && idx < s.queue.length ? s.queue[idx] : null;
@@ -62,7 +67,7 @@ export default function GlobalMiniPlayer() {
         <View style={styles.topRow}>
           <TouchableOpacity
             style={styles.metaClickableArea}
-            onPress={() => setQueueVisible(true)}
+            onPress={openSongOptions}
             activeOpacity={0.7}
           >
             <MiniPlayerMeta song={currentSong} />
@@ -85,10 +90,7 @@ export default function GlobalMiniPlayer() {
         </View>
       </View>
 
-      <QueueModal
-        visible={queueVisible}
-        onClose={() => setQueueVisible(false)}
-      />
+      <QueueModal />
     </>
   );
 }

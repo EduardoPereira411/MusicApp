@@ -16,11 +16,7 @@ import Sortable from "react-native-sortables";
 import { QueueTrack } from "@/Components/QueueTrack";
 import { ErrorDisplay } from "@/Components/ErrorDisplay";
 import { getArtworkUrl } from "@/Services/navidromeService";
-
-interface QueueModalProps {
-  visible: boolean;
-  onClose: () => void;
-}
+import { useQueueManagementStore } from "@/Stores/useQueueManagementStore";
 
 const keyExtractor = (item: any) => item.clientQueueId;
 
@@ -122,9 +118,11 @@ const AutoUpcomingList = React.memo(
   },
 );
 
-export function QueueModal({ visible, onClose }: QueueModalProps) {
+export function QueueModal() {
   const insets = useSafeAreaInsets();
   const [pipelineError, setPipelineError] = useState<string | null>(null);
+  const visible = useQueueManagementStore((state) => state.isModalVisible);
+  const closeModal = useQueueManagementStore((state) => state.closeQueueModal);
 
   const queue = useAudioStore((s) => s.queue);
   const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
@@ -207,14 +205,14 @@ export function QueueModal({ visible, onClose }: QueueModalProps) {
       visible={visible}
       animationType="slide"
       presentationStyle="fullScreen"
-      onRequestClose={onClose}
+      onRequestClose={closeModal}
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View
           style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}
         >
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
               <Ionicons name="chevron-down" size={28} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Play Queue</Text>
