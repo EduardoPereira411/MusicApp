@@ -16,7 +16,7 @@ interface SearchPageListProps {
   activeSection: "tracks" | "albums" | "artists";
   navidromeCreds: NavidromeCredentials | null;
   onPlay: (song: Song) => void;
-  onOptionsPress: (song: Song) => void;
+  onOptionsPress?: (song: Song) => void;
   onSwipe: (song: Song) => void;
   context: PlaybackContext;
 }

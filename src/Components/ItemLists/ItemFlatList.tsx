@@ -1,25 +1,14 @@
-import React, { useCallback, useState, useEffect } from "react";
-import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
-import {
-  Song,
-  SharedCollectionData,
-  PlaybackContext,
-  NavidromeCredentials,
-} from "@/Models/Models";
+import React, { useCallback } from "react";
+import { FlatList, StyleSheet } from "react-native";
+import { Song, SharedCollectionData, PlaybackContext } from "@/Models/Models";
 import { SongItem } from "@/Components/SongItem";
 import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
-import {
-  fetchTracks,
-  fetchAlbums,
-  fetchArtists,
-} from "@/Services/navidromeService";
-import { ErrorDisplay } from "@/Components/ErrorDisplay";
 
 interface ItemFlatListProps {
   data: (Song | SharedCollectionData)[];
   isTracks: boolean;
   onPlay: (song: Song, contextSongs?: Song[]) => void;
-  onOptionsPress: (song: Song) => void;
+  onOptionsPress?: (song: Song) => void;
   onSwipe: (song: Song) => void;
   context: PlaybackContext;
   isRefreshing?: boolean;

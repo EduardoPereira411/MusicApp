@@ -12,11 +12,12 @@ import { scheduleOnRN } from "react-native-worklets";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import { getArtworkUrl } from "@/Services/navidromeService";
 import { PlayPauseButton } from "./Optimized/AudioControls";
+import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
 
 interface SongItemProps {
   item: Song;
   onPlay: (song: Song) => void;
-  onOptionsPress: (song: Song) => void;
+  onOptionsPress?: (song: Song) => void;
   onSwipeLeftToRight?: (song: Song) => void;
   showTrackNumber?: boolean;
   index?: number;
@@ -36,6 +37,17 @@ export const SongItem = React.memo(
     currentContext,
   }: SongItemProps) => {
     const cachedCreds = useAudioStore((s) => s.cachedCreds);
+
+    const openSongOptions = useSongOptionsStore(
+      (state) => state.openSongOptions,
+    );
+    const handleOptionsPress = React.useCallback(() => {
+      if (onOptionsPress) {
+        onOptionsPress(item);
+      } else {
+        openSongOptions(item);
+      }
+    }, [item, onOptionsPress, openSongOptions]);
 
     const isCurrent = useAudioStore((state) => {
       const activeTrack = state.queue[state.playingSongQueueIndex];
@@ -167,7 +179,7 @@ export const SongItem = React.memo(
 
             <TouchableOpacity
               style={styles.optionsButton}
-              onPress={() => onOptionsPress(item)}
+              onPress={handleOptionsPress}
             >
               <Text style={styles.optionsText}>⋮</Text>
             </TouchableOpacity>

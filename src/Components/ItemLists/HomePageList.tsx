@@ -13,7 +13,7 @@ interface HomepageListProps {
   activeSection: "tracks" | "albums" | "artists";
   onPlay: (song: Song, contextSongs?: Song[]) => void;
   navidromeCreds: NavidromeCredentials | null;
-  onOptionsPress: (song: Song) => void;
+  onOptionsPress?: (song: Song) => void;
   onSwipe: (song: Song) => void;
   context: PlaybackContext;
 }

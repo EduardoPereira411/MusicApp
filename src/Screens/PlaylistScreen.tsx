@@ -41,8 +41,6 @@ export default function PlaylistScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
-  const openSongOptions = useSongOptionsStore((state) => state.openSongOptions);
-
   // Pull stable action methods directly from the state-slice core
   const storePlaySongNow = useAudioStore((state) => state.playSongNow);
   const storeAddToQueue = useAudioStore((state) => state.addToQueue);
@@ -133,13 +131,6 @@ export default function PlaylistScreen() {
     handlePlaySong(shuffledList[0], 0, shuffledList);
   }, [songs, handlePlaySong]);
 
-  const handleOptionsPress = useCallback(
-    (song: Song) => {
-      openSongOptions(song);
-    },
-    [openSongOptions],
-  );
-
   const handleSwipeAddToQueue = useCallback(
     (track: Song, index: number) => {
       storeAddToQueue(track, showToast, {
@@ -163,7 +154,6 @@ export default function PlaylistScreen() {
             item={trackItem}
             index={index}
             showTrackNumber={true}
-            onOptionsPress={handleOptionsPress}
             onSwipeLeftToRight={(track) => handleSwipeAddToQueue(track, index)}
             onPlay={(track) => handlePlaySong(track, index, songs)}
             currentContext={{
@@ -175,14 +165,7 @@ export default function PlaylistScreen() {
         );
       }
     },
-    [
-      type,
-      id,
-      handleOptionsPress,
-      handleSwipeAddToQueue,
-      handlePlaySong,
-      songs,
-    ],
+    [type, id, handleSwipeAddToQueue, handlePlaySong, songs],
   );
 
   const keyExtractor = useCallback(

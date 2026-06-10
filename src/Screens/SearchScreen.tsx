@@ -13,7 +13,6 @@ import {
   SearchSectionVisibilityContainer,
 } from "@/Components/Headers/SearchSectionSelector";
 import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
-import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
 
 export const SEARCH_PLAYBACK_CONTEXT = {
   type: "search" as const,
@@ -24,8 +23,6 @@ export default function SearchScreen() {
   const router = useRouter();
   const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
-
-  const openSongOptions = useSongOptionsStore((state) => state.openSongOptions);
 
   const storePlaySongNow = useAudioStore((state) => state.playSongNow);
   const storeAddToQueue = useAudioStore((state) => state.addToQueue);
@@ -44,13 +41,6 @@ export default function SearchScreen() {
       storeAddToQueue(track, showToast, SEARCH_PLAYBACK_CONTEXT);
     },
     [storeAddToQueue, showToast],
-  );
-
-  const handleOptionsPress = useCallback(
-    (song: Song) => {
-      openSongOptions(song);
-    },
-    [openSongOptions],
   );
 
   return (
@@ -79,7 +69,6 @@ export default function SearchScreen() {
             activeSection="tracks"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
-            onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={SEARCH_PLAYBACK_CONTEXT}
           />
@@ -90,7 +79,6 @@ export default function SearchScreen() {
             activeSection="albums"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
-            onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={SEARCH_PLAYBACK_CONTEXT}
           />
@@ -101,7 +89,6 @@ export default function SearchScreen() {
             activeSection="artists"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
-            onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={SEARCH_PLAYBACK_CONTEXT}
           />

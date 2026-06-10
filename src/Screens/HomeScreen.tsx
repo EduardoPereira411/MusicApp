@@ -18,8 +18,6 @@ export default function HomeScreen() {
   const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
 
-  const openSongOptions = useSongOptionsStore((state) => state.openSongOptions);
-
   const storePlaySongNow = useAudioStore((state) => state.playSongNow);
   const storeAddToQueue = useAudioStore((state) => state.addToQueue);
 
@@ -43,13 +41,6 @@ export default function HomeScreen() {
     [storeAddToQueue, showToast],
   );
 
-  const handleOptionsPress = useCallback(
-    (song: Song) => {
-      openSongOptions(song);
-    },
-    [openSongOptions],
-  );
-
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Dashboard Feed</Text>
@@ -62,7 +53,6 @@ export default function HomeScreen() {
             activeSection="tracks"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
-            onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={HOME_PLAYBACK_CONTEXT}
           />
@@ -73,7 +63,6 @@ export default function HomeScreen() {
             activeSection="albums"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
-            onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={HOME_PLAYBACK_CONTEXT}
           />
@@ -84,7 +73,6 @@ export default function HomeScreen() {
             activeSection="artists"
             navidromeCreds={navidromeCreds}
             onPlay={handlePlaySongNow}
-            onOptionsPress={handleOptionsPress}
             onSwipe={handleSwipeAddToQueue}
             context={HOME_PLAYBACK_CONTEXT}
           />
