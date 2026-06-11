@@ -147,7 +147,7 @@ export const useAudioStore = create<AudioState>((set, get) => ({
 
             const artworkUrl =
               currentSong.coverArt && state.cachedCreds
-                ? getArtworkUrl(state.cachedCreds, currentSong.coverArt, 300)
+                ? getArtworkUrl(state.cachedCreds, currentSong.coverArt, 100)
                 : null;
 
             set({ currentArtworkUrl: artworkUrl });
@@ -225,7 +225,7 @@ export const useAudioStore = create<AudioState>((set, get) => ({
       if (!url) throw new Error("Endpoint construction failed.");
 
       const artworkUrl = targetSong.coverArt
-        ? getArtworkUrl(cachedCreds, targetSong.coverArt, 300)
+        ? getArtworkUrl(cachedCreds, targetSong.coverArt, 310000)
         : null;
 
       set({
@@ -264,7 +264,7 @@ export const useAudioStore = create<AudioState>((set, get) => ({
       if (!url) throw new Error("Failed to format media stream URL.");
 
       const artworkUrl = song.coverArt
-        ? getArtworkUrl(cachedCreds, song.coverArt, 300)
+        ? getArtworkUrl(cachedCreds, song.coverArt, 100)
         : null;
       const determinedContext = contextInfo || { type: "search" };
       let newQueue: QueueSong[] = [];

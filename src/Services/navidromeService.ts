@@ -91,7 +91,7 @@ export function buildSubsonicAuthParams(
 export function getArtworkUrl(
   creds: NavidromeCredentials,
   coverArtId: string | undefined,
-  size: number = 300,
+  size: number = 100,
 ): string | null {
   if (!coverArtId || !creds) return null;
   const params = getSubsonicAuthParams(creds, size);

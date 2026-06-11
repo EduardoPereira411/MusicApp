@@ -16,7 +16,7 @@ const MiniPlayerMeta = React.memo(
   function MiniPlayerMeta({ song }: { song: any }) {
     const getArtworkForSong = useAudioStore((s) => s.getArtworkForSong);
     const artworkURL = useMemo(
-      () => getArtworkForSong(song.coverArt, 300),
+      () => getArtworkForSong(song.coverArt, 100),
       [song, getArtworkForSong],
     );
     return (
