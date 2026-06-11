@@ -47,7 +47,7 @@ export function useAudio<T = AudioHookState>(
 
       removeFromQueue: (queueId: string) => store.removeFromQueue(queueId),
 
-      skipToQueueIndex: (index: number) => store.skipToQueueIndex(index),
+      skipToSongOnQueue: (queue: string) => store.skipToSongOnQueue(queue),
 
       triggerLookAhead: () => store.triggerLookAhead(showToast),
     }),

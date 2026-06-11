@@ -17,7 +17,7 @@ export const QueueTrack = React.memo(
     const { clientQueueId, coverArt, title, artist, origin } = item;
     const { navidromeCreds } = useAuth();
 
-    const skipToQueueIndex = useAudioStore((s) => s.skipToQueueIndex);
+    const skipToSongOnQueue = useAudioStore((s) => s.skipToSongOnQueue);
     const removeFromQueue = useAudioStore((s) => s.removeFromQueue);
     const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
     const queue = useAudioStore((s) => s.queue);
@@ -30,10 +30,7 @@ export const QueueTrack = React.memo(
     }, [navidromeCreds, coverArt]);
 
     const handleTrackPress = () => {
-      const freshIndex = queue.findIndex(
-        (s) => s.clientQueueId === clientQueueId,
-      );
-      if (freshIndex !== -1) skipToQueueIndex(freshIndex);
+      skipToSongOnQueue(clientQueueId);
     };
 
     const handleRemovePress = () => {

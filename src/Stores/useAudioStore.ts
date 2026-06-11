@@ -58,8 +58,8 @@ interface AudioState {
     queueId: string,
     showToast?: (m: string, t?: ToastType) => void,
   ) => void;
-  skipToQueueIndex: (
-    index: number,
+  skipToSongOnQueue: (
+    index: string,
     showToast?: (m: string, t?: ToastType) => void,
   ) => void;
   updateQueueOrder: (newQueue: QueueSong[]) => void;
@@ -451,9 +451,21 @@ export const useAudioStore = create<AudioState>((set, get) => ({
     set({ queue: updatedQueue });
   },
 
-  skipToQueueIndex: (index, showToast) => {
-    const { queue, loadSongAtIndex } = get();
-    if (index >= 0 && index < queue.length) loadSongAtIndex(index, showToast);
+  skipToSongOnQueue: (clientQueueId, showToast) => {
+    const { queue, playingSongQueueIndex, loadSongAtIndex } = get();
+
+    // Start search AFTER the currently playing song
+    const searchStart = playingSongQueueIndex + 1;
+    const upcomingQueue = queue.slice(searchStart);
+
+    const relativeIndex = upcomingQueue.findIndex(
+      (s) => s.clientQueueId === clientQueueId,
+    );
+
+    if (relativeIndex !== -1) {
+      // Add the relative index back to the offset to get the absolute index
+      loadSongAtIndex(searchStart + relativeIndex, showToast);
+    }
   },
 
   updateQueueOrder: (newQueue) => {
