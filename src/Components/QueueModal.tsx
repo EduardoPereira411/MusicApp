@@ -18,6 +18,7 @@ import { QueueTrack } from "@/Components/QueueTrack";
 import { ErrorDisplay } from "@/Components/ErrorDisplay";
 import { getArtworkUrl } from "@/Services/navidromeService";
 import { useQueueManagementStore } from "@/Stores/useQueueManagementStore";
+import { useShallow } from "zustand/react/shallow";
 
 import Animated, {
   useSharedValue,
@@ -71,13 +72,16 @@ const NowPlayingHeaderTrack = React.memo(
 );
 
 const UserUpcomingList = React.memo(
-  ({
-    userUpcoming,
-    onDragEnd,
-  }: {
-    userUpcoming: any[];
-    onDragEnd: (e: { data: any[] }) => void;
-  }) => {
+  ({ onDragEnd }: { onDragEnd: (e: { data: any[] }) => void }) => {
+    const userUpcoming = useAudioStore(
+      useShallow((s) => {
+        if (s.playingSongQueueIndex < 0) return [];
+        return s.queue
+          .slice(s.playingSongQueueIndex + 1)
+          .filter((item) => item.origin !== "auto");
+      }),
+    );
+
     if (userUpcoming.length === 0) return null;
 
     return (
@@ -99,13 +103,16 @@ const UserUpcomingList = React.memo(
 );
 
 const AutoUpcomingList = React.memo(
-  ({
-    autoUpcoming,
-    onDragEnd,
-  }: {
-    autoUpcoming: any[];
-    onDragEnd: (e: { data: any[] }) => void;
-  }) => {
+  ({ onDragEnd }: { onDragEnd: (e: { data: any[] }) => void }) => {
+    const autoUpcoming = useAudioStore(
+      useShallow((s) => {
+        if (s.playingSongQueueIndex < 0) return [];
+        return s.queue
+          .slice(s.playingSongQueueIndex + 1)
+          .filter((item) => item.origin === "auto");
+      }),
+    );
+
     if (autoUpcoming.length === 0) return null;
 
     return (
@@ -134,8 +141,9 @@ export function QueueModal() {
   const visible = useQueueManagementStore((state) => state.isModalVisible);
   const closeModal = useQueueManagementStore((state) => state.closeQueueModal);
 
-  const queue = useAudioStore((s) => s.queue);
-  const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
+  const currentSong = useAudioStore(
+    (s) => s.queue[s.playingSongQueueIndex] || null,
+  );
   const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
 
   const translateY = useSharedValue(SCREEN_HEIGHT);
@@ -153,38 +161,17 @@ export function QueueModal() {
     };
   });
 
-  const currentSong = useMemo(() => {
-    return queue[playingSongQueueIndex] || null;
-  }, [queue, playingSongQueueIndex]);
-
-  const { userUpcoming, autoUpcoming } = useMemo(() => {
-    if (playingSongQueueIndex < 0)
-      return { userUpcoming: [], autoUpcoming: [] };
-
-    const userList: any[] = [];
-    const autoList: any[] = [];
-
-    queue.slice(playingSongQueueIndex + 1).forEach((item: any) => {
-      if (item.origin === "auto") {
-        autoList.push(item);
-      } else {
-        userList.push(item);
-      }
-    });
-
-    return { userUpcoming: userList, autoUpcoming: autoList };
-  }, [queue, playingSongQueueIndex]);
-
   const applyQueueUpdate = useCallback(
     (newUpcomingSegment: any[]) => {
       setPipelineError(null);
       try {
+        const { queue, playingSongQueueIndex } = useAudioStore.getState();
         const unchangedPastAndCurrent = queue.slice(
           0,
           playingSongQueueIndex + 1,
         );
-        let lastUserIndex = -1;
 
+        let lastUserIndex = -1;
         newUpcomingSegment.forEach((item, idx) => {
           if (item.origin === "user") lastUserIndex = idx;
         });
@@ -204,21 +191,29 @@ export function QueueModal() {
         setPipelineError("Failed to synchronize modified layout.");
       }
     },
-    [queue, playingSongQueueIndex, updateQueueOrder],
+    [updateQueueOrder],
   );
 
   const handleUserDragEnd = useCallback(
     ({ data }: { data: any[] }) => {
+      const { queue, playingSongQueueIndex } = useAudioStore.getState();
+      const autoUpcoming = queue
+        .slice(playingSongQueueIndex + 1)
+        .filter((s) => s.origin === "auto");
       applyQueueUpdate([...data, ...autoUpcoming]);
     },
-    [autoUpcoming, applyQueueUpdate],
+    [applyQueueUpdate],
   );
 
   const handleAutoDragEnd = useCallback(
     ({ data }: { data: any[] }) => {
+      const { queue, playingSongQueueIndex } = useAudioStore.getState();
+      const userUpcoming = queue
+        .slice(playingSongQueueIndex + 1)
+        .filter((s) => s.origin !== "auto");
       applyQueueUpdate([...userUpcoming, ...data]);
     },
-    [userUpcoming, applyQueueUpdate],
+    [applyQueueUpdate],
   );
 
   const clearPipelineErrors = useCallback(() => setPipelineError(null), []);
@@ -260,18 +255,8 @@ export function QueueModal() {
               </View>
             )}
 
-            <UserUpcomingList
-              userUpcoming={userUpcoming}
-              onDragEnd={handleUserDragEnd}
-            />
-            <AutoUpcomingList
-              autoUpcoming={autoUpcoming}
-              onDragEnd={handleAutoDragEnd}
-            />
-
-            {userUpcoming.length === 0 && autoUpcoming.length === 0 && (
-              <Text style={styles.emptyText}>No upcoming songs in queue</Text>
-            )}
+            <UserUpcomingList onDragEnd={handleUserDragEnd} />
+            <AutoUpcomingList onDragEnd={handleAutoDragEnd} />
           </ScrollView>
         </View>
       </GestureHandlerRootView>

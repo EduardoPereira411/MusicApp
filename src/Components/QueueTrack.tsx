@@ -26,9 +26,6 @@ export const QueueTrack = React.memo(
         ? getArtworkUrl(navidromeCreds, coverArt, 100)
         : null;
     }, [navidromeCreds, coverArt]);
-    React.useEffect(() => {
-      console.log("here");
-    });
 
     const handleTrackPress = () => skipToSongOnQueue(clientQueueId);
     const handleRemovePress = () => removeFromQueue(clientQueueId);
