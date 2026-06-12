@@ -7,7 +7,7 @@
 - Optimize Screen and component re renders now that zustand has been implemented, to make app as light as possible
   - HomeScreen and Search screen headers (maybe combine both into one screen and turn search screen into download screen instead?)
 - Components to Optimize
-  - QueueModal and QueueTrack
+  - QueueModal and QueueTrack - Improve the animation and allow for the back button to close the modal instead of exiting app sometimes
   - MediaCollectionItem and perhaps SongItem
   - SongOptionsModal - Re renders everything when opened
   - DownloadSongItem and DownloadAlbumItem
@@ -16,4 +16,4 @@
   - LOginScreen - Everything re renders whilst user is typing on text inputs
   - ProfileScreen - Everything re renders whilst user is typing on text inputs for the download server credentials
 - Functionalities
-  - Toast causes a screen wide re render, find a way to fix it
+  - Find a way to issue less request for artworks, since this consumes a lot of mobile data unecessarily
