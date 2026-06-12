@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { QueueModal } from "@/Components/QueueModal";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import {
   PlayPauseButton,
@@ -46,7 +45,6 @@ const MiniPlayerMeta = React.memo(
 
 export default function GlobalMiniPlayer() {
   const insets = useSafeAreaInsets();
-  const [queueVisible, setQueueVisible] = useState(false);
 
   const openSongOptions = useQueueManagementStore(
     (state) => state.openQueueModal,
@@ -89,8 +87,6 @@ export default function GlobalMiniPlayer() {
           <AudioSlider style={styles.slider} />
         </View>
       </View>
-
-      <QueueModal />
     </>
   );
 }

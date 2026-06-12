@@ -20,33 +20,33 @@ export const QueueTrack = React.memo(
     const skipToSongOnQueue = useAudioStore((s) => s.skipToSongOnQueue);
     const removeFromQueue = useAudioStore((s) => s.removeFromQueue);
     const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
-    const queue = useAudioStore((s) => s.queue);
-    const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
 
     const artworkUrl = useMemo(() => {
       return navidromeCreds && coverArt
         ? getArtworkUrl(navidromeCreds, coverArt, 100)
         : null;
     }, [navidromeCreds, coverArt]);
+    React.useEffect(() => {
+      console.log("here");
+    });
 
-    const handleTrackPress = () => {
-      skipToSongOnQueue(clientQueueId);
-    };
-
-    const handleRemovePress = () => {
-      removeFromQueue(clientQueueId);
-    };
+    const handleTrackPress = () => skipToSongOnQueue(clientQueueId);
+    const handleRemovePress = () => removeFromQueue(clientQueueId);
 
     const handleAddToUserQueue = () => {
-      const freshIndex = queue.findIndex(
+      const storeState = useAudioStore.getState();
+      const currentQueue = storeState.queue;
+      const playingSongQueueIndex = storeState.playingSongQueueIndex;
+
+      const freshIndex = currentQueue.findIndex(
         (s) => s.clientQueueId === clientQueueId,
       );
       if (freshIndex === -1) return;
 
-      const targetTrack = queue[freshIndex];
+      const targetTrack = currentQueue[freshIndex];
       const cleanSong = { ...targetTrack, origin: "user" as const };
 
-      const remainingUpcoming = queue
+      const remainingUpcoming = currentQueue
         .slice(playingSongQueueIndex + 1)
         .filter((s) => s.clientQueueId !== clientQueueId);
 
@@ -54,7 +54,10 @@ export const QueueTrack = React.memo(
       const autoPart = remainingUpcoming.filter((s) => s.origin === "auto");
 
       const targetUpcomingSegment = [...userPart, cleanSong, ...autoPart];
-      const unchangedPastAndCurrent = queue.slice(0, playingSongQueueIndex + 1);
+      const unchangedPastAndCurrent = currentQueue.slice(
+        0,
+        playingSongQueueIndex + 1,
+      );
 
       updateQueueOrder([...unchangedPastAndCurrent, ...targetUpcomingSegment]);
     };
@@ -106,14 +109,9 @@ export const QueueTrack = React.memo(
       </View>
     );
   },
-  (prev, next) => {
-    return (
-      prev.item.clientQueueId === next.item.clientQueueId &&
-      prev.item.origin === next.item.origin &&
-      prev.item.title === next.item.title &&
-      prev.item.artist === next.item.artist
-    );
-  },
+  (prev, next) =>
+    prev.item.clientQueueId === next.item.clientQueueId &&
+    prev.item.origin === next.item.origin,
 );
 
 const styles = StyleSheet.create({

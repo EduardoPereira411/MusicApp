@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState } from "react";
+import React, { useMemo, useCallback, useState, useEffect } from "react";
 import {
   Modal,
   View,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,7 +19,20 @@ import { ErrorDisplay } from "@/Components/ErrorDisplay";
 import { getArtworkUrl } from "@/Services/navidromeService";
 import { useQueueManagementStore } from "@/Stores/useQueueManagementStore";
 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+
 const keyExtractor = (item: any) => item.clientQueueId;
+
+const renderQueueItem = ({ item }: { item: any }) => {
+  return <QueueTrack item={item} />;
+};
 
 const NowPlayingHeaderTrack = React.memo(
   function NowPlayingHeaderTrack({ song }: { song: any }) {
@@ -64,11 +78,6 @@ const UserUpcomingList = React.memo(
     userUpcoming: any[];
     onDragEnd: (e: { data: any[] }) => void;
   }) => {
-    const renderItem = useCallback(
-      ({ item }: { item: any }) => <QueueTrack item={item} />,
-      [],
-    );
-
     if (userUpcoming.length === 0) return null;
 
     return (
@@ -79,7 +88,10 @@ const UserUpcomingList = React.memo(
           data={userUpcoming}
           keyExtractor={keyExtractor}
           onDragEnd={onDragEnd}
-          renderItem={renderItem}
+          renderItem={renderQueueItem}
+          measureDebounceDelay={150}
+          dimensionsAnimationType="none"
+          itemsLayoutTransitionMode="reorder"
         />
       </View>
     );
@@ -94,11 +106,6 @@ const AutoUpcomingList = React.memo(
     autoUpcoming: any[];
     onDragEnd: (e: { data: any[] }) => void;
   }) => {
-    const renderItem = useCallback(
-      ({ item }: { item: any }) => <QueueTrack item={item} />,
-      [],
-    );
-
     if (autoUpcoming.length === 0) return null;
 
     return (
@@ -111,7 +118,10 @@ const AutoUpcomingList = React.memo(
           data={autoUpcoming}
           keyExtractor={keyExtractor}
           onDragEnd={onDragEnd}
-          renderItem={renderItem}
+          renderItem={renderQueueItem}
+          measureDebounceDelay={150}
+          dimensionsAnimationType="none"
+          itemsLayoutTransitionMode="reorder"
         />
       </View>
     );
@@ -127,6 +137,21 @@ export function QueueModal() {
   const queue = useAudioStore((s) => s.queue);
   const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
   const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
+
+  const translateY = useSharedValue(SCREEN_HEIGHT);
+
+  useEffect(() => {
+    translateY.value = withTiming(visible ? 0 : SCREEN_HEIGHT, {
+      duration: 300,
+      easing: Easing.out(Easing.quad),
+    });
+  }, [visible]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: translateY.value }],
+    };
+  });
 
   const currentSong = useMemo(() => {
     return queue[playingSongQueueIndex] || null;
@@ -198,14 +223,9 @@ export function QueueModal() {
 
   const clearPipelineErrors = useCallback(() => setPipelineError(null), []);
 
-  if (!visible) return null;
-
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      onRequestClose={closeModal}
+    <Animated.View
+      style={[StyleSheet.absoluteFill, styles.modalOverlay, animatedStyle]}
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View
@@ -255,11 +275,15 @@ export function QueueModal() {
           </ScrollView>
         </View>
       </GestureHandlerRootView>
-    </Modal>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    zIndex: 1000,
+    backgroundColor: "#121212",
+  },
   container: {
     flex: 1,
     backgroundColor: "#121212",
