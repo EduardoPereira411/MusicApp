@@ -179,7 +179,8 @@ export function QueueModal() {
         const validatedUpcoming = newUpcomingSegment.map((item, index) => {
           if (
             item.origin === "auto" &&
-            (index <= lastUserIndex || (lastUserIndex === -1 && index === 0))
+            lastUserIndex !== -1 &&
+            index <= lastUserIndex
           ) {
             return { ...item, origin: "user" as const };
           }
