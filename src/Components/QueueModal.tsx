@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  BackHandler,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -158,7 +159,22 @@ export function QueueModal() {
       duration: 300,
       easing: Easing.out(Easing.quad),
     });
-  }, [visible]);
+
+    if (visible) {
+      const handleHardwareBackPress = () => {
+        closeModal();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        handleHardwareBackPress,
+      );
+      return () => {
+        subscription.remove();
+      };
+    }
+  }, [visible, closeModal]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
