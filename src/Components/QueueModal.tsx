@@ -35,16 +35,24 @@ const renderQueueItem = ({ item }: { item: any }) => {
   return <QueueTrack item={item} />;
 };
 
-const NowPlayingHeaderTrack = React.memo(
-  function NowPlayingHeaderTrack({ song }: { song: any }) {
-    const cachedCreds = useAudioStore((s) => s.cachedCreds);
-    const artworkUrl = useMemo(() => {
-      return cachedCreds && song?.coverArt
-        ? getArtworkUrl(cachedCreds, song.coverArt, 150)
-        : null;
-    }, [cachedCreds, song?.coverArt]);
+const NowPlayingHeaderTrack = React.memo(function NowPlayingHeaderTrack() {
+  const currentSong = useAudioStore(
+    (s) => s.queue[s.playingSongQueueIndex] || null,
+  );
 
-    return (
+  const cachedCreds = useAudioStore((s) => s.cachedCreds);
+
+  const artworkUrl = useMemo(() => {
+    return cachedCreds && currentSong?.coverArt
+      ? getArtworkUrl(cachedCreds, currentSong.coverArt, 75)
+      : null;
+  }, [cachedCreds, currentSong?.coverArt]);
+
+  if (!currentSong) return null;
+
+  return (
+    <View style={styles.nowPlayingSection}>
+      <Text style={styles.sectionTitle}>Now Playing</Text>
       <View style={[styles.trackRow, styles.playingRow]}>
         <View style={styles.trackDetails}>
           <Image
@@ -55,10 +63,10 @@ const NowPlayingHeaderTrack = React.memo(
           />
           <View style={styles.textContainer}>
             <Text style={[styles.title, styles.playingText]} numberOfLines={1}>
-              {song.title}
+              {currentSong.title}
             </Text>
             <Text style={styles.artist} numberOfLines={1}>
-              {song.artist}
+              {currentSong.artist}
             </Text>
           </View>
         </View>
@@ -66,10 +74,9 @@ const NowPlayingHeaderTrack = React.memo(
           <Ionicons name="musical-notes" size={18} color="#1DB954" />
         </View>
       </View>
-    );
-  },
-  (prev, next) => prev.song?.clientQueueId === next.song?.clientQueueId,
-);
+    </View>
+  );
+});
 
 const UserUpcomingList = React.memo(
   ({ onDragEnd }: { onDragEnd: (e: { data: any[] }) => void }) => {
@@ -141,9 +148,6 @@ export function QueueModal() {
   const visible = useQueueManagementStore((state) => state.isModalVisible);
   const closeModal = useQueueManagementStore((state) => state.closeQueueModal);
 
-  const currentSong = useAudioStore(
-    (s) => s.queue[s.playingSongQueueIndex] || null,
-  );
   const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
 
   const translateY = useSharedValue(SCREEN_HEIGHT);
@@ -249,12 +253,7 @@ export function QueueModal() {
             ]}
             showsVerticalScrollIndicator={false}
           >
-            {currentSong && (
-              <View style={styles.nowPlayingSection}>
-                <Text style={styles.sectionTitle}>Now Playing</Text>
-                <NowPlayingHeaderTrack song={currentSong} />
-              </View>
-            )}
+            <NowPlayingHeaderTrack />
 
             <UserUpcomingList onDragEnd={handleUserDragEnd} />
             <AutoUpcomingList onDragEnd={handleAutoDragEnd} />
