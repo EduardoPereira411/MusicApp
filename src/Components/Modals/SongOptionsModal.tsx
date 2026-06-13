@@ -15,13 +15,9 @@ import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
 import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
 import { useAudioStore } from "@/Stores/useAudioStore";
-import {
-  fetchNavidromePlaylists,
-  checkSongInPlaylist,
-  addTrackToPlaylist,
-  getArtworkUrl,
-} from "@/Services/navidromeService";
+import { getArtworkUrl } from "@/Services/navidromeService";
 import { useRouter } from "expo-router";
+import { AddToPlaylistModal } from "@/Components/Modals/AddToPlaylistModal";
 
 export function SongOptionsModal() {
   const router = useRouter();
@@ -33,18 +29,12 @@ export function SongOptionsModal() {
   const onClose = useSongOptionsStore((state) => state.closeSongOptions);
   const storeAddToQueue = useAudioStore((state) => state.addToQueue);
 
+  const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
+
   const artworkUrl = useMemo(() => {
     if (!visible || !navidromeCreds || !song?.coverArt) return null;
     return getArtworkUrl(navidromeCreds, song.coverArt, 100);
   }, [visible, navidromeCreds, song?.id, song?.coverArt]);
-
-  const [viewState, setViewState] = useState<"menu" | "playlists">("menu");
-  const [playlists, setPlaylists] = useState<any[]>([]);
-  const [loadingPlaylists, setLoadingPlaylists] = useState(false);
-
-  useEffect(() => {
-    if (visible) setViewState("menu");
-  }, [visible]);
 
   if (!visible || !song) return null;
 
@@ -53,120 +43,42 @@ export function SongOptionsModal() {
     onClose();
     router.push({
       pathname: "/playlist",
-      params: {
-        id: song.albumId,
-        type: "album",
-        name: song.album || "Album",
-      },
+      params: { id: song.albumId, type: "album", name: song.album || "Album" },
     });
   };
 
-  const handlePlaylistSelectClick = async () => {
-    if (!navidromeCreds) {
-      Alert.alert("Error", "You must be logged in to manage playlists.");
-      return;
-    }
-    setViewState("playlists");
-    setLoadingPlaylists(true);
-    try {
-      const list = await fetchNavidromePlaylists(navidromeCreds);
-      setPlaylists(list);
-    } catch (e) {
-      Alert.alert("Error", "Could not fetch playlists from the server.");
-    } finally {
-      setLoadingPlaylists(false);
-    }
-  };
-
-  const executeAddProcess = async (
-    playlistId: string,
-    playlistName: string,
-  ) => {
-    if (!navidromeCreds) return;
-    try {
-      const success = await addTrackToPlaylist(
-        navidromeCreds,
-        playlistId,
-        song.id,
-      );
-      if (success) {
-        Alert.alert("Success", `Added "${song.title}" to "${playlistName}".`);
-        onClose();
-      } else {
-        Alert.alert("Error", "Could not update playlist on the server.");
-      }
-    } catch (e) {
-      Alert.alert("Error", "An error occurred while adding the track.");
-    }
-  };
-
-  const handleAddToPlaylistPress = async (
-    playlistId: string,
-    playlistName: string,
-  ) => {
-    if (!navidromeCreds) return;
-    try {
-      const isAlreadyInPlaylist = await checkSongInPlaylist(
-        navidromeCreds,
-        playlistId,
-        song.id,
-      );
-      if (isAlreadyInPlaylist) {
-        Alert.alert(
-          "Already in Playlist",
-          `"${song.title}" is already in "${playlistName}". Do you want to add it anyway?`,
-          [
-            {
-              text: "Cancel",
-              style: "cancel",
-            },
-            {
-              text: "Add Anyway",
-              onPress: async () =>
-                await executeAddProcess(playlistId, playlistName),
-            },
-          ],
-        );
-        return;
-      }
-      await executeAddProcess(playlistId, playlistName);
-    } catch (e) {
-      Alert.alert("Error", "Could not verify playlist status.");
-    }
-  };
-
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.backdrop} />
-      </TouchableWithoutFeedback>
+    <>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="fade"
+        onRequestClose={onClose}
+      >
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={styles.backdrop} />
+        </TouchableWithoutFeedback>
 
-      <View style={styles.sheetContainer}>
-        <View style={styles.songHeader}>
-          <Image
-            source={{ uri: artworkUrl || undefined }}
-            style={styles.metaArt}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-          />
-          <View style={styles.metaTextContainer}>
-            <Text style={styles.metaTitle} numberOfLines={1}>
-              {song.title}
-            </Text>
-            <Text style={styles.metaArtist} numberOfLines={1}>
-              {song.artist}
-            </Text>
+        <View style={styles.sheetContainer}>
+          <View style={styles.songHeader}>
+            <Image
+              source={{ uri: artworkUrl || undefined }}
+              style={styles.metaArt}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+            />
+            <View style={styles.metaTextContainer}>
+              <Text style={styles.metaTitle} numberOfLines={1}>
+                {song.title}
+              </Text>
+              <Text style={styles.metaArtist} numberOfLines={1}>
+                {song.artist}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.divider} />
+          <View style={styles.divider} />
 
-        {viewState === "menu" && (
           <View>
             <TouchableOpacity
               style={styles.optionRow}
@@ -180,7 +92,7 @@ export function SongOptionsModal() {
 
             <TouchableOpacity
               style={styles.optionRow}
-              onPress={handlePlaylistSelectClick}
+              onPress={() => setPlaylistModalVisible(true)}
             >
               <Text style={styles.optionText}>
                 🎵 Add to Navidrome Playlist
@@ -203,49 +115,15 @@ export function SongOptionsModal() {
               <Text style={[styles.optionText, styles.cancelText]}>Cancel</Text>
             </TouchableOpacity>
           </View>
-        )}
+        </View>
+      </Modal>
 
-        {viewState === "playlists" && (
-          <View style={styles.playlistWrapper}>
-            <View style={styles.subHeaderRow}>
-              <TouchableOpacity
-                onPress={() => setViewState("menu")}
-                style={styles.backButton}
-              >
-                <Text style={styles.backButtonText}>⬅ Back</Text>
-              </TouchableOpacity>
-              <Text style={styles.subHeaderTitle}>Select Playlist</Text>
-            </View>
-
-            {loadingPlaylists ? (
-              <ActivityIndicator
-                size="small"
-                color="#1DB954"
-                style={{ marginVertical: 20 }}
-              />
-            ) : playlists.length === 0 ? (
-              <Text style={styles.emptyText}>
-                No Navidrome playlists found.
-              </Text>
-            ) : (
-              <FlatList
-                data={playlists}
-                keyExtractor={(item) => item.id}
-                style={{ maxHeight: 250 }}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.optionRow}
-                    onPress={() => handleAddToPlaylistPress(item.id, item.name)}
-                  >
-                    <Text style={styles.optionText}>📁 {item.name}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            )}
-          </View>
-        )}
-      </View>
-    </Modal>
+      <AddToPlaylistModal
+        visible={playlistModalVisible}
+        onClose={() => setPlaylistModalVisible(false)}
+        song={song}
+      />
+    </>
   );
 }
 

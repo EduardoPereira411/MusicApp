@@ -514,6 +514,7 @@ export async function fetchThemeOrRandomQueue(
         title: track.title,
         artist: track.artist,
         album: track.album,
+        albumId: track.albumId,
         duration: track.duration,
         coverArt: track.coverArt || track.id,
       }));
