@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useAudioStore } from "@/Stores/useAudioStore";
-import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
 import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
 import { Song } from "@/Models/Models";

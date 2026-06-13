@@ -22,7 +22,6 @@ import {
   fetchCollectionDetails,
   getArtworkUrl,
 } from "@/Services/navidromeService";
-import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
 
 const APP_ICON_FALLBACK = require("@/assets/images/icon.png");
 

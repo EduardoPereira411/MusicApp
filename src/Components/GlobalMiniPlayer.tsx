@@ -9,7 +9,7 @@ import {
   NextButton,
   AudioSlider,
 } from "@/Components/Optimized/AudioControls";
-import { useQueueManagementStore } from "@/Stores/useQueueManagementStore";
+import { useUiStore } from "@/Stores/useUIStore";
 
 const MiniPlayerMeta = React.memo(
   function MiniPlayerMeta({ song }: { song: any }) {
@@ -44,12 +44,13 @@ const MiniPlayerMeta = React.memo(
 );
 
 export default function GlobalMiniPlayer() {
-  const isPlayerVisible = useQueueManagementStore(
-    (state) => state.isPlayerVisible,
+  const isPlayerVisible = useUiStore(
+    (state) => !!state.modals["expanded-player"],
   );
-  const insets = useSafeAreaInsets();
+  const openModal = useUiStore((state) => state.openModal);
+  const openFullPlayer = () => openModal("expanded-player");
 
-  const openFullPlayer = useQueueManagementStore((state) => state.openPlayer);
+  const insets = useSafeAreaInsets();
 
   const currentSong = useAudioStore((s) => {
     const idx = s.playingSongQueueIndex;

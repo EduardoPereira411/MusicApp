@@ -12,7 +12,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import { getArtworkUrl } from "@/Services/navidromeService";
 import { PlayPauseButton } from "../Optimized/AudioControls";
-import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
+import { useUiStore } from "@/Stores/useUIStore";
 
 interface SongItemProps {
   item: Song;
@@ -40,16 +40,14 @@ export const SongItem = React.memo(
   }: SongItemProps) => {
     const cachedCreds = useAudioStore((s) => s.cachedCreds);
 
-    const openSongOptions = useSongOptionsStore(
-      (state) => state.openSongOptions,
-    );
+    const openModal = useUiStore((state) => state.openModal);
     const handleOptionsPress = React.useCallback(() => {
       if (onOptionsPress) {
         onOptionsPress(item);
       } else {
-        openSongOptions(item);
+        openModal("song-options", item);
       }
-    }, [item, onOptionsPress, openSongOptions]);
+    }, [item, onOptionsPress, openModal]);
 
     const isCurrent = useAudioStore((state) => {
       const activeTrack = state.queue[state.playingSongQueueIndex];

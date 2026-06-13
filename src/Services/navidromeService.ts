@@ -134,7 +134,7 @@ export async function fetchNavidromePlaylists(
       type: "playlist",
       subtitle: `By ${playlist.owner || "Unknown"}`,
       subItemCount: playlist.songCount,
-      coverArt: "",
+      coverArt: playlist.coverArt,
     }));
   } catch (e: any) {
     throw new Error(`Failed to fetch playlists: ${e.message || e}`);

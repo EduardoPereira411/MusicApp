@@ -10,7 +10,6 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudioStore } from "@/Stores/useAudioStore";
-import { useQueueManagementStore } from "@/Stores/useQueueManagementStore";
 import { Image } from "expo-image";
 import Animated, {
   useSharedValue,
@@ -28,6 +27,7 @@ import {
   NextButton,
   AudioSlider,
 } from "@/Components/Optimized/AudioControls";
+import { useUiStore } from "@/Stores/useUIStore";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -35,15 +35,19 @@ export function ExpandedPlayerModal() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const isPlayerVisible = useQueueManagementStore(
-    (state) => state.isPlayerVisible,
+  const isPlayerVisible = useUiStore(
+    (state) => !!state.modals["expanded-player"],
   );
-  const isQueueVisible = useQueueManagementStore(
-    (state) => state.isQueueVisible,
-  );
-  const closePlayer = useQueueManagementStore((state) => state.closePlayer);
-  const openQueue = useQueueManagementStore((state) => state.openQueue);
-  const closeQueue = useQueueManagementStore((state) => state.closeQueue);
+  const isQueueVisible = useUiStore((state) => !!state.modals["queue-modal"]);
+  const openModal = useUiStore((state) => state.openModal);
+  const closeModal = useUiStore((state) => state.closeModal);
+
+  const closePlayer = () => {
+    closeModal("expanded-player");
+    closeModal("queue-modal");
+  };
+  const openQueue = () => openModal("queue-modal");
+  const closeQueue = () => closeModal("queue-modal");
 
   const currentSong = useAudioStore(
     (s) => s.queue[s.playingSongQueueIndex] || null,

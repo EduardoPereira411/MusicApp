@@ -13,20 +13,22 @@ import {
 import { Image } from "expo-image";
 import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
-import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import { getArtworkUrl } from "@/Services/navidromeService";
 import { useRouter } from "expo-router";
 import { AddToPlaylistModal } from "@/Components/Modals/AddToPlaylistModal";
+import { useUiStore } from "@/Stores/useUIStore";
 
 export function SongOptionsModal() {
   const router = useRouter();
   const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
 
-  const visible = useSongOptionsStore((state) => state.isModalVisible);
-  const song = useSongOptionsStore((state) => state.selectedSong);
-  const onClose = useSongOptionsStore((state) => state.closeSongOptions);
+  const visible = useUiStore((state) => !!state.modals["song-options"]);
+  const song = useUiStore((state) => state.modalData["song-options"]);
+  const closeModal = useUiStore((state) => state.closeModal);
+  const onClose = () => closeModal("song-options");
+
   const storeAddToQueue = useAudioStore((state) => state.addToQueue);
 
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
