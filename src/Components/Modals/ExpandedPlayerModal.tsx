@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
@@ -51,6 +50,8 @@ export function ExpandedPlayerModal() {
   const playerTranslateY = useSharedValue(SCREEN_HEIGHT);
   const queueTranslateX = useSharedValue(SCREEN_WIDTH);
 
+  const [renderPlayer, setRenderPlayer] = useState(!isQueueVisible);
+
   useEffect(() => {
     playerTranslateY.value = withTiming(isPlayerVisible ? 0 : SCREEN_HEIGHT, {
       duration: 350,
@@ -63,6 +64,17 @@ export function ExpandedPlayerModal() {
       duration: 300,
       easing: Easing.out(Easing.quad),
     });
+  }, [isQueueVisible]);
+
+  useEffect(() => {
+    if (isQueueVisible) {
+      const timer = setTimeout(() => {
+        setRenderPlayer(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setRenderPlayer(true);
+    }
   }, [isQueueVisible]);
 
   const [artworkURL, setArtworkUrl] = useState<string | null>(null);
@@ -112,7 +124,7 @@ export function ExpandedPlayerModal() {
         playerAnimatedStyle,
       ]}
     >
-      {!isQueueVisible && (
+      {renderPlayer && (
         <View
           style={[
             styles.playerView,
