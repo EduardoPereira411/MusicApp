@@ -38,6 +38,7 @@ export default function PlaylistScreen() {
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [collections, setCollections] = useState<SharedCollectionData[]>([]);
+  const [collectionCoverArt, setCollectionCoverArt] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
@@ -66,9 +67,11 @@ export default function PlaylistScreen() {
       if (type === "artist") {
         setCollections(result.collections || []);
         setSongs([]);
+        setCollectionCoverArt("");
       } else {
         setSongs(result.songs || []);
         setCollections([]);
+        setCollectionCoverArt(result.coverArt || "");
       }
     } catch (error: any) {
       setPipelineError(
@@ -83,11 +86,14 @@ export default function PlaylistScreen() {
     if (type === "artist" && collections.length > 0) {
       return collections.find((c) => c.coverArt)?.coverArt || "";
     }
+    if (collectionCoverArt) {
+      return collectionCoverArt;
+    }
     if (songs.length > 0 && songs[0].coverArt) {
       return songs[0].coverArt;
     }
     return "";
-  }, [type, songs, collections]);
+  }, [type, songs, collections, collectionCoverArt]);
 
   const headerArtworkSource = useMemo(() => {
     if (!navidromeCreds || !targetCoverArtId) {
@@ -154,6 +160,7 @@ export default function PlaylistScreen() {
             item={trackItem}
             index={index}
             showTrackNumber={true}
+            hideArtwork={type === "album"}
             onSwipeLeftToRight={(track) => handleSwipeAddToQueue(track, index)}
             onPlay={(track) => handlePlaySong(track, index, songs)}
             currentContext={{

@@ -20,6 +20,7 @@ interface SongItemProps {
   onOptionsPress?: (song: Song) => void;
   onSwipeLeftToRight?: (song: Song) => void;
   showTrackNumber?: boolean;
+  hideArtwork?: boolean;
   index?: number;
   currentContext?: PlaybackContext;
 }
@@ -33,6 +34,7 @@ export const SongItem = React.memo(
     onOptionsPress,
     onSwipeLeftToRight,
     showTrackNumber = false,
+    hideArtwork = false,
     index,
     currentContext,
   }: SongItemProps) => {
@@ -141,18 +143,20 @@ export const SongItem = React.memo(
                 </Text>
               )}
 
-              <Image
-                source={
-                  artworkUrl
-                    ? { uri: artworkUrl }
-                    : require("@/assets/images/icon.png")
-                }
-                style={styles.cardArt}
-                contentFit="cover"
-                transition={200}
-                recyclingKey={artworkUrl || ""}
-                cachePolicy="memory-disk"
-              />
+              {!hideArtwork && (
+                <Image
+                  source={
+                    artworkUrl
+                      ? { uri: artworkUrl }
+                      : require("@/assets/images/icon.png")
+                  }
+                  style={styles.cardArt}
+                  contentFit="cover"
+                  transition={200}
+                  recyclingKey={artworkUrl || ""}
+                  cachePolicy="memory-disk"
+                />
+              )}
 
               <View style={styles.infoContainer}>
                 <Text
@@ -192,6 +196,7 @@ export const SongItem = React.memo(
   (prev, next) =>
     prev.item?.id === next.item?.id &&
     prev.index === next.index &&
+    prev.hideArtwork === next.hideArtwork &&
     prev.currentContext?.id === next.currentContext?.id &&
     prev.currentContext?.type === next.currentContext?.type,
 );

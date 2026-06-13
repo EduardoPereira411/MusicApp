@@ -395,7 +395,11 @@ export async function fetchCollectionDetails(
   id: string,
   type: "playlist" | "album" | "artist",
   fallbackName?: string,
-): Promise<{ songs?: Song[]; collections?: SharedCollectionData[] }> {
+): Promise<{
+  songs?: Song[];
+  collections?: SharedCollectionData[];
+  coverArt?: string;
+}> {
   try {
     const params = getSubsonicAuthParams(creds);
     if (!params) throw new Error("Subsonic token processing aborted.");
@@ -450,6 +454,8 @@ export async function fetchCollectionDetails(
     const targetData = subResponse?.[type];
     if (!targetData) return { songs: [] };
 
+    const collectionCoverArt = targetData.coverArt || "";
+
     const rawTracks = targetData.entry || targetData.song || [];
     const tracksArray = Array.isArray(rawTracks) ? rawTracks : [rawTracks];
 
@@ -464,7 +470,7 @@ export async function fetchCollectionDetails(
         coverArt: track.coverArt || track.id,
       }));
 
-    return { songs };
+    return { songs, coverArt: collectionCoverArt };
   } catch (error: any) {
     throw new Error(
       `Error fetching collection details for ${type}: ${error.message || error}`,
