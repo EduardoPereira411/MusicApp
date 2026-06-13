@@ -206,7 +206,7 @@ export function ExpandedPlayerModal() {
             </View>
 
             <View style={styles.sliderSection}>
-              <AudioSlider />
+              <AudioSlider showTime={true} />
             </View>
 
             <View style={styles.controlsSection}>
