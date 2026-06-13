@@ -13,11 +13,11 @@ import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import { Song, SharedCollectionData } from "@/Models/Models";
-import { SongItem } from "@/Components/SongItem";
+import { SongItem } from "@/Components/ItemDisplays/SongItem";
 import { SongOptionsModal } from "@/Components/Modals/SongOptionsModal";
-import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
+import { MediaCollectionItem } from "@/Components/ItemDisplays/MediaCollectionItem";
 import { Image } from "expo-image";
-import { ErrorDisplay } from "@/Components/ErrorDisplay";
+import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import {
   fetchCollectionDetails,
   getArtworkUrl,

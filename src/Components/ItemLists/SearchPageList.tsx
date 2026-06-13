@@ -8,7 +8,7 @@ import {
   NavidromeCredentials,
 } from "@/Models/Models";
 import { searchAll } from "@/Services/navidromeService";
-import { ErrorDisplay } from "@/Components/ErrorDisplay";
+import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import { ItemFlatList } from "@/Components/ItemLists/ItemFlatList";
 import { useTextInputStore } from "@/Stores/useTextInputStore";
 

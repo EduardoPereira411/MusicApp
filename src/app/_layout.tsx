@@ -7,7 +7,7 @@ import { ToastProvider } from "@/Context/ToastContext";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import GlobalMiniPlayer from "@/Components/GlobalMiniPlayer";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { QueueModal } from "@/Components/QueueModal";
+import { ExpandedPlayerModal } from "@/Components/Modals/ExpandedPlayerModal";
 
 LogBox.ignoreLogs(["Dispatching media control event"]);
 const originalLog = console.log;
@@ -112,7 +112,7 @@ export default function RootLayout() {
         <ToastProvider>
           <RecommendationsOrchestrator />
           <InnerRootLayout />
-          <QueueModal />
+          <ExpandedPlayerModal />
         </ToastProvider>
       </AuthProvider>
     </GestureHandlerRootView>

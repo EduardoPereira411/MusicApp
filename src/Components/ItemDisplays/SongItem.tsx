@@ -11,7 +11,7 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import { getArtworkUrl } from "@/Services/navidromeService";
-import { PlayPauseButton } from "./Optimized/AudioControls";
+import { PlayPauseButton } from "../Optimized/AudioControls";
 import { useSongOptionsStore } from "@/Stores/useSongOptionsStore";
 
 interface SongItemProps {
@@ -145,7 +145,7 @@ export const SongItem = React.memo(
                 source={
                   artworkUrl
                     ? { uri: artworkUrl }
-                    : require("../../assets/images/icon.png")
+                    : require("@/assets/images/icon.png")
                 }
                 style={styles.cardArt}
                 contentFit="cover"

@@ -15,10 +15,9 @@ import { useAudioStore } from "@/Stores/useAudioStore";
 import { Image } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Sortable from "react-native-sortables";
-import { QueueTrack } from "@/Components/QueueTrack";
-import { ErrorDisplay } from "@/Components/ErrorDisplay";
+import { QueueTrack } from "@/Components/ItemDisplays/QueueTrack";
+import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import { getArtworkUrl } from "@/Services/navidromeService";
-import { useQueueManagementStore } from "@/Stores/useQueueManagementStore";
 import { useShallow } from "zustand/react/shallow";
 
 import Animated, {
@@ -144,37 +143,13 @@ const AutoUpcomingList = React.memo(
   },
 );
 
-export function QueueModal() {
+export function QueueModalContent({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const [pipelineError, setPipelineError] = useState<string | null>(null);
-  const visible = useQueueManagementStore((state) => state.isModalVisible);
-  const closeModal = useQueueManagementStore((state) => state.closeQueueModal);
 
   const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
 
   const translateY = useSharedValue(SCREEN_HEIGHT);
-
-  useEffect(() => {
-    translateY.value = withTiming(visible ? 0 : SCREEN_HEIGHT, {
-      duration: 300,
-      easing: Easing.out(Easing.quad),
-    });
-
-    if (visible) {
-      const handleHardwareBackPress = () => {
-        closeModal();
-        return true;
-      };
-
-      const subscription = BackHandler.addEventListener(
-        "hardwareBackPress",
-        handleHardwareBackPress,
-      );
-      return () => {
-        subscription.remove();
-      };
-    }
-  }, [visible, closeModal]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -182,6 +157,12 @@ export function QueueModal() {
     };
   });
 
+  useEffect(() => {
+    translateY.value = withTiming(0, {
+      duration: 300,
+      easing: Easing.out(Easing.quad),
+    });
+  }, []);
   const applyQueueUpdate = useCallback(
     (newUpcomingSegment: any[]) => {
       setPipelineError(null);
@@ -249,7 +230,7 @@ export function QueueModal() {
           style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}
         >
           <View style={styles.header}>
-            <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="chevron-down" size={28} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Play Queue</Text>

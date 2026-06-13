@@ -14,9 +14,9 @@ import { useAuth } from "@/Context/AuthContext";
 import { useAudioStore } from "@/Stores/useAudioStore";
 import { useTextInputStore } from "@/Stores/useTextInputStore";
 import { fetchNavidromePlaylists } from "@/Services/navidromeService";
-import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
+import { MediaCollectionItem } from "@/Components/ItemDisplays/MediaCollectionItem";
 import { SharedCollectionData } from "@/Models/Models";
-import { ErrorDisplay } from "@/Components/ErrorDisplay";
+import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
 
 export default function ProfileScreen() {

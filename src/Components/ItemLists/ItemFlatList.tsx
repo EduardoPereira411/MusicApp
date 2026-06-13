@@ -1,8 +1,8 @@
 import React, { useCallback } from "react";
 import { FlatList, StyleSheet } from "react-native";
 import { Song, SharedCollectionData, PlaybackContext } from "@/Models/Models";
-import { SongItem } from "@/Components/SongItem";
-import { MediaCollectionItem } from "@/Components/MediaCollectionItem";
+import { SongItem } from "@/Components/ItemDisplays/SongItem";
+import { MediaCollectionItem } from "@/Components/ItemDisplays/MediaCollectionItem";
 
 interface ItemFlatListProps {
   data: (Song | SharedCollectionData)[];

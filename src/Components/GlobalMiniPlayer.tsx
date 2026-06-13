@@ -24,7 +24,7 @@ const MiniPlayerMeta = React.memo(
           source={
             artworkURL
               ? { uri: artworkURL }
-              : require("../../assets/images/icon.png")
+              : require("@/assets/images/icon.png")
           }
           style={styles.coverImage}
           cachePolicy="memory-disk"
@@ -44,11 +44,12 @@ const MiniPlayerMeta = React.memo(
 );
 
 export default function GlobalMiniPlayer() {
+  const isPlayerVisible = useQueueManagementStore(
+    (state) => state.isPlayerVisible,
+  );
   const insets = useSafeAreaInsets();
 
-  const openSongOptions = useQueueManagementStore(
-    (state) => state.openQueueModal,
-  );
+  const openFullPlayer = useQueueManagementStore((state) => state.openPlayer);
 
   const currentSong = useAudioStore((s) => {
     const idx = s.playingSongQueueIndex;
@@ -61,30 +62,32 @@ export default function GlobalMiniPlayer() {
 
   return (
     <>
-      <View style={[styles.miniPlayerContainer, { bottom: dynamicBottom }]}>
-        <View style={styles.topRow}>
-          <TouchableOpacity
-            style={styles.metaClickableArea}
-            onPress={openSongOptions}
-            activeOpacity={0.7}
-          >
-            <MiniPlayerMeta song={currentSong} />
-          </TouchableOpacity>
+      <View pointerEvents={isPlayerVisible ? "none" : "auto"}>
+        <View style={[styles.miniPlayerContainer, { bottom: dynamicBottom }]}>
+          <View style={styles.topRow}>
+            <TouchableOpacity
+              style={styles.metaClickableArea}
+              onPress={openFullPlayer}
+              activeOpacity={0.7}
+            >
+              <MiniPlayerMeta song={currentSong} />
+            </TouchableOpacity>
 
-          <View style={styles.controlsContainer}>
-            <PreviousButton style={styles.controlButton} />
-            <PlayPauseButton
-              size={38}
-              style={styles.playButton}
-              color="#1DB954"
-              isCurrent={true}
-            />
-            <NextButton style={styles.controlButton} />
+            <View style={styles.controlsContainer}>
+              <PreviousButton style={styles.controlButton} />
+              <PlayPauseButton
+                size={38}
+                style={styles.playButton}
+                color="#1DB954"
+                isCurrent={true}
+              />
+              <NextButton style={styles.controlButton} />
+            </View>
           </View>
-        </View>
 
-        <View style={styles.sliderContainer}>
-          <AudioSlider style={styles.slider} />
+          <View style={styles.sliderContainer}>
+            <AudioSlider style={styles.slider} />
+          </View>
         </View>
       </View>
     </>

@@ -6,7 +6,7 @@ import {
   fetchAlbums,
   fetchArtists,
 } from "@/Services/navidromeService";
-import { ErrorDisplay } from "@/Components/ErrorDisplay";
+import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import { ItemFlatList } from "@/Components/ItemLists/ItemFlatList";
 
 interface HomepageListProps {
