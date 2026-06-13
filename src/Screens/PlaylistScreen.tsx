@@ -93,7 +93,7 @@ export default function PlaylistScreen() {
     if (!navidromeCreds || !targetCoverArtId) {
       return APP_ICON_FALLBACK;
     }
-    const url = getArtworkUrl(navidromeCreds, targetCoverArtId, 500);
+    const url = getArtworkUrl(navidromeCreds, targetCoverArtId, 300);
     return url ? { uri: url } : APP_ICON_FALLBACK;
   }, [navidromeCreds, targetCoverArtId]);
 

@@ -231,7 +231,7 @@ export function QueueModalContent({ onClose }: { onClose: () => void }) {
         >
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="chevron-down" size={28} color="#fff" />
+              <Ionicons name="chevron-back" size={28} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Play Queue</Text>
             <View style={styles.headerSpacer} />

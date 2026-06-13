@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Modal,
   View,
@@ -65,6 +65,15 @@ export function ExpandedPlayerModal() {
     });
   }, [isQueueVisible]);
 
+  const [artworkURL, setArtworkUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isPlayerVisible && currentSong) {
+      const url = getArtworkForSong(currentSong.coverArt!, 300);
+      setArtworkUrl(url);
+    }
+  }, [isPlayerVisible, currentSong, getArtworkForSong]);
+
   useEffect(() => {
     if (isPlayerVisible) {
       const handleBack = () => {
@@ -94,8 +103,6 @@ export function ExpandedPlayerModal() {
   }));
 
   if (!currentSong) return null;
-
-  const artworkURL = getArtworkForSong(currentSong.coverArt!, 400);
 
   return (
     <Animated.View
