@@ -151,6 +151,7 @@ export const SongItem = React.memo(
                 contentFit="cover"
                 transition={200}
                 recyclingKey={artworkUrl || ""}
+                cachePolicy="memory-disk"
               />
 
               <View style={styles.infoContainer}>

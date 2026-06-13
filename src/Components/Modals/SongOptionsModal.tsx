@@ -152,6 +152,7 @@ export function SongOptionsModal() {
             source={{ uri: artworkUrl || undefined }}
             style={styles.metaArt}
             contentFit="cover"
+            cachePolicy="memory-disk"
           />
           <View style={styles.metaTextContainer}>
             <Text style={styles.metaTitle} numberOfLines={1}>

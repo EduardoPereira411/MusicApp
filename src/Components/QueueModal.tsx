@@ -44,7 +44,7 @@ const NowPlayingHeaderTrack = React.memo(function NowPlayingHeaderTrack() {
 
   const artworkUrl = useMemo(() => {
     return cachedCreds && currentSong?.coverArt
-      ? getArtworkUrl(cachedCreds, currentSong.coverArt, 75)
+      ? getArtworkUrl(cachedCreds, currentSong.coverArt, 100)
       : null;
   }, [cachedCreds, currentSong?.coverArt]);
 
@@ -60,6 +60,7 @@ const NowPlayingHeaderTrack = React.memo(function NowPlayingHeaderTrack() {
             style={styles.artwork}
             contentFit="cover"
             transition={150}
+            cachePolicy="memory-disk"
           />
           <View style={styles.textContainer}>
             <Text style={[styles.title, styles.playingText]} numberOfLines={1}>
@@ -254,7 +255,6 @@ export function QueueModal() {
             showsVerticalScrollIndicator={false}
           >
             <NowPlayingHeaderTrack />
-
             <UserUpcomingList onDragEnd={handleUserDragEnd} />
             <AutoUpcomingList onDragEnd={handleAutoDragEnd} />
           </ScrollView>

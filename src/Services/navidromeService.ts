@@ -44,10 +44,14 @@ export const authStorage = {
 export function getSubsonicAuthParams(
   creds: NavidromeCredentials,
   size?: number,
+  seed?: string,
 ): string | null {
   if (!creds.password || !creds.username) return null;
 
-  const salt = Math.random().toString(36).substring(2, 10);
+  const salt = seed
+    ? md5(seed).substring(0, 8)
+    : Math.random().toString(36).substring(2, 10);
+
   const token = md5(creds.password + salt);
 
   const params: Record<string, string> = {
@@ -94,7 +98,8 @@ export function getArtworkUrl(
   size: number = 100,
 ): string | null {
   if (!coverArtId || !creds) return null;
-  const params = getSubsonicAuthParams(creds, size);
+
+  const params = getSubsonicAuthParams(creds, size, coverArtId);
   if (!params) return null;
 
   return `${creds.serverUrl}/rest/getCoverArt.view?${params}&id=${coverArtId}`;

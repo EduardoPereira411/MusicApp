@@ -73,7 +73,7 @@ export const QueueTrack = React.memo(
             <Image
               source={{ uri: artworkUrl }}
               style={styles.artwork}
-              cachePolicy="disk"
+              cachePolicy="memory-disk"
             />
           ) : (
             <View style={[styles.artwork, styles.fallbackArtwork]} />

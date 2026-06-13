@@ -27,7 +27,7 @@ const MiniPlayerMeta = React.memo(
               : require("../../assets/images/icon.png")
           }
           style={styles.coverImage}
-          cachePolicy="disk"
+          cachePolicy="memory-disk"
         />
         <View style={styles.songInfo}>
           <Text style={styles.title} numberOfLines={1}>

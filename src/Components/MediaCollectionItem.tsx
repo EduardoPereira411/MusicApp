@@ -18,7 +18,7 @@ export const MediaCollectionItem = React.memo(
 
     const artworkUrl =
       navidromeCreds && item?.coverArt
-        ? getArtworkUrl(navidromeCreds, item.coverArt, 150)
+        ? getArtworkUrl(navidromeCreds, item.coverArt, 100)
         : null;
 
     const handlePress = () => {
@@ -40,6 +40,7 @@ export const MediaCollectionItem = React.memo(
             style={[styles.cardArt, isArtist && styles.artistAvatar]}
             contentFit="cover"
             transition={200}
+            cachePolicy="memory-disk"
           />
         ) : isArtist ? (
           <View

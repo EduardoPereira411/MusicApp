@@ -195,6 +195,7 @@ export default function PlaylistScreen() {
             style={styles.heroArtwork}
             contentFit="cover"
             transition={200}
+            cachePolicy="disk"
           />
         </View>
 
