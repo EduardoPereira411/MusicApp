@@ -8,7 +8,13 @@ import {
   Text,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import {
+  useAudioActions,
+  useIsPlaying,
+  useHasNextTrack,
+  useHasPreviousTrack,
+  useAudioPlayerInstance,
+} from "@/Stores/useAudioStore";
 import { useToast } from "@/Context/ToastContext";
 import { useAudioPlayerStatus } from "expo-audio";
 import Slider from "@react-native-community/slider";
@@ -40,9 +46,9 @@ export const PlayPauseButton = React.memo(function PlayPauseButton({
   onPlay,
   isCurrent = false,
 }: PlayPauseButtonProps) {
-  const togglePlayPause = useAudioStore((s) => s.togglePlayPause);
-
-  const playing = useAudioStore((s) => (isCurrent ? s.playing : false));
+  const { togglePlayPause } = useAudioActions();
+  const isPlaying = useIsPlaying();
+  const playing = isCurrent ? isPlaying : false;
 
   const handlePress = () => {
     if (item && !isCurrent) {
@@ -66,20 +72,16 @@ export const PlayPauseButton = React.memo(function PlayPauseButton({
 export const ItemPlayPauseButton = React.memo(
   ({
     item,
-
     onPlay,
-
     isCurrent,
   }: {
     item: Song;
-
     onPlay: (song: Song) => void;
-
     isCurrent: boolean;
   }) => {
-    const showAsPlaying = useAudioStore((s) => s.playing && isCurrent);
-
-    const togglePlayPause = useAudioStore((s) => s.togglePlayPause);
+    const isPlaying = useIsPlaying();
+    const showAsPlaying = isPlaying && isCurrent;
+    const { togglePlayPause } = useAudioActions();
 
     const handlePress = () => {
       if (isCurrent) {
@@ -107,10 +109,8 @@ export const NextButton = React.memo(function NextButton({
   color = "#fff",
   disabledColor = "#555",
 }: ControlProps) {
-  const hasNext = useAudioStore(
-    (s) => s.playingSongQueueIndex < s.queue.length - 1,
-  );
-  const playNext = useAudioStore((s) => s.playNext);
+  const hasNext = useHasNextTrack();
+  const { playNext } = useAudioActions();
   const { showToast } = useToast();
 
   return (
@@ -134,9 +134,10 @@ export const PreviousButton = React.memo(function PreviousButton({
   color = "#fff",
   disabledColor = "#555",
 }: ControlProps) {
-  const hasPrevious = useAudioStore((s) => s.playingSongQueueIndex > 0);
-  const playPrevious = useAudioStore((s) => s.playPrevious);
+  const hasPrevious = useHasPreviousTrack();
+  const { playPrevious } = useAudioActions();
   const { showToast } = useToast();
+
   return (
     <TouchableOpacity
       onPress={() => playPrevious(showToast)}
@@ -166,8 +167,8 @@ export const AudioSlider = React.memo(function AudioSlider({
   style?: StyleProp<ViewStyle>;
   showTime?: boolean;
 }) {
-  const player = useAudioStore((s) => s.player);
-  const seekTo = useAudioStore((s) => s.seekTo);
+  const player = useAudioPlayerInstance();
+  const { seekTo } = useAudioActions();
 
   if (!player) return null;
 

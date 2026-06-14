@@ -11,7 +11,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import { useAudioActions } from "@/Stores/useAudioStore";
 import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/ItemDisplays/SongItem";
 import { SongOptionsModal } from "@/Components/Modals/SongOptionsModal";
@@ -42,8 +42,8 @@ export default function PlaylistScreen() {
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   // Pull stable action methods directly from the state-slice core
-  const storePlaySongNow = useAudioStore((state) => state.playSongNow);
-  const storeAddToQueue = useAudioStore((state) => state.addToQueue);
+  const { playSongNow: storePlaySongNow, addToQueue: storeAddToQueue } =
+    useAudioActions();
 
   useEffect(() => {
     if (id && type && navidromeCreds) {
@@ -286,6 +286,7 @@ export default function PlaylistScreen() {
         maxToRenderPerBatch={10}
         windowSize={5}
         removeClippedSubviews={true}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           pipelineError ? (
             <View style={styles.errorInlineContainer}>

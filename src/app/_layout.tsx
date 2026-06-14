@@ -4,7 +4,11 @@ import { Stack, useSegments, useRouter } from "expo-router";
 import { useAudioPlayer } from "expo-audio";
 import { AuthProvider, useAuth } from "@/Context/AuthContext";
 import { ToastProvider } from "@/Context/ToastContext";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import {
+  useAudioActions,
+  useAudioQueue,
+  usePlayingSongIndex,
+} from "@/Stores/useAudioStore";
 import GlobalMiniPlayer from "@/Components/GlobalMiniPlayer";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ExpandedPlayerModal } from "@/Components/Modals/ExpandedPlayerModal";
@@ -33,9 +37,7 @@ function InnerRootLayout() {
 
   const nativePlayerInstance = useAudioPlayer();
 
-  const initializePlayer = useAudioStore((s) => s.initializePlayer);
-  const setCachedCreds = useAudioStore((s) => s.setCachedCreds);
-  const logoutCleanUp = useAudioStore((s) => s.logoutCleanUp);
+  const { initializePlayer, setCachedCreds, logoutCleanUp } = useAudioActions();
 
   const isLoginScreen = segments[0] === "login";
 
@@ -63,7 +65,6 @@ function InnerRootLayout() {
     }
   }, [segments, isLoginScreen, router, navidromeCreds, isLoading]);
 
-  // Completely teardown player context and OS controls when on the login screen
   useEffect(() => {
     if (isLoginScreen) {
       logoutCleanUp();
@@ -93,15 +94,16 @@ function InnerRootLayout() {
 }
 
 export function RecommendationsOrchestrator() {
-  const triggerLookAhead = useAudioStore((s) => s.triggerLookAhead);
-  const queueLength = useAudioStore((s) => s.queue.length);
-  const playingSongQueueIndex = useAudioStore((s) => s.playingSongQueueIndex);
-  const lookAheadError = useAudioStore((s) => s.lookAheadError);
+  const { triggerLookAhead } = useAudioActions();
+
+  const queue = useAudioQueue();
+  const playingSongQueueIndex = usePlayingSongIndex();
+  const queueLength = queue.length;
 
   useEffect(() => {
     if (playingSongQueueIndex === -1 || queueLength === 0) return;
     triggerLookAhead();
-  }, [playingSongQueueIndex, queueLength, lookAheadError, triggerLookAhead]);
+  }, [playingSongQueueIndex, queueLength, triggerLookAhead]);
 
   return null;
 }

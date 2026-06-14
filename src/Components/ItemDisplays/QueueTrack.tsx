@@ -3,7 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import {
+  useAudioActions,
+  useAudioQueue,
+  usePlayingSongIndex,
+} from "@/Stores/useAudioStore";
 import { getArtworkUrl } from "@/Services/navidromeService";
 import { QueueSong } from "@/Models/Models";
 import { useAuth } from "@/Context/AuthContext";
@@ -17,9 +21,10 @@ export const QueueTrack = React.memo(
     const { clientQueueId, coverArt, title, artist, origin } = item;
     const { navidromeCreds } = useAuth();
 
-    const skipToSongOnQueue = useAudioStore((s) => s.skipToSongOnQueue);
-    const removeFromQueue = useAudioStore((s) => s.removeFromQueue);
-    const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
+    const { skipToSongOnQueue, removeFromQueue, updateQueueOrder } =
+      useAudioActions();
+    const currentQueue = useAudioQueue();
+    const playingSongQueueIndex = usePlayingSongIndex();
     const artworkUrl = useMemo(() => {
       return navidromeCreds && coverArt
         ? getArtworkUrl(navidromeCreds, coverArt, 100)
@@ -33,11 +38,8 @@ export const QueueTrack = React.memo(
     const handleTrackPress = () => skipToSongOnQueue(clientQueueId);
     const handleRemovePress = () => removeFromQueue(clientQueueId);
 
+    //Refactor so this logic goes onto the store, not the component
     const handleAddToUserQueue = () => {
-      const storeState = useAudioStore.getState();
-      const currentQueue = storeState.queue;
-      const playingSongQueueIndex = storeState.playingSongQueueIndex;
-
       const freshIndex = currentQueue.findIndex(
         (s) => s.clientQueueId === clientQueueId,
       );

@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import { useAudioActions, useCurrentSong } from "@/Stores/useAudioStore";
 import { Image } from "expo-image";
 import Animated, {
   useSharedValue,
@@ -50,10 +50,8 @@ export function ExpandedPlayerModal() {
   const openQueue = () => openModal("queue-modal");
   const closeQueue = () => closeModal("queue-modal");
 
-  const currentSong = useAudioStore(
-    (s) => s.queue[s.playingSongQueueIndex] || null,
-  );
-  const getArtworkForSong = useAudioStore((s) => s.getArtworkForSong);
+  const currentSong = useCurrentSong();
+  const { getArtworkForSong } = useAudioActions();
 
   const [isModalReady, setIsModalReady] = useState(false);
 

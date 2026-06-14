@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/Context/AuthContext";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import { useAudioActions } from "@/Stores/useAudioStore";
 import { useTextInputStore } from "@/Stores/useTextInputStore";
 import { fetchNavidromePlaylists } from "@/Services/navidromeService";
 import { MediaCollectionItem } from "@/Components/ItemDisplays/MediaCollectionItem";
@@ -21,7 +21,7 @@ import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdat
 export default function ProfileScreen() {
   const router = useRouter();
   const { navidromeCreds, downloadCreds, logout, setDownloadAuth } = useAuth();
-  const logoutCleanUp = useAudioStore((state) => state.logoutCleanUp);
+  const { logoutCleanUp } = useAudioActions();
   const setStoreText = useTextInputStore((state) => state.setTexts);
 
   const [playlists, setPlaylists] = useState<any[]>([]);

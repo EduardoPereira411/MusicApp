@@ -13,7 +13,7 @@ import {
 import { Image } from "expo-image";
 import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import { useAudioActions } from "@/Stores/useAudioStore";
 import { getArtworkUrl } from "@/Services/navidromeService";
 import { useRouter } from "expo-router";
 import { AddToPlaylistModal } from "@/Components/Modals/AddToPlaylistModal";
@@ -29,8 +29,7 @@ export function SongOptionsModal() {
   const closeModal = useUiStore((state) => state.closeModal);
   const onClose = () => closeModal("song-options");
 
-  const storeAddToQueue = useAudioStore((state) => state.addToQueue);
-
+  const { addToQueue: storeAddToQueue } = useAudioActions();
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
 
   const artworkUrl = useMemo(() => {

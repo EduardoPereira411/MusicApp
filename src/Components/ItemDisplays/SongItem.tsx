@@ -9,7 +9,11 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import {
+  useCachedCreds,
+  useCurrentSong,
+  useIsSongCurrent,
+} from "@/Stores/useAudioStore";
 import { getArtworkUrl } from "@/Services/navidromeService";
 import { PlayPauseButton } from "../Optimized/AudioControls";
 import { useUiStore } from "@/Stores/useUIStore";
@@ -38,7 +42,7 @@ export const SongItem = React.memo(
     index,
     currentContext,
   }: SongItemProps) => {
-    const cachedCreds = useAudioStore((s) => s.cachedCreds);
+    const cachedCreds = useCachedCreds();
 
     const openModal = useUiStore((state) => state.openModal);
     const handleOptionsPress = React.useCallback(() => {
@@ -49,19 +53,7 @@ export const SongItem = React.memo(
       }
     }, [item, onOptionsPress, openModal]);
 
-    const isCurrent = useAudioStore((state) => {
-      const activeTrack = state.queue[state.playingSongQueueIndex];
-      if (activeTrack?.id !== item.id) return false;
-
-      if (!currentContext) return true;
-
-      const ctx = activeTrack.playbackContext;
-      return (
-        ctx?.type === currentContext.type &&
-        ctx?.id === currentContext.id &&
-        (index === undefined || ctx?.songIndex === index)
-      );
-    });
+    const isCurrent = useIsSongCurrent(item.id, currentContext, index);
 
     const displayTrackNumber =
       item.trackNumber ?? (index !== undefined ? index + 1 : null);

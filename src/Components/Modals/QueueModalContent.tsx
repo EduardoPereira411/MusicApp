@@ -11,14 +11,21 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import {
+  useAudioActions,
+  useCachedCreds,
+  useCurrentSong,
+  useAudioQueue,
+  usePlayingSongIndex,
+  useUserUpcomingQueue,
+  useAutoUpcomingQueue,
+} from "@/Stores/useAudioStore";
 import { Image } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Sortable from "react-native-sortables";
 import { QueueTrack } from "@/Components/ItemDisplays/QueueTrack";
 import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import { getArtworkUrl } from "@/Services/navidromeService";
-import { useShallow } from "zustand/react/shallow";
 
 const keyExtractor = (item: any) => item.clientQueueId;
 
@@ -27,11 +34,8 @@ const renderQueueItem = ({ item }: { item: any }) => {
 };
 
 const NowPlayingHeaderTrack = React.memo(function NowPlayingHeaderTrack() {
-  const currentSong = useAudioStore(
-    (s) => s.queue[s.playingSongQueueIndex] || null,
-  );
-
-  const cachedCreds = useAudioStore((s) => s.cachedCreds);
+  const currentSong = useCurrentSong();
+  const cachedCreds = useCachedCreds();
 
   const artworkUrl = useMemo(() => {
     return cachedCreds && currentSong?.coverArt
@@ -78,14 +82,7 @@ const UserUpcomingList = React.memo(
     onDragEnd: (e: { data: any[] }) => void;
     isReady: boolean;
   }) => {
-    const userUpcoming = useAudioStore(
-      useShallow((s) => {
-        if (s.playingSongQueueIndex < 0) return [];
-        return s.queue
-          .slice(s.playingSongQueueIndex + 1)
-          .filter((item) => item.origin !== "auto");
-      }),
-    );
+    const userUpcoming = useUserUpcomingQueue();
 
     if (!isReady || userUpcoming.length === 0) {
       return null;
@@ -117,14 +114,7 @@ const AutoUpcomingList = React.memo(
     onDragEnd: (e: { data: any[] }) => void;
     isReady: boolean;
   }) => {
-    const autoUpcoming = useAudioStore(
-      useShallow((s) => {
-        if (s.playingSongQueueIndex < 0) return [];
-        return s.queue
-          .slice(s.playingSongQueueIndex + 1)
-          .filter((item) => item.origin === "auto");
-      }),
-    );
+    const autoUpcoming = useAutoUpcomingQueue();
 
     if (!isReady || autoUpcoming.length === 0) {
       return null;
@@ -159,62 +149,31 @@ export function QueueModalContent({
 }) {
   const insets = useSafeAreaInsets();
   const [pipelineError, setPipelineError] = useState<string | null>(null);
-  const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
 
-  const applyQueueUpdate = useCallback(
-    (newUpcomingSegment: any[]) => {
-      setPipelineError(null);
+  const { reorderUpcomingQueue } = useAudioActions();
+
+  const handleUserDragEnd = useCallback(
+    ({ data }: { data: any[] }) => {
       try {
-        const { queue, playingSongQueueIndex } = useAudioStore.getState();
-        const unchangedPastAndCurrent = queue.slice(
-          0,
-          playingSongQueueIndex + 1,
-        );
-
-        let lastUserIndex = -1;
-        newUpcomingSegment.forEach((item, idx) => {
-          if (item.origin === "user") lastUserIndex = idx;
-        });
-
-        const validatedUpcoming = newUpcomingSegment.map((item, index) => {
-          if (
-            item.origin === "auto" &&
-            lastUserIndex !== -1 &&
-            index <= lastUserIndex
-          ) {
-            return { ...item, origin: "user" as const };
-          }
-          return item;
-        });
-
-        updateQueueOrder([...unchangedPastAndCurrent, ...validatedUpcoming]);
+        setPipelineError(null);
+        reorderUpcomingQueue(data, "user");
       } catch (err) {
         setPipelineError("Failed to synchronize modified layout.");
       }
     },
-    [updateQueueOrder],
-  );
-
-  const handleUserDragEnd = useCallback(
-    ({ data }: { data: any[] }) => {
-      const { queue, playingSongQueueIndex } = useAudioStore.getState();
-      const autoUpcoming = queue
-        .slice(playingSongQueueIndex + 1)
-        .filter((s) => s.origin === "auto");
-      applyQueueUpdate([...data, ...autoUpcoming]);
-    },
-    [applyQueueUpdate],
+    [reorderUpcomingQueue],
   );
 
   const handleAutoDragEnd = useCallback(
     ({ data }: { data: any[] }) => {
-      const { queue, playingSongQueueIndex } = useAudioStore.getState();
-      const userUpcoming = queue
-        .slice(playingSongQueueIndex + 1)
-        .filter((s) => s.origin !== "auto");
-      applyQueueUpdate([...userUpcoming, ...data]);
+      try {
+        setPipelineError(null);
+        reorderUpcomingQueue(data, "auto");
+      } catch (err) {
+        setPipelineError("Failed to synchronize modified layout.");
+      }
     },
-    [applyQueueUpdate],
+    [reorderUpcomingQueue],
   );
 
   const clearPipelineErrors = useCallback(() => setPipelineError(null), []);

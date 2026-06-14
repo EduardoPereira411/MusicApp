@@ -8,30 +8,27 @@ import {
   getArtworkUrl,
 } from "@/Services/navidromeService";
 import { ToastType } from "@/Stores/useToastStore";
+import { useShallow } from "zustand/react/shallow";
 
 const generateUniqueId = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
 interface AudioState {
-  // State variables consumed by UI
   queue: QueueSong[];
   playingSongQueueIndex: number;
   playing: boolean;
   lookAheadError: boolean;
   player: AudioPlayer | null;
   currentArtworkUrl: string | null;
-
-  // Background context state cache
   cachedCreds: any | null;
-
-  // Internal mutable non-reactive pools
   pools: {
     userQueue: QueueSong[];
     contextQueue: Song[];
   };
   hasUpdatedDuration: boolean;
+}
 
-  // Actions
+interface AudioActions {
   getArtworkForSong: (coverArtId: string, size: number) => string | null;
   initializePlayer: (playerInstance: AudioPlayer) => () => void;
   setCachedCreds: (authCreds: any | null) => void;
@@ -67,438 +64,569 @@ interface AudioState {
     showToast?: (m: string, t?: ToastType) => void,
   ) => Promise<void>;
   logoutCleanUp: () => void;
+  reorderUpcomingQueue: (
+    newSegment: QueueSong[],
+    dragType: "user" | "auto",
+  ) => void;
 }
 
-export const useAudioStore = create<AudioState>((set, get) => ({
-  queue: [],
-  playingSongQueueIndex: -1,
-  playing: false,
-  lookAheadError: false,
-  player: null,
-  currentArtworkUrl: null,
-  cachedCreds: null,
-  pools: { userQueue: [], contextQueue: [] },
-  hasUpdatedDuration: false,
+const useAudioStore = create<AudioState & { actions: AudioActions }>(
+  (set, get) => ({
+    // State
+    queue: [],
+    playingSongQueueIndex: -1,
+    playing: false,
+    lookAheadError: false,
+    player: null,
+    currentArtworkUrl: null,
+    cachedCreds: null,
+    pools: { userQueue: [], contextQueue: [] },
+    hasUpdatedDuration: false,
 
-  getArtworkForSong: (coverArtId, size) => {
-    const { cachedCreds } = get();
-    if (!cachedCreds || !coverArtId) return null;
-    return getArtworkUrl(cachedCreds, coverArtId, size);
-  },
+    // Nested Actions Object
+    actions: {
+      getArtworkForSong: (coverArtId, size) => {
+        const { cachedCreds } = get();
+        if (!cachedCreds || !coverArtId) return null;
+        return getArtworkUrl(cachedCreds, coverArtId, size);
+      },
 
-  initializePlayer: (playerInstance) => {
-    set({ player: playerInstance });
+      initializePlayer: (playerInstance) => {
+        set({ player: playerInstance });
 
-    setAudioModeAsync({
-      playsInSilentMode: true,
-      interruptionMode: "doNotMix",
-      shouldPlayInBackground: true,
-    }).catch(() => {});
+        setAudioModeAsync({
+          playsInSilentMode: true,
+          interruptionMode: "doNotMix",
+          shouldPlayInBackground: true,
+        }).catch(() => {});
 
-    MediaControl.enableMediaControls({
-      capabilities: [
-        Command.PLAY,
-        Command.PAUSE,
-        Command.NEXT_TRACK,
-        Command.PREVIOUS_TRACK,
-        Command.SEEK,
-      ],
-      compactCapabilities: [Command.PLAY, Command.PAUSE, Command.NEXT_TRACK],
-    }).catch(() => {});
+        MediaControl.enableMediaControls({
+          capabilities: [
+            Command.PLAY,
+            Command.PAUSE,
+            Command.NEXT_TRACK,
+            Command.PREVIOUS_TRACK,
+            Command.SEEK,
+          ],
+          compactCapabilities: [
+            Command.PLAY,
+            Command.PAUSE,
+            Command.NEXT_TRACK,
+          ],
+        }).catch(() => {});
 
-    const playbackSub = playerInstance.addListener(
-      "playbackStatusUpdate",
-      (statusUpdate) => {
-        const state = get();
-        const currentSong = state.queue[state.playingSongQueueIndex] || null;
+        const playbackSub = playerInstance.addListener(
+          "playbackStatusUpdate",
+          (statusUpdate) => {
+            const state = get();
+            const currentSong =
+              state.queue[state.playingSongQueueIndex] || null;
 
-        if (statusUpdate.didJustFinish) {
-          if (state.playingSongQueueIndex < state.queue.length - 1) {
-            state.loadSongAtIndex(state.playingSongQueueIndex + 1);
-          } else {
-            state.logoutCleanUp();
+            if (statusUpdate.didJustFinish) {
+              if (state.playingSongQueueIndex < state.queue.length - 1) {
+                state.actions.loadSongAtIndex(state.playingSongQueueIndex + 1);
+              } else {
+                state.actions.logoutCleanUp();
+              }
+            }
+
+            if (statusUpdate.playing !== undefined) {
+              if (get().playing !== statusUpdate.playing) {
+                set({ playing: statusUpdate.playing });
+              }
+            }
+
+            if (currentSong) {
+              if (statusUpdate.currentTime !== undefined) {
+                const stateValue = statusUpdate.playing
+                  ? PlaybackState.PLAYING
+                  : PlaybackState.PAUSED;
+                MediaControl.updatePlaybackState(
+                  stateValue,
+                  statusUpdate.currentTime,
+                  statusUpdate.playing ? 1.0 : 0.0,
+                ).catch(() => {});
+              }
+
+              if (
+                statusUpdate.duration &&
+                statusUpdate.duration > 0 &&
+                !state.hasUpdatedDuration
+              ) {
+                set({ hasUpdatedDuration: true });
+
+                const artworkUrl =
+                  currentSong.coverArt && state.cachedCreds
+                    ? getArtworkUrl(
+                        state.cachedCreds,
+                        currentSong.coverArt,
+                        100,
+                      )
+                    : null;
+
+                set({ currentArtworkUrl: artworkUrl });
+
+                MediaControl.updateMetadata({
+                  title: currentSong.title,
+                  artist: currentSong.artist,
+                  album: currentSong.album || "Navidrome Album",
+                  artwork: artworkUrl ? { uri: artworkUrl } : undefined,
+                  duration: statusUpdate.duration,
+                }).catch(() => {});
+              }
+            }
+          },
+        );
+
+        const traySub = MediaControl.addListener((event) => {
+          const state = get();
+          switch (event.command) {
+            case Command.PLAY:
+              playerInstance.play();
+              break;
+            case Command.PAUSE:
+              playerInstance.pause();
+              break;
+            case Command.NEXT_TRACK:
+              if (state.playingSongQueueIndex < state.queue.length - 1)
+                state.actions.loadSongAtIndex(state.playingSongQueueIndex + 1);
+              break;
+            case Command.PREVIOUS_TRACK:
+              if (state.playingSongQueueIndex > 0)
+                state.actions.loadSongAtIndex(state.playingSongQueueIndex - 1);
+              break;
+            case Command.SEEK:
+              const pos =
+                event.data && typeof event.data.position === "number"
+                  ? event.data.position
+                  : event.data;
+              if (typeof pos === "number") playerInstance.seekTo(pos);
+              break;
           }
+        });
+
+        return () => {
+          playbackSub.remove();
+          traySub;
+          MediaControl.disableMediaControls().catch(() => {});
+        };
+      },
+
+      setCachedCreds: (authCreds) => {
+        if (!authCreds) {
+          set({ cachedCreds: null });
+          return;
         }
+        const currentCached = get().cachedCreds;
+        const isCredentialsIdentical =
+          currentCached &&
+          currentCached.serverUrl === authCreds.serverUrl &&
+          currentCached.username === authCreds.username &&
+          currentCached.token === authCreds.token;
 
-        if (statusUpdate.playing !== undefined) {
-          if (get().playing !== statusUpdate.playing) {
-            set({ playing: statusUpdate.playing });
-          }
-        }
-
-        if (currentSong) {
-          if (statusUpdate.currentTime !== undefined) {
-            const stateValue = statusUpdate.playing
-              ? PlaybackState.PLAYING
-              : PlaybackState.PAUSED;
-            MediaControl.updatePlaybackState(
-              stateValue,
-              statusUpdate.currentTime,
-              statusUpdate.playing ? 1.0 : 0.0,
-            ).catch(() => {});
-          }
-
-          if (
-            statusUpdate.duration &&
-            statusUpdate.duration > 0 &&
-            !state.hasUpdatedDuration
-          ) {
-            set({ hasUpdatedDuration: true });
-
-            const artworkUrl =
-              currentSong.coverArt && state.cachedCreds
-                ? getArtworkUrl(state.cachedCreds, currentSong.coverArt, 100)
-                : null;
-
-            set({ currentArtworkUrl: artworkUrl });
-
-            MediaControl.updateMetadata({
-              title: currentSong.title,
-              artist: currentSong.artist,
-              album: currentSong.album || "Navidrome Album",
-              artwork: artworkUrl ? { uri: artworkUrl } : undefined,
-              duration: statusUpdate.duration,
-            }).catch(() => {});
-          }
+        if (!isCredentialsIdentical) {
+          set({ cachedCreds: authCreds });
         }
       },
-    );
 
-    const traySub = MediaControl.addListener((event) => {
-      const state = get();
-      switch (event.command) {
-        case Command.PLAY:
-          playerInstance.play();
-          break;
-        case Command.PAUSE:
-          playerInstance.pause();
-          break;
-        case Command.NEXT_TRACK:
-          if (state.playingSongQueueIndex < state.queue.length - 1)
-            state.loadSongAtIndex(state.playingSongQueueIndex + 1);
-          break;
-        case Command.PREVIOUS_TRACK:
-          if (state.playingSongQueueIndex > 0)
-            state.loadSongAtIndex(state.playingSongQueueIndex - 1);
-          break;
-        case Command.SEEK:
-          const pos =
-            event.data && typeof event.data.position === "number"
-              ? event.data.position
-              : event.data;
-          if (typeof pos === "number") playerInstance.seekTo(pos);
-          break;
-      }
-    });
+      loadSongAtIndex: async (index, showToast) => {
+        const { queue, player, cachedCreds } = get();
+        if (index < 0 || index >= queue.length || !player || !cachedCreds)
+          return;
 
-    return () => {
-      playbackSub.remove();
-      traySub;
-      MediaControl.disableMediaControls().catch(() => {});
-    };
-  },
+        const targetSong = queue[index];
+        try {
+          const url = getStreamUrl(cachedCreds, targetSong.id);
+          if (!url) throw new Error("Endpoint construction failed.");
 
-  setCachedCreds: (authCreds) => {
-    if (!authCreds) {
-      set({ cachedCreds: null });
-      return;
-    }
-    const currentCached = get().cachedCreds;
-    const isCredentialsIdentical =
-      currentCached &&
-      currentCached.serverUrl === authCreds.serverUrl &&
-      currentCached.username === authCreds.username &&
-      currentCached.token === authCreds.token;
+          const artworkUrl = targetSong.coverArt
+            ? getArtworkUrl(cachedCreds, targetSong.coverArt, 310000)
+            : null;
 
-    if (!isCredentialsIdentical) {
-      set({ cachedCreds: authCreds });
-    }
-  },
+          set({
+            playingSongQueueIndex: index,
+            lookAheadError: false,
+            hasUpdatedDuration: false,
+            currentArtworkUrl: artworkUrl,
+          });
+          player.replace({ uri: url });
+          player.play();
 
-  loadSongAtIndex: async (index, showToast) => {
-    const { queue, player, cachedCreds } = get();
-    if (index < 0 || index >= queue.length || !player || !cachedCreds) return;
+          MediaControl.updateMetadata({
+            title: targetSong.title,
+            artist: targetSong.artist,
+            album: targetSong.album || "Navidrome Album",
+            artwork: artworkUrl ? { uri: artworkUrl } : undefined,
+            duration: targetSong.duration || 0,
+          }).catch(() => {});
+        } catch (err: any) {
+          if (showToast)
+            showToast(`Playback Failed: ${err.message || err}`, "error");
+        }
+      },
 
-    const targetSong = queue[index];
-    try {
-      const url = getStreamUrl(cachedCreds, targetSong.id);
-      if (!url) throw new Error("Endpoint construction failed.");
+      playSongNow: async (song, contextSongs, contextInfo, showToast) => {
+        const { player, queue, playingSongQueueIndex, cachedCreds } = get();
+        if (!player || !cachedCreds) return;
 
-      const artworkUrl = targetSong.coverArt
-        ? getArtworkUrl(cachedCreds, targetSong.coverArt, 310000)
-        : null;
+        if (queue[playingSongQueueIndex]?.id === song.id) {
+          player.playing ? player.pause() : player.play();
+          return;
+        }
 
-      set({
-        playingSongQueueIndex: index,
-        lookAheadError: false,
-        hasUpdatedDuration: false,
-        currentArtworkUrl: artworkUrl,
-      });
-      player.replace({ uri: url });
-      player.play();
+        try {
+          const url = getStreamUrl(cachedCreds, song.id);
+          if (!url) throw new Error("Failed to format media stream URL.");
 
-      MediaControl.updateMetadata({
-        title: targetSong.title,
-        artist: targetSong.artist,
-        album: targetSong.album || "Navidrome Album",
-        artwork: artworkUrl ? { uri: artworkUrl } : undefined,
-        duration: targetSong.duration || 0,
-      }).catch(() => {});
-    } catch (err: any) {
-      if (showToast)
-        showToast(`Playback Failed: ${err.message || err}`, "error");
-    }
-  },
+          const artworkUrl = song.coverArt
+            ? getArtworkUrl(cachedCreds, song.coverArt, 100)
+            : null;
+          const determinedContext = contextInfo || { type: "search" };
+          let newQueue: QueueSong[] = [];
+          const updatedPools = { userQueue: [], contextQueue: [] as Song[] };
 
-  playSongNow: async (song, contextSongs, contextInfo, showToast) => {
-    const { player, queue, playingSongQueueIndex, cachedCreds } = get();
-    if (!player || !cachedCreds) return;
+          if (contextSongs && contextSongs.length > 0) {
+            const idx = contextSongs.findIndex((s) => s.id === song.id);
+            const relativeContext =
+              idx !== -1 ? contextSongs.slice(idx) : contextSongs;
+            const baseIndex = determinedContext.songIndex ?? 0;
 
-    if (queue[playingSongQueueIndex]?.id === song.id) {
-      player.playing ? player.pause() : player.play();
-      return;
-    }
+            const fullyDecoratedContext = relativeContext.map(
+              (track, offset) => ({
+                ...track,
+                playbackContext: {
+                  ...determinedContext,
+                  songIndex: baseIndex + offset,
+                },
+              }),
+            );
 
-    try {
-      const url = getStreamUrl(cachedCreds, song.id);
-      if (!url) throw new Error("Failed to format media stream URL.");
+            updatedPools.contextQueue = fullyDecoratedContext;
+            newQueue = fullyDecoratedContext.slice(0, 5).map((track) => ({
+              ...track,
+              origin: "auto" as const,
+              clientQueueId: generateUniqueId(),
+            }));
+          } else {
+            newQueue = [
+              {
+                ...song,
+                origin: "user" as const,
+                clientQueueId: generateUniqueId(),
+                playbackContext: determinedContext,
+              },
+            ];
+          }
 
-      const artworkUrl = song.coverArt
-        ? getArtworkUrl(cachedCreds, song.coverArt, 100)
-        : null;
-      const determinedContext = contextInfo || { type: "search" };
-      let newQueue: QueueSong[] = [];
-      const updatedPools = { userQueue: [], contextQueue: [] as Song[] };
+          set({
+            queue: newQueue,
+            playingSongQueueIndex: 0,
+            pools: updatedPools,
+            lookAheadError: false,
+            hasUpdatedDuration: false,
+            currentArtworkUrl: artworkUrl,
+          });
 
-      if (contextSongs && contextSongs.length > 0) {
-        const idx = contextSongs.findIndex((s) => s.id === song.id);
-        const relativeContext =
-          idx !== -1 ? contextSongs.slice(idx) : contextSongs;
-        const baseIndex = determinedContext.songIndex ?? 0;
+          player.replace({ uri: url });
+          player.play();
+        } catch (err: any) {
+          if (showToast)
+            showToast(
+              `Streaming initialization failed: ${err.message || err}`,
+              "error",
+            );
+        }
+      },
 
-        const fullyDecoratedContext = relativeContext.map((track, offset) => ({
-          ...track,
-          playbackContext: {
-            ...determinedContext,
-            songIndex: baseIndex + offset,
-          },
-        }));
+      addToQueue: (song, showToast, contextInfo) => {
+        const { queue, playingSongQueueIndex, pools, cachedCreds, actions } =
+          get();
+        const determinedContext = contextInfo || { type: "search" };
 
-        updatedPools.contextQueue = fullyDecoratedContext;
-        newQueue = fullyDecoratedContext.slice(0, 5).map((track) => ({
-          ...track,
-          origin: "auto" as const,
+        if (!cachedCreds) return;
+
+        const flaggedSong: QueueSong = {
+          ...song,
+          origin: "user",
           clientQueueId: generateUniqueId(),
-        }));
-      } else {
-        newQueue = [
-          {
-            ...song,
-            origin: "user" as const,
-            clientQueueId: generateUniqueId(),
-            playbackContext: determinedContext,
-          },
-        ];
-      }
+          playbackContext: determinedContext,
+        };
 
-      set({
-        queue: newQueue,
-        playingSongQueueIndex: 0,
-        pools: updatedPools,
-        lookAheadError: false,
-        hasUpdatedDuration: false,
-        currentArtworkUrl: artworkUrl,
-      });
+        pools.userQueue.push(flaggedSong);
 
-      player.replace({ uri: url });
-      player.play();
-    } catch (err: any) {
-      if (showToast)
-        showToast(
-          `Streaming initialization failed: ${err.message || err}`,
-          "error",
+        if (queue.length === 0) {
+          set({ queue: [flaggedSong], lookAheadError: false });
+          setTimeout(() => {
+            actions
+              .playSongNow(flaggedSong, undefined, determinedContext)
+              .catch(() => {});
+          }, 0);
+          return;
+        }
+
+        const updated = [...queue];
+        let insertionIndex = updated.findIndex(
+          (track, i) => i > playingSongQueueIndex && track.origin === "auto",
         );
-    }
-  },
+        if (insertionIndex === -1) insertionIndex = updated.length;
+        updated.splice(insertionIndex, 0, flaggedSong);
 
-  addToQueue: (song, showToast, contextInfo) => {
-    const { queue, playingSongQueueIndex, playSongNow, pools, cachedCreds } =
-      get();
-    const determinedContext = contextInfo || { type: "search" };
+        set({ queue: updated, lookAheadError: false });
+        showToast?.(`Added "${song.title}" to queue`);
+      },
 
-    if (!cachedCreds) return;
+      triggerLookAhead: async (showToast) => {
+        const { queue, playingSongQueueIndex, pools, cachedCreds } = get();
+        if (playingSongQueueIndex === -1 || queue.length === 0 || !cachedCreds)
+          return;
 
-    const flaggedSong: QueueSong = {
-      ...song,
-      origin: "user",
-      clientQueueId: generateUniqueId(),
-      playbackContext: determinedContext,
-    };
+        const songsRemaining = queue.length - 1 - playingSongQueueIndex;
+        if (songsRemaining > 2) return;
 
-    pools.userQueue.push(flaggedSong);
+        const totalPoolLength =
+          pools.contextQueue.length + pools.userQueue.length;
 
-    if (queue.length === 0) {
-      set({ queue: [flaggedSong], lookAheadError: false });
-      setTimeout(() => {
-        playSongNow(flaggedSong, undefined, determinedContext).catch(() => {});
-      }, 0);
-      return;
-    }
-
-    const updated = [...queue];
-    let insertionIndex = updated.findIndex(
-      (track, i) => i > playingSongQueueIndex && track.origin === "auto",
-    );
-    if (insertionIndex === -1) insertionIndex = updated.length;
-    updated.splice(insertionIndex, 0, flaggedSong);
-
-    set({ queue: updated, lookAheadError: false });
-    showToast?.(`Added "${song.title}" to queue`);
-  },
-
-  triggerLookAhead: async (showToast) => {
-    const { queue, playingSongQueueIndex, pools, cachedCreds } = get();
-    if (playingSongQueueIndex === -1 || queue.length === 0 || !cachedCreds)
-      return;
-
-    const songsRemaining = queue.length - 1 - playingSongQueueIndex;
-    if (songsRemaining > 2) return;
-
-    const totalPoolLength = pools.contextQueue.length + pools.userQueue.length;
-
-    if (totalPoolLength > queue.length) {
-      const nextRawBatch = pools.contextQueue.slice(
-        queue.length,
-        queue.length + 5,
-      );
-      const decoratedBatch = nextRawBatch.map((track) => ({
-        ...track,
-        origin: "auto" as const,
-        clientQueueId: generateUniqueId(),
-        playbackContext: (track as QueueSong).playbackContext ?? undefined,
-      }));
-      set({ queue: [...queue, ...decoratedBatch], lookAheadError: false });
-    } else {
-      const lastSong = queue[queue.length - 1];
-      try {
-        const nextTracks = await fetchThemeOrRandomQueue(
-          cachedCreds,
-          lastSong,
-          5,
-        );
-        if (nextTracks.length > 0) {
-          const flaggedTracks = nextTracks.map((track) => ({
+        if (totalPoolLength > queue.length) {
+          const nextRawBatch = pools.contextQueue.slice(
+            queue.length,
+            queue.length + 5,
+          );
+          const decoratedBatch = nextRawBatch.map((track) => ({
             ...track,
             origin: "auto" as const,
             clientQueueId: generateUniqueId(),
+            playbackContext: (track as QueueSong).playbackContext ?? undefined,
           }));
-          pools.contextQueue.push(...flaggedTracks);
-          set({ queue: [...queue, ...flaggedTracks], lookAheadError: false });
+          set({ queue: [...queue, ...decoratedBatch], lookAheadError: false });
+        } else {
+          const lastSong = queue[queue.length - 1];
+          try {
+            const nextTracks = await fetchThemeOrRandomQueue(
+              cachedCreds,
+              lastSong,
+              5,
+            );
+            if (nextTracks.length > 0) {
+              const flaggedTracks = nextTracks.map((track) => ({
+                ...track,
+                origin: "auto" as const,
+                clientQueueId: generateUniqueId(),
+              }));
+              pools.contextQueue.push(...flaggedTracks);
+              set({
+                queue: [...queue, ...flaggedTracks],
+                lookAheadError: false,
+              });
+            }
+          } catch {
+            showToast?.("Failed to fetch next automatic radio tracks", "error");
+            set({ lookAheadError: true });
+          }
         }
-      } catch {
-        showToast?.("Failed to fetch next automatic radio tracks", "error");
-        set({ lookAheadError: true });
-      }
-    }
-  },
+      },
 
-  playNext: (showToast) => {
-    try {
-      const { queue, playingSongQueueIndex, loadSongAtIndex } = get();
-      if (playingSongQueueIndex < queue.length - 1)
-        loadSongAtIndex(playingSongQueueIndex + 1, showToast);
-    } catch (error: any) {
-      showToast?.(`Error: ${error.message}`, "error");
-    }
-  },
+      playNext: (showToast) => {
+        try {
+          const { queue, playingSongQueueIndex, actions } = get();
+          if (playingSongQueueIndex < queue.length - 1)
+            actions.loadSongAtIndex(playingSongQueueIndex + 1, showToast);
+        } catch (error: any) {
+          showToast?.(`Error: ${error.message}`, "error");
+        }
+      },
 
-  playPrevious: (showToast) => {
-    const { queue, playingSongQueueIndex, loadSongAtIndex } = get();
-    if (playingSongQueueIndex > 0)
-      loadSongAtIndex(playingSongQueueIndex - 1, showToast);
-  },
+      playPrevious: (showToast) => {
+        const { queue, playingSongQueueIndex, actions } = get();
+        if (playingSongQueueIndex > 0)
+          actions.loadSongAtIndex(playingSongQueueIndex - 1, showToast);
+      },
 
-  togglePlayPause: () => {
-    const { player } = get();
-    if (player) player.playing ? player.pause() : player.play();
-  },
+      togglePlayPause: () => {
+        const { player } = get();
+        if (player) player.playing ? player.pause() : player.play();
+      },
 
-  seekTo: (seconds) => {
-    const { player, queue, playingSongQueueIndex, playing } = get();
-    if (!player) return;
-    player.seekTo(seconds);
-    if (queue[playingSongQueueIndex]) {
-      const stateValue = playing ? PlaybackState.PLAYING : PlaybackState.PAUSED;
-      MediaControl.updatePlaybackState(
-        stateValue,
-        seconds,
-        playing ? 1.0 : 0.0,
-      ).catch(() => {});
-    }
-  },
+      seekTo: (seconds) => {
+        const { player, queue, playingSongQueueIndex, playing } = get();
+        if (!player) return;
+        player.seekTo(seconds);
+        if (queue[playingSongQueueIndex]) {
+          const stateValue = playing
+            ? PlaybackState.PLAYING
+            : PlaybackState.PAUSED;
+          MediaControl.updatePlaybackState(
+            stateValue,
+            seconds,
+            playing ? 1.0 : 0.0,
+          ).catch(() => {});
+        }
+      },
 
-  removeFromQueue: (queueId) => {
-    const { queue, pools } = get();
-    const updatedQueue = queue.filter((s) => s.clientQueueId !== queueId);
+      removeFromQueue: (queueId) => {
+        const { queue, pools } = get();
+        const updatedQueue = queue.filter((s) => s.clientQueueId !== queueId);
 
-    pools.userQueue = pools.userQueue.filter(
-      (s) => s.clientQueueId !== queueId,
+        pools.userQueue = pools.userQueue.filter(
+          (s) => s.clientQueueId !== queueId,
+        );
+        pools.contextQueue = pools.contextQueue.filter(
+          (s) => s.clientQueueId !== queueId,
+        );
+
+        set({ queue: updatedQueue });
+      },
+
+      skipToSongOnQueue: (clientQueueId, showToast) => {
+        const { queue, playingSongQueueIndex, actions } = get();
+
+        const searchStart = playingSongQueueIndex + 1;
+        const upcomingQueue = queue.slice(searchStart);
+
+        const relativeIndex = upcomingQueue.findIndex(
+          (s) => s.clientQueueId === clientQueueId,
+        );
+
+        if (relativeIndex !== -1) {
+          actions.loadSongAtIndex(searchStart + relativeIndex, showToast);
+        }
+      },
+
+      updateQueueOrder: (newQueue) => {
+        const { playingSongQueueIndex, pools } = get();
+        const upcoming = newQueue.slice(playingSongQueueIndex + 1);
+        pools.userQueue = upcoming.filter((s) => s.origin === "user");
+        pools.contextQueue = upcoming.filter((s) => s.origin === "auto");
+        set({ queue: newQueue });
+      },
+
+      logoutCleanUp: () => {
+        const { player } = get();
+        if (player) {
+          player.replace("");
+          player.pause();
+        }
+        set({
+          queue: [],
+          playingSongQueueIndex: -1,
+          playing: false,
+          cachedCreds: null,
+          currentArtworkUrl: null,
+          pools: { userQueue: [], contextQueue: [] },
+        });
+        MediaControl.updateMetadata({
+          title: "",
+          artist: "",
+          album: "",
+          artwork: undefined,
+          duration: 0,
+        }).catch(() => {});
+        MediaControl.updatePlaybackState(PlaybackState.PAUSED, 0, 0.0).catch(
+          () => {},
+        );
+      },
+      reorderUpcomingQueue: (newSegment, dragType) => {
+        const { queue, playingSongQueueIndex } = get();
+        const unchangedPastAndCurrent = queue.slice(
+          0,
+          playingSongQueueIndex + 1,
+        );
+
+        let fullUpcomingSegment: QueueSong[] = [];
+
+        if (dragType === "user") {
+          const autoUpcoming = queue
+            .slice(playingSongQueueIndex + 1)
+            .filter((s) => s.origin === "auto");
+          fullUpcomingSegment = [...newSegment, ...autoUpcoming];
+        } else {
+          const userUpcoming = queue
+            .slice(playingSongQueueIndex + 1)
+            .filter((s) => s.origin !== "auto");
+          fullUpcomingSegment = [...userUpcoming, ...newSegment];
+        }
+
+        let lastUserIndex = -1;
+        fullUpcomingSegment.forEach((item, idx) => {
+          if (item.origin === "user") lastUserIndex = idx;
+        });
+
+        const validatedUpcoming = fullUpcomingSegment.map((item, index) => {
+          if (
+            item.origin === "auto" &&
+            lastUserIndex !== -1 &&
+            index <= lastUserIndex
+          ) {
+            return { ...item, origin: "user" as const };
+          }
+          return item;
+        });
+
+        get().actions.updateQueueOrder([
+          ...unchangedPastAndCurrent,
+          ...validatedUpcoming,
+        ]);
+      },
+    },
+  }),
+);
+
+// Export Custom Atomic Hooks
+export const useAudioQueue = () => useAudioStore((state) => state.queue);
+export const usePlayingSongIndex = () =>
+  useAudioStore((state) => state.playingSongQueueIndex);
+export const useIsAudioPlaying = () => useAudioStore((state) => state.playing);
+export const useAudioPlayerInstance = () =>
+  useAudioStore((state) => state.player);
+export const useCurrentArtworkUrl = () =>
+  useAudioStore((state) => state.currentArtworkUrl);
+export const useCurrentSong = () =>
+  useAudioStore((state) => {
+    const idx = state.playingSongQueueIndex;
+    return idx >= 0 && idx < state.queue.length ? state.queue[idx] : null;
+  });
+export const useCachedCreds = () => useAudioStore((state) => state.cachedCreds);
+export const useIsSongCurrent = (
+  itemId: string,
+  currentContext?: PlaybackContext,
+  index?: number,
+) => {
+  return useAudioStore((state) => {
+    const activeTrack = state.queue[state.playingSongQueueIndex];
+    if (activeTrack?.id !== itemId) return false;
+    if (!currentContext) return true;
+
+    const ctx = activeTrack.playbackContext;
+    return (
+      ctx?.type === currentContext.type &&
+      ctx?.id === currentContext.id &&
+      (index === undefined || ctx?.songIndex === index)
     );
-    pools.contextQueue = pools.contextQueue.filter(
-      (s) => s.clientQueueId !== queueId,
-    );
+  });
+};
 
-    set({ queue: updatedQueue });
-  },
+export const useUserUpcomingQueue = () =>
+  useAudioStore(
+    useShallow((s) => {
+      if (s.playingSongQueueIndex < 0) return [];
+      return s.queue
+        .slice(s.playingSongQueueIndex + 1)
+        .filter((item) => item.origin !== "auto");
+    }),
+  );
 
-  skipToSongOnQueue: (clientQueueId, showToast) => {
-    const { queue, playingSongQueueIndex, loadSongAtIndex } = get();
+export const useAutoUpcomingQueue = () =>
+  useAudioStore(
+    useShallow((s) => {
+      if (s.playingSongQueueIndex < 0) return [];
+      return s.queue
+        .slice(s.playingSongQueueIndex + 1)
+        .filter((item) => item.origin === "auto");
+    }),
+  );
+export const useIsPlaying = () => useAudioStore((s) => s.playing);
+export const useHasNextTrack = () =>
+  useAudioStore((s) => s.playingSongQueueIndex < s.queue.length - 1);
+export const useHasPreviousTrack = () =>
+  useAudioStore((s) => s.playingSongQueueIndex > 0);
 
-    // Start search AFTER the currently playing song
-    const searchStart = playingSongQueueIndex + 1;
-    const upcomingQueue = queue.slice(searchStart);
-
-    const relativeIndex = upcomingQueue.findIndex(
-      (s) => s.clientQueueId === clientQueueId,
-    );
-
-    if (relativeIndex !== -1) {
-      // Add the relative index back to the offset to get the absolute index
-      loadSongAtIndex(searchStart + relativeIndex, showToast);
-    }
-  },
-
-  updateQueueOrder: (newQueue) => {
-    const { playingSongQueueIndex, pools } = get();
-    const upcoming = newQueue.slice(playingSongQueueIndex + 1);
-    pools.userQueue = upcoming.filter((s) => s.origin === "user");
-    pools.contextQueue = upcoming.filter((s) => s.origin === "auto");
-    set({ queue: newQueue });
-  },
-
-  logoutCleanUp: () => {
-    const { player } = get();
-    if (player) {
-      player.replace("");
-      player.pause();
-    }
-    set({
-      queue: [],
-      playingSongQueueIndex: -1,
-      playing: false,
-      cachedCreds: null,
-      currentArtworkUrl: null,
-      pools: { userQueue: [], contextQueue: [] },
-    });
-    MediaControl.updateMetadata({
-      title: "",
-      artist: "",
-      album: "",
-      artwork: undefined,
-      duration: 0,
-    }).catch(() => {});
-    MediaControl.updatePlaybackState(PlaybackState.PAUSED, 0, 0.0).catch(
-      () => {},
-    );
-  },
-}));
+export const useAudioActions = () => useAudioStore((state) => state.actions);

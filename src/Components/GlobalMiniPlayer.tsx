@@ -2,7 +2,12 @@ import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import {
+  useAudioActions,
+  useAudioQueue,
+  useCurrentSong,
+  usePlayingSongIndex,
+} from "@/Stores/useAudioStore";
 import {
   PlayPauseButton,
   PreviousButton,
@@ -13,7 +18,7 @@ import { useUiStore } from "@/Stores/useUIStore";
 
 const MiniPlayerMeta = React.memo(
   function MiniPlayerMeta({ song }: { song: any }) {
-    const getArtworkForSong = useAudioStore((s) => s.getArtworkForSong);
+    const { getArtworkForSong } = useAudioActions();
     const artworkURL = useMemo(
       () => getArtworkForSong(song.coverArt, 100),
       [song, getArtworkForSong],
@@ -52,10 +57,7 @@ export default function GlobalMiniPlayer() {
 
   const insets = useSafeAreaInsets();
 
-  const currentSong = useAudioStore((s) => {
-    const idx = s.playingSongQueueIndex;
-    return idx >= 0 && idx < s.queue.length ? s.queue[idx] : null;
-  });
+  const currentSong = useCurrentSong();
 
   if (!currentSong) return null;
 

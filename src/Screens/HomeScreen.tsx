@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import { useAudioActions } from "@/Stores/useAudioStore";
 import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
 import { Song } from "@/Models/Models";
@@ -17,8 +17,8 @@ export default function HomeScreen() {
   const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
 
-  const storePlaySongNow = useAudioStore((state) => state.playSongNow);
-  const storeAddToQueue = useAudioStore((state) => state.addToQueue);
+  const { playSongNow: storePlaySongNow, addToQueue: storeAddToQueue } =
+    useAudioActions();
 
   const handlePlaySongNow = useCallback(
     async (song: Song, contextSongs?: Song[]) => {

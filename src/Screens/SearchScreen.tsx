@@ -3,7 +3,7 @@ import React, { useState, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
-import { useAudioStore } from "@/Stores/useAudioStore";
+import { useAudioActions } from "@/Stores/useAudioStore";
 import { Song } from "@/Models/Models";
 import { SongOptionsModal } from "@/Components/Modals/SongOptionsModal";
 import { useRouter } from "expo-router";
@@ -24,8 +24,8 @@ export default function SearchScreen() {
   const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
 
-  const storePlaySongNow = useAudioStore((state) => state.playSongNow);
-  const storeAddToQueue = useAudioStore((state) => state.addToQueue);
+  const { playSongNow: storePlaySongNow, addToQueue: storeAddToQueue } =
+    useAudioActions();
 
   const handlePlaySongNow = useCallback(
     async (song: Song) => {
