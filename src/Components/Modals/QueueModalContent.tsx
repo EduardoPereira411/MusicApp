@@ -80,7 +80,13 @@ const NowPlayingHeaderTrack = React.memo(function NowPlayingHeaderTrack() {
 });
 
 const UserUpcomingList = React.memo(
-  ({ onDragEnd }: { onDragEnd: (e: { data: any[] }) => void }) => {
+  ({
+    onDragEnd,
+    isReady,
+  }: {
+    onDragEnd: (e: { data: any[] }) => void;
+    isReady: boolean;
+  }) => {
     const userUpcoming = useAudioStore(
       useShallow((s) => {
         if (s.playingSongQueueIndex < 0) return [];
@@ -90,7 +96,9 @@ const UserUpcomingList = React.memo(
       }),
     );
 
-    if (userUpcoming.length === 0) return null;
+    if (!isReady || userUpcoming.length === 0) {
+      return null;
+    }
 
     return (
       <View style={styles.sectionBlock}>
@@ -111,7 +119,13 @@ const UserUpcomingList = React.memo(
 );
 
 const AutoUpcomingList = React.memo(
-  ({ onDragEnd }: { onDragEnd: (e: { data: any[] }) => void }) => {
+  ({
+    onDragEnd,
+    isReady,
+  }: {
+    onDragEnd: (e: { data: any[] }) => void;
+    isReady: boolean;
+  }) => {
     const autoUpcoming = useAudioStore(
       useShallow((s) => {
         if (s.playingSongQueueIndex < 0) return [];
@@ -121,7 +135,9 @@ const AutoUpcomingList = React.memo(
       }),
     );
 
-    if (autoUpcoming.length === 0) return null;
+    if (!isReady || autoUpcoming.length === 0) {
+      return null;
+    }
 
     return (
       <View style={[styles.sectionBlock, { marginTop: 16 }]}>
@@ -143,26 +159,17 @@ const AutoUpcomingList = React.memo(
   },
 );
 
-export function QueueModalContent({ onClose }: { onClose: () => void }) {
+export function QueueModalContent({
+  onClose,
+  isParentReady,
+}: {
+  onClose: () => void;
+  isParentReady: boolean;
+}) {
   const insets = useSafeAreaInsets();
   const [pipelineError, setPipelineError] = useState<string | null>(null);
-
   const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
 
-  const translateY = useSharedValue(SCREEN_HEIGHT);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateY: translateY.value }],
-    };
-  });
-
-  useEffect(() => {
-    translateY.value = withTiming(0, {
-      duration: 300,
-      easing: Easing.out(Easing.quad),
-    });
-  }, []);
   const applyQueueUpdate = useCallback(
     (newUpcomingSegment: any[]) => {
       setPipelineError(null);
@@ -222,42 +229,44 @@ export function QueueModalContent({ onClose }: { onClose: () => void }) {
   const clearPipelineErrors = useCallback(() => setPipelineError(null), []);
 
   return (
-    <Animated.View
-      style={[StyleSheet.absoluteFill, styles.modalOverlay, animatedStyle]}
-    >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View
-          style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}
-        >
-          <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="chevron-back" size={28} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Play Queue</Text>
-            <View style={styles.headerSpacer} />
-          </View>
-
-          <ErrorDisplay
-            title="Queue Mutation Exception"
-            message={pipelineError}
-            onRetry={clearPipelineErrors}
-            retryButtonTitle="Dismiss Notification"
-          />
-
-          <ScrollView
-            contentContainerStyle={[
-              styles.scrollContent,
-              { paddingBottom: insets.bottom + 20 },
-            ]}
-            showsVerticalScrollIndicator={false}
-          >
-            <NowPlayingHeaderTrack />
-            <UserUpcomingList onDragEnd={handleUserDragEnd} />
-            <AutoUpcomingList onDragEnd={handleAutoDragEnd} />
-          </ScrollView>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View
+        style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="chevron-down" size={28} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Play Queue</Text>
+          <View style={styles.headerSpacer} />
         </View>
-      </GestureHandlerRootView>
-    </Animated.View>
+
+        <ErrorDisplay
+          title="Queue Mutation Exception"
+          message={pipelineError}
+          onRetry={clearPipelineErrors}
+          retryButtonTitle="Dismiss Notification"
+        />
+
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + 20 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <NowPlayingHeaderTrack />
+          <UserUpcomingList
+            onDragEnd={handleUserDragEnd}
+            isReady={isParentReady}
+          />
+          <AutoUpcomingList
+            onDragEnd={handleAutoDragEnd}
+            isReady={isParentReady}
+          />
+        </ScrollView>
+      </View>
+    </GestureHandlerRootView>
   );
 }
 

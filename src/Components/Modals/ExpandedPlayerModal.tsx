@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
   BackHandler,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -54,35 +55,22 @@ export function ExpandedPlayerModal() {
   );
   const getArtworkForSong = useAudioStore((s) => s.getArtworkForSong);
 
-  const playerTranslateY = useSharedValue(SCREEN_HEIGHT);
-  const queueTranslateX = useSharedValue(SCREEN_WIDTH);
+  const [isModalReady, setIsModalReady] = useState(false);
 
-  const [renderPlayer, setRenderPlayer] = useState(!isQueueVisible);
+  useEffect(() => {
+    if (!isPlayerVisible) {
+      setIsModalReady(false);
+    }
+  }, [isPlayerVisible]);
+
+  const queueTranslateY = useSharedValue(SCREEN_HEIGHT);
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
 
   useEffect(() => {
-    playerTranslateY.value = withTiming(isPlayerVisible ? 0 : SCREEN_HEIGHT, {
+    queueTranslateY.value = withTiming(isQueueVisible ? 0 : SCREEN_HEIGHT, {
       duration: 350,
       easing: Easing.out(Easing.quad),
     });
-  }, [isPlayerVisible]);
-
-  useEffect(() => {
-    queueTranslateX.value = withTiming(isQueueVisible ? 0 : SCREEN_WIDTH, {
-      duration: 300,
-      easing: Easing.out(Easing.quad),
-    });
-  }, [isQueueVisible]);
-
-  useEffect(() => {
-    if (isQueueVisible) {
-      const timer = setTimeout(() => {
-        setRenderPlayer(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    } else {
-      setRenderPlayer(true);
-    }
   }, [isQueueVisible]);
 
   const [artworkURL, setArtworkUrl] = useState<string | null>(null);
@@ -108,9 +96,7 @@ export function ExpandedPlayerModal() {
         "hardwareBackPress",
         handleBack,
       );
-      return () => {
-        subscription.remove();
-      };
+      return () => subscription.remove();
     }
   }, [isPlayerVisible, isQueueVisible]);
 
@@ -127,99 +113,94 @@ export function ExpandedPlayerModal() {
     });
   };
 
-  const playerAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: playerTranslateY.value }],
-  }));
-
   const queueAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: queueTranslateX.value }],
+    transform: [{ translateY: queueTranslateY.value }],
   }));
 
   if (!currentSong) return null;
 
   return (
-    <>
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          styles.masterContainer,
-          playerAnimatedStyle,
-        ]}
-      >
-        {renderPlayer && (
-          <View
-            style={[
-              styles.playerView,
-              {
-                paddingTop: Math.max(insets.top, 16),
-                paddingBottom: insets.bottom + 20,
-              },
-            ]}
-          >
-            <View style={styles.header}>
-              <TouchableOpacity onPress={closePlayer} style={styles.iconButton}>
-                <Ionicons name="chevron-down" size={28} color="#fff" />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>Now Playing</Text>
-              <TouchableOpacity onPress={openQueue} style={styles.iconButton}>
-                <Ionicons name="list" size={24} color="#fff" />
-              </TouchableOpacity>
-            </View>
+    <Modal
+      visible={isPlayerVisible}
+      animationType="slide"
+      transparent={false}
+      onRequestClose={closePlayer}
+      onShow={() => setIsModalReady(true)}
+    >
+      <View style={styles.masterContainer}>
+        <View
+          style={[
+            styles.playerView,
+            {
+              paddingTop: Math.max(insets.top, 16),
+              paddingBottom: insets.bottom + 20,
+            },
+          ]}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={closePlayer} style={styles.iconButton}>
+              <Ionicons name="chevron-down" size={28} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Now Playing</Text>
+            <TouchableOpacity onPress={openQueue} style={styles.iconButton}>
+              <Ionicons name="list" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
 
-            <View style={styles.artworkContainer}>
-              <Image
-                source={
-                  artworkURL
-                    ? { uri: artworkURL }
-                    : require("@/assets/images/icon.png")
-                }
-                style={styles.bigArtwork}
-                cachePolicy="memory-disk"
-              />
-            </View>
+          <View style={styles.artworkContainer}>
+            <Image
+              source={
+                artworkURL
+                  ? { uri: artworkURL }
+                  : require("@/assets/images/icon.png")
+              }
+              style={styles.bigArtwork}
+              cachePolicy="memory-disk"
+            />
+          </View>
 
-            <View style={styles.metaContainer}>
-              <View style={styles.metaTextWrapper}>
-                <Text style={styles.mainTitle} numberOfLines={1}>
-                  {currentSong.title}
-                </Text>
-                <Text style={styles.mainArtist} numberOfLines={1}>
-                  {currentSong.artist}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.actionsBar}>
-              {currentSong.albumId && (
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={handleGoToAlbum}
-                >
-                  <Ionicons name="disc-outline" size={22} color="#b3b3b3" />
-                  <Text style={styles.actionButtonText}>Album</Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => setPlaylistModalVisible(true)}
-              >
-                <Ionicons name="add-circle-outline" size={22} color="#b3b3b3" />
-                <Text style={styles.actionButtonText}>Add to Playlist</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.sliderSection}>
-              <AudioSlider showTime={true} />
-            </View>
-
-            <View style={styles.controlsSection}>
-              <PreviousButton size={32} />
-              <PlayPauseButton size={64} color="#1DB954" isCurrent={true} />
-              <NextButton size={32} />
+          <View style={styles.metaContainer}>
+            <View style={styles.metaTextWrapper}>
+              <Text style={styles.mainTitle} numberOfLines={1}>
+                {currentSong.title}
+              </Text>
+              <Text style={styles.mainArtist} numberOfLines={1}>
+                {currentSong.artist}
+              </Text>
             </View>
           </View>
-        )}
+
+          <View style={styles.actionsBar}>
+            {currentSong.albumId && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleGoToAlbum}
+              >
+                <Ionicons name="disc-outline" size={22} color="#b3b3b3" />
+                <Text style={styles.actionButtonText}>Album</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => setPlaylistModalVisible(true)}
+            >
+              <Ionicons name="add-circle-outline" size={22} color="#b3b3b3" />
+              <Text style={styles.actionButtonText}>Add to Playlist</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.sliderSection}>
+            <AudioSlider showTime={true} />
+          </View>
+
+          <View style={styles.controlsSection}>
+            <PreviousButton size={32} />
+            <PlayPauseButton size={64} color="#1DB954" isCurrent={true} />
+            <NextButton size={32} />
+          </View>
+        </View>
+
         <Animated.View
           style={[
             StyleSheet.absoluteFill,
@@ -227,22 +208,25 @@ export function ExpandedPlayerModal() {
             queueAnimatedStyle,
           ]}
         >
-          <QueueModalContent onClose={closeQueue} />
+          <QueueModalContent
+            onClose={closeQueue}
+            isParentReady={isModalReady}
+          />
         </Animated.View>
-      </Animated.View>
+      </View>
 
       <AddToPlaylistModal
         visible={playlistModalVisible}
         onClose={() => setPlaylistModalVisible(false)}
         song={currentSong}
       />
-    </>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   masterContainer: {
-    zIndex: 1000,
+    flex: 1,
     backgroundColor: "#121212",
   },
   playerView: {
@@ -331,6 +315,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   queueWrapper: {
+    zIndex: 1010,
     backgroundColor: "#121212",
   },
 });
