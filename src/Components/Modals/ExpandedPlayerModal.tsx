@@ -8,6 +8,7 @@ import {
   BackHandler,
   Modal,
 } from "react-native";
+import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudioActions, useCurrentSong } from "@/Stores/useAudioStore";
@@ -24,7 +25,7 @@ import {
 } from "@/Components/Optimized/AudioControls";
 import { useUiStore } from "@/Stores/useUIStore";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export function ExpandedPlayerModal() {
   const insets = useSafeAreaInsets();
@@ -93,11 +94,15 @@ export function ExpandedPlayerModal() {
   return (
     <Modal
       visible={isPlayerVisible}
-      animationType="slide"
-      transparent={false}
+      animationType="none"
+      transparent={true}
       onRequestClose={closePlayer}
     >
-      <View style={styles.masterContainer}>
+      <Animated.View
+        entering={SlideInDown.springify().damping(200)}
+        exiting={SlideOutDown.duration(300)}
+        style={styles.masterContainer}
+      >
         <View
           style={[
             styles.playerView,
@@ -170,9 +175,9 @@ export function ExpandedPlayerModal() {
             <NextButton size={32} />
           </View>
         </View>
-      </View>
+      </Animated.View>
 
-      <QueueModalContent visible={isQueueVisible} />
+      <QueueModalContent />
 
       <AddToPlaylistModal
         visible={playlistModalVisible}
@@ -185,7 +190,8 @@ export function ExpandedPlayerModal() {
 
 const styles = StyleSheet.create({
   masterContainer: {
-    flex: 1,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
     backgroundColor: "#121212",
   },
   playerView: {

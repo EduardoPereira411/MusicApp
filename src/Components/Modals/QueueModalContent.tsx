@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
+import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -25,6 +27,7 @@ import { getArtworkUrl } from "@/Services/navidromeService";
 import { Image } from "expo-image";
 import { useUiStore } from "@/Stores/useUIStore";
 
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 const keyExtractor = (item: any) => item.clientQueueId;
 
 const renderQueueItem = ({ item }: { item: any }) => {
@@ -138,28 +141,26 @@ const AutoUpcomingList = React.memo(
   },
 );
 
-interface QueueModalProps {
-  visible: boolean;
-}
-export function QueueModalContent({ visible }: QueueModalProps) {
+export function QueueModalContent() {
   const insets = useSafeAreaInsets();
   const [pipelineError, setPipelineError] = useState<string | null>(null);
-  const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const closeModal = useUiStore((state) => state.closeModal);
   const closeQueue = () => closeModal("queue-modal");
+  const isQueueVisible = useUiStore((state) => !!state.modals["queue-modal"]);
+  const [isAnimationComplete, setIsAnimationComplete] = useState(false);
 
   const { reorderUpcomingQueue } = useAudioActions();
 
   useEffect(() => {
-    if (!visible) {
+    if (!isQueueVisible) {
       setIsAnimationComplete(false);
     }
-  }, [visible]);
+  }, [isQueueVisible]);
 
   const handleModalShow = useCallback(() => {
     setTimeout(() => {
       setIsAnimationComplete(true);
-    }, 200);
+    }, 350);
   }, []);
 
   const handleUserDragEnd = useCallback(
@@ -190,14 +191,16 @@ export function QueueModalContent({ visible }: QueueModalProps) {
 
   return (
     <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
+      visible={isQueueVisible}
+      animationType="none"
+      transparent={true}
       onRequestClose={closeQueue}
       onShow={handleModalShow}
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <View
+        <Animated.View
+          entering={SlideInDown.springify().damping(200)}
+          exiting={SlideOutDown.duration(250)}
           style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}
         >
           <View style={styles.header}>
@@ -242,7 +245,7 @@ export function QueueModalContent({ visible }: QueueModalProps) {
               </View>
             )}
           </ScrollView>
-        </View>
+        </Animated.View>
       </GestureHandlerRootView>
     </Modal>
   );
@@ -260,12 +263,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     letterSpacing: 0.5,
   },
-  modalOverlay: {
-    zIndex: 1000,
-    backgroundColor: "#121212",
-  },
   container: {
-    flex: 1,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
     backgroundColor: "#121212",
   },
   scrollContent: {
@@ -296,10 +296,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
   },
-  upcomingHeaderContainer: {
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
   sectionTitle: {
     color: "#b3b3b3",
     fontSize: 13,
@@ -307,12 +303,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 8,
-  },
-  emptyText: {
-    color: "#555",
-    textAlign: "center",
-    marginTop: 30,
-    fontSize: 14,
   },
   trackRow: {
     flexDirection: "row",
