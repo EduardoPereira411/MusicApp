@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -49,14 +49,11 @@ export function ExpandedPlayerModal() {
   const { getArtworkForSong } = useAudioActions();
 
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
-  const [artworkURL, setArtworkUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isPlayerVisible && currentSong) {
-      const url = getArtworkForSong(currentSong.coverArt!, 300);
-      setArtworkUrl(url);
-    }
-  }, [isPlayerVisible, currentSong, getArtworkForSong]);
+  const artworkURL = useMemo(() => {
+    if (!isPlayerVisible || !currentSong?.coverArt) return null;
+    return getArtworkForSong(currentSong.coverArt, 300);
+  }, [isPlayerVisible, currentSong?.coverArt, getArtworkForSong]);
 
   useEffect(() => {
     if (isPlayerVisible) {
@@ -100,7 +97,7 @@ export function ExpandedPlayerModal() {
     >
       <Animated.View
         entering={SlideInDown.springify().damping(200)}
-        exiting={SlideOutDown.duration(300)}
+        exiting={SlideOutDown.duration(200)}
         style={styles.masterContainer}
       >
         <View
@@ -177,13 +174,15 @@ export function ExpandedPlayerModal() {
         </View>
       </Animated.View>
 
-      <QueueModalContent />
+      {isQueueVisible && <QueueModalContent />}
 
-      <AddToPlaylistModal
-        visible={playlistModalVisible}
-        onClose={() => setPlaylistModalVisible(false)}
-        song={currentSong}
-      />
+      {playlistModalVisible && (
+        <AddToPlaylistModal
+          visible={playlistModalVisible}
+          onClose={() => setPlaylistModalVisible(false)}
+          song={currentSong}
+        />
+      )}
     </Modal>
   );
 }

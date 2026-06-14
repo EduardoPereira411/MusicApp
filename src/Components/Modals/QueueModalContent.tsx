@@ -30,9 +30,7 @@ import { useUiStore } from "@/Stores/useUIStore";
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 const keyExtractor = (item: any) => item.clientQueueId;
 
-const renderQueueItem = ({ item }: { item: any }) => {
-  return <QueueTrack item={item} />;
-};
+const renderQueueItem = ({ item }: { item: any }) => <QueueTrack item={item} />;
 
 const NowPlayingHeaderTrack = React.memo(function NowPlayingHeaderTrack() {
   const currentSong = useCurrentSong();
@@ -85,9 +83,7 @@ const UserUpcomingList = React.memo(
   }) => {
     const userUpcoming = useUserUpcomingQueue();
 
-    if (!isReady || userUpcoming.length === 0) {
-      return null;
-    }
+    if (!isReady || userUpcoming.length === 0) return null;
 
     return (
       <View style={styles.sectionBlock}>
@@ -98,7 +94,7 @@ const UserUpcomingList = React.memo(
           keyExtractor={keyExtractor}
           onDragEnd={onDragEnd}
           renderItem={renderQueueItem}
-          measureDebounceDelay={200}
+          measureDebounceDelay={250}
           dimensionsAnimationType="none"
           itemsLayoutTransitionMode="reorder"
         />
@@ -117,9 +113,7 @@ const AutoUpcomingList = React.memo(
   }) => {
     const autoUpcoming = useAutoUpcomingQueue();
 
-    if (!isReady || autoUpcoming.length === 0) {
-      return null;
-    }
+    if (!isReady || autoUpcoming.length === 0) return null;
 
     return (
       <View style={[styles.sectionBlock, { marginTop: 16 }]}>
@@ -132,7 +126,7 @@ const AutoUpcomingList = React.memo(
           keyExtractor={keyExtractor}
           onDragEnd={onDragEnd}
           renderItem={renderQueueItem}
-          measureDebounceDelay={200}
+          measureDebounceDelay={250}
           dimensionsAnimationType="none"
           itemsLayoutTransitionMode="reorder"
         />
@@ -151,16 +145,23 @@ export function QueueModalContent() {
 
   const { reorderUpcomingQueue } = useAudioActions();
 
+  const idleCallbackRef = React.useRef<number | null>(null);
+
   useEffect(() => {
     if (!isQueueVisible) {
       setIsAnimationComplete(false);
+      if (idleCallbackRef.current !== null) {
+        cancelIdleCallback(idleCallbackRef.current);
+        idleCallbackRef.current = null;
+      }
     }
   }, [isQueueVisible]);
 
   const handleModalShow = useCallback(() => {
-    setTimeout(() => {
+    idleCallbackRef.current = requestIdleCallback(() => {
       setIsAnimationComplete(true);
-    }, 350);
+      idleCallbackRef.current = null;
+    });
   }, []);
 
   const handleUserDragEnd = useCallback(
@@ -200,7 +201,7 @@ export function QueueModalContent() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Animated.View
           entering={SlideInDown.springify().damping(200)}
-          exiting={SlideOutDown.duration(250)}
+          exiting={SlideOutDown.duration(200)}
           style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}
         >
           <View style={styles.header}>
@@ -211,12 +212,14 @@ export function QueueModalContent() {
             <View style={styles.headerSpacer} />
           </View>
 
-          <ErrorDisplay
-            title="Queue Mutation Exception"
-            message={pipelineError}
-            onRetry={clearPipelineErrors}
-            retryButtonTitle="Dismiss Notification"
-          />
+          {pipelineError && (
+            <ErrorDisplay
+              title="Queue Mutation Exception"
+              message={pipelineError}
+              onRetry={clearPipelineErrors}
+              retryButtonTitle="Dismiss Notification"
+            />
+          )}
 
           <ScrollView
             contentContainerStyle={[
