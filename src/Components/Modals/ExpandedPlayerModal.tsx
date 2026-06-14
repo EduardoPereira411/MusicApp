@@ -12,12 +12,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudioActions, useCurrentSong } from "@/Stores/useAudioStore";
 import { Image } from "expo-image";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
 import { useRouter } from "expo-router";
 
 import { QueueModalContent } from "@/Components/Modals/QueueModalContent";
@@ -30,7 +24,7 @@ import {
 } from "@/Components/Optimized/AudioControls";
 import { useUiStore } from "@/Stores/useUIStore";
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export function ExpandedPlayerModal() {
   const insets = useSafeAreaInsets();
@@ -53,24 +47,7 @@ export function ExpandedPlayerModal() {
   const currentSong = useCurrentSong();
   const { getArtworkForSong } = useAudioActions();
 
-  const [isModalReady, setIsModalReady] = useState(false);
-
-  useEffect(() => {
-    if (!isPlayerVisible) {
-      setIsModalReady(false);
-    }
-  }, [isPlayerVisible]);
-
-  const queueTranslateY = useSharedValue(SCREEN_HEIGHT);
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
-
-  useEffect(() => {
-    queueTranslateY.value = withTiming(isQueueVisible ? 0 : SCREEN_HEIGHT, {
-      duration: 350,
-      easing: Easing.out(Easing.quad),
-    });
-  }, [isQueueVisible]);
-
   const [artworkURL, setArtworkUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -111,10 +88,6 @@ export function ExpandedPlayerModal() {
     });
   };
 
-  const queueAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: queueTranslateY.value }],
-  }));
-
   if (!currentSong) return null;
 
   return (
@@ -123,7 +96,6 @@ export function ExpandedPlayerModal() {
       animationType="slide"
       transparent={false}
       onRequestClose={closePlayer}
-      onShow={() => setIsModalReady(true)}
     >
       <View style={styles.masterContainer}>
         <View
@@ -198,20 +170,9 @@ export function ExpandedPlayerModal() {
             <NextButton size={32} />
           </View>
         </View>
-
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            styles.queueWrapper,
-            queueAnimatedStyle,
-          ]}
-        >
-          <QueueModalContent
-            onClose={closeQueue}
-            isParentReady={isModalReady}
-          />
-        </Animated.View>
       </View>
+
+      <QueueModalContent visible={isQueueVisible} />
 
       <AddToPlaylistModal
         visible={playlistModalVisible}
@@ -311,9 +272,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-evenly",
     paddingVertical: 20,
-  },
-  queueWrapper: {
-    zIndex: 1010,
-    backgroundColor: "#121212",
   },
 });

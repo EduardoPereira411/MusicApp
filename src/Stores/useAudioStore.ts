@@ -43,6 +43,7 @@ interface AudioActions {
     showToast?: (m: string, t?: ToastType) => void,
     contextInfo?: PlaybackContext,
   ) => void;
+  promoteAutoTrackToUser: (clientQueueId: string) => void;
   loadSongAtIndex: (
     index: number,
     showToast?: (m: string, t?: ToastType) => void,
@@ -373,6 +374,37 @@ const useAudioStore = create<AudioState & { actions: AudioActions }>(
 
         set({ queue: updated, lookAheadError: false });
         showToast?.(`Added "${song.title}" to queue`);
+      },
+
+      promoteAutoTrackToUser: (clientQueueId) => {
+        const { queue, playingSongQueueIndex } = get();
+        const currentQueue = [...queue];
+
+        const freshIndex = currentQueue.findIndex(
+          (s) => s.clientQueueId === clientQueueId,
+        );
+        if (freshIndex === -1) return;
+
+        const targetTrack = currentQueue[freshIndex];
+        const cleanSong = { ...targetTrack, origin: "user" as const };
+
+        const remainingUpcoming = currentQueue
+          .slice(playingSongQueueIndex + 1)
+          .filter((s) => s.clientQueueId !== clientQueueId);
+
+        const userPart = remainingUpcoming.filter((s) => s.origin === "user");
+        const autoPart = remainingUpcoming.filter((s) => s.origin === "auto");
+
+        const targetUpcomingSegment = [...userPart, cleanSong, ...autoPart];
+        const unchangedPastAndCurrent = currentQueue.slice(
+          0,
+          playingSongQueueIndex + 1,
+        );
+
+        get().actions.updateQueueOrder([
+          ...unchangedPastAndCurrent,
+          ...targetUpcomingSegment,
+        ]);
       },
 
       triggerLookAhead: async (showToast) => {

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -20,11 +20,9 @@ export const QueueTrack = React.memo(
   function QueueTrack({ item }: QueueTrackProps) {
     const { clientQueueId, coverArt, title, artist, origin } = item;
     const { navidromeCreds } = useAuth();
-
-    const { skipToSongOnQueue, removeFromQueue, updateQueueOrder } =
+    const { skipToSongOnQueue, removeFromQueue, promoteAutoTrackToUser } =
       useAudioActions();
-    const currentQueue = useAudioQueue();
-    const playingSongQueueIndex = usePlayingSongIndex();
+
     const artworkUrl = useMemo(() => {
       return navidromeCreds && coverArt
         ? getArtworkUrl(navidromeCreds, coverArt, 100)
@@ -35,34 +33,18 @@ export const QueueTrack = React.memo(
       return artworkUrl ? { uri: artworkUrl } : null;
     }, [artworkUrl]);
 
-    const handleTrackPress = () => skipToSongOnQueue(clientQueueId);
-    const handleRemovePress = () => removeFromQueue(clientQueueId);
-
-    //Refactor so this logic goes onto the store, not the component
-    const handleAddToUserQueue = () => {
-      const freshIndex = currentQueue.findIndex(
-        (s) => s.clientQueueId === clientQueueId,
-      );
-      if (freshIndex === -1) return;
-
-      const targetTrack = currentQueue[freshIndex];
-      const cleanSong = { ...targetTrack, origin: "user" as const };
-
-      const remainingUpcoming = currentQueue
-        .slice(playingSongQueueIndex + 1)
-        .filter((s) => s.clientQueueId !== clientQueueId);
-
-      const userPart = remainingUpcoming.filter((s) => s.origin === "user");
-      const autoPart = remainingUpcoming.filter((s) => s.origin === "auto");
-
-      const targetUpcomingSegment = [...userPart, cleanSong, ...autoPart];
-      const unchangedPastAndCurrent = currentQueue.slice(
-        0,
-        playingSongQueueIndex + 1,
-      );
-
-      updateQueueOrder([...unchangedPastAndCurrent, ...targetUpcomingSegment]);
-    };
+    const handleTrackPress = useCallback(
+      () => skipToSongOnQueue(clientQueueId),
+      [clientQueueId, skipToSongOnQueue],
+    );
+    const handleRemovePress = useCallback(
+      () => removeFromQueue(clientQueueId),
+      [clientQueueId, removeFromQueue],
+    );
+    const handleAddToUserQueue = useCallback(
+      () => promoteAutoTrackToUser(clientQueueId),
+      [clientQueueId, promoteAutoTrackToUser],
+    );
 
     return (
       <View style={styles.trackRow}>
@@ -117,7 +99,10 @@ export const QueueTrack = React.memo(
   },
   (prev, next) =>
     prev.item.clientQueueId === next.item.clientQueueId &&
-    prev.item.origin === next.item.origin,
+    prev.item.origin === next.item.origin &&
+    prev.item.title === next.item.title &&
+    prev.item.artist === next.item.artist &&
+    prev.item.coverArt === next.item.coverArt,
 );
 
 const styles = StyleSheet.create({

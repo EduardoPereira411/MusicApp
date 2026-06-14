@@ -6,8 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
-  BackHandler,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,17 +14,16 @@ import {
   useAudioActions,
   useCachedCreds,
   useCurrentSong,
-  useAudioQueue,
-  usePlayingSongIndex,
   useUserUpcomingQueue,
   useAutoUpcomingQueue,
 } from "@/Stores/useAudioStore";
-import { Image } from "expo-image";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Sortable from "react-native-sortables";
 import { QueueTrack } from "@/Components/ItemDisplays/QueueTrack";
 import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import { getArtworkUrl } from "@/Services/navidromeService";
+import { Image } from "expo-image";
+import { useUiStore } from "@/Stores/useUIStore";
 
 const keyExtractor = (item: any) => item.clientQueueId;
 
@@ -97,7 +95,7 @@ const UserUpcomingList = React.memo(
           keyExtractor={keyExtractor}
           onDragEnd={onDragEnd}
           renderItem={renderQueueItem}
-          measureDebounceDelay={150}
+          measureDebounceDelay={200}
           dimensionsAnimationType="none"
           itemsLayoutTransitionMode="reorder"
         />
@@ -131,7 +129,7 @@ const AutoUpcomingList = React.memo(
           keyExtractor={keyExtractor}
           onDragEnd={onDragEnd}
           renderItem={renderQueueItem}
-          measureDebounceDelay={150}
+          measureDebounceDelay={200}
           dimensionsAnimationType="none"
           itemsLayoutTransitionMode="reorder"
         />
@@ -140,17 +138,29 @@ const AutoUpcomingList = React.memo(
   },
 );
 
-export function QueueModalContent({
-  onClose,
-  isParentReady,
-}: {
-  onClose: () => void;
-  isParentReady: boolean;
-}) {
+interface QueueModalProps {
+  visible: boolean;
+}
+export function QueueModalContent({ visible }: QueueModalProps) {
   const insets = useSafeAreaInsets();
   const [pipelineError, setPipelineError] = useState<string | null>(null);
+  const [isAnimationComplete, setIsAnimationComplete] = useState(false);
+  const closeModal = useUiStore((state) => state.closeModal);
+  const closeQueue = () => closeModal("queue-modal");
 
   const { reorderUpcomingQueue } = useAudioActions();
+
+  useEffect(() => {
+    if (!visible) {
+      setIsAnimationComplete(false);
+    }
+  }, [visible]);
+
+  const handleModalShow = useCallback(() => {
+    setTimeout(() => {
+      setIsAnimationComplete(true);
+    }, 200);
+  }, []);
 
   const handleUserDragEnd = useCallback(
     ({ data }: { data: any[] }) => {
@@ -179,48 +189,77 @@ export function QueueModalContent({
   const clearPipelineErrors = useCallback(() => setPipelineError(null), []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <View
-        style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="chevron-down" size={28} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Play Queue</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
-        <ErrorDisplay
-          title="Queue Mutation Exception"
-          message={pipelineError}
-          onRetry={clearPipelineErrors}
-          retryButtonTitle="Dismiss Notification"
-        />
-
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: insets.bottom + 20 },
-          ]}
-          showsVerticalScrollIndicator={false}
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={closeQueue}
+      onShow={handleModalShow}
+    >
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View
+          style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}
         >
-          <NowPlayingHeaderTrack />
-          <UserUpcomingList
-            onDragEnd={handleUserDragEnd}
-            isReady={isParentReady}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={closeQueue} style={styles.closeButton}>
+              <Ionicons name="chevron-down" size={28} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Play Queue</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <ErrorDisplay
+            title="Queue Mutation Exception"
+            message={pipelineError}
+            onRetry={clearPipelineErrors}
+            retryButtonTitle="Dismiss Notification"
           />
-          <AutoUpcomingList
-            onDragEnd={handleAutoDragEnd}
-            isReady={isParentReady}
-          />
-        </ScrollView>
-      </View>
-    </GestureHandlerRootView>
+
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: insets.bottom + 20 },
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
+            <NowPlayingHeaderTrack />
+
+            {isAnimationComplete ? (
+              <>
+                <UserUpcomingList
+                  onDragEnd={handleUserDragEnd}
+                  isReady={true}
+                />
+                <AutoUpcomingList
+                  onDragEnd={handleAutoDragEnd}
+                  isReady={true}
+                />
+              </>
+            ) : (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#1DB954" />
+                <Text style={styles.loadingText}>Loading Queue Layout...</Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </GestureHandlerRootView>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    paddingTop: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    color: "#b3b3b3",
+    fontSize: 12,
+    marginTop: 8,
+    letterSpacing: 0.5,
+  },
   modalOverlay: {
     zIndex: 1000,
     backgroundColor: "#121212",
