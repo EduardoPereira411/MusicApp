@@ -4,9 +4,9 @@ import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
 import { useAudioStore } from "@/Stores/useAudioStore";
-import { useAuth } from "@/Context/AuthContext";
 import { getArtworkUrl } from "@/Services/navidromeService";
 import { QueueSong } from "@/Models/Models";
+import { useAuth } from "@/Context/AuthContext";
 
 interface QueueTrackProps {
   item: QueueSong;
@@ -20,12 +20,15 @@ export const QueueTrack = React.memo(
     const skipToSongOnQueue = useAudioStore((s) => s.skipToSongOnQueue);
     const removeFromQueue = useAudioStore((s) => s.removeFromQueue);
     const updateQueueOrder = useAudioStore((s) => s.updateQueueOrder);
-
     const artworkUrl = useMemo(() => {
       return navidromeCreds && coverArt
         ? getArtworkUrl(navidromeCreds, coverArt, 100)
         : null;
     }, [navidromeCreds, coverArt]);
+
+    const imageSource = useMemo(() => {
+      return artworkUrl ? { uri: artworkUrl } : null;
+    }, [artworkUrl]);
 
     const handleTrackPress = () => skipToSongOnQueue(clientQueueId);
     const handleRemovePress = () => removeFromQueue(clientQueueId);
@@ -68,12 +71,14 @@ export const QueueTrack = React.memo(
         <TouchableOpacity
           style={styles.trackDetails}
           onPress={handleTrackPress}
+          activeOpacity={0.7}
         >
-          {artworkUrl ? (
+          {imageSource ? (
             <Image
-              source={{ uri: artworkUrl }}
+              source={imageSource}
               style={styles.artwork}
               cachePolicy="memory-disk"
+              transition={0}
             />
           ) : (
             <View style={[styles.artwork, styles.fallbackArtwork]} />
@@ -90,8 +95,9 @@ export const QueueTrack = React.memo(
 
         {origin === "auto" && (
           <TouchableOpacity
-            style={{ paddingHorizontal: 12, justifyContent: "center" }}
+            style={styles.actionButton}
             onPress={handleAddToUserQueue}
+            activeOpacity={0.7}
           >
             <MaterialIcons name="queue-music" size={22} color="#1DB954" />
           </TouchableOpacity>
@@ -100,6 +106,7 @@ export const QueueTrack = React.memo(
         <TouchableOpacity
           style={styles.removeButton}
           onPress={handleRemovePress}
+          activeOpacity={0.7}
         >
           <Ionicons name="trash-outline" size={20} color="#ff4d4d" />
         </TouchableOpacity>
@@ -116,15 +123,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#1e1e1e",
-    paddingVertical: 10,
-    paddingHorizontal: 6,
     borderRadius: 8,
     marginBottom: 8,
     height: 64,
   },
   dragHandle: {
-    paddingHorizontal: 10,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    height: "100%",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -132,6 +137,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    height: "100%",
   },
   artwork: {
     width: 44,
@@ -156,7 +162,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  actionButton: {
+    paddingHorizontal: 12,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   removeButton: {
-    padding: 10,
+    paddingHorizontal: 12,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

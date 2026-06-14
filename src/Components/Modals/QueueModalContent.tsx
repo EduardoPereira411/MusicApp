@@ -20,15 +20,6 @@ import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import { getArtworkUrl } from "@/Services/navidromeService";
 import { useShallow } from "zustand/react/shallow";
 
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 const keyExtractor = (item: any) => item.clientQueueId;
 
 const renderQueueItem = ({ item }: { item: any }) => {
