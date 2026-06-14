@@ -42,12 +42,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="download-search"
-        options={{
-          href: null,
-        }}
-      />
     </Tabs>
   );
 }

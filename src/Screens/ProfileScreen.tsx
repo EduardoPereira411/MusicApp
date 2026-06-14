@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -27,7 +26,6 @@ export default function ProfileScreen() {
 
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
   const [showDlConfig, setShowDlConfig] = useState<boolean>(false);
   const [isSavingDl, setIsSavingDl] = useState<boolean>(false);
@@ -65,9 +63,9 @@ export default function ProfileScreen() {
   }
 
   const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
+    setLoading(true);
     await loadPlaylists();
-    setIsRefreshing(false);
+    setLoading(false);
   }, [navidromeCreds]);
 
   const handleSaveDownloadConfig = useCallback(async () => {
@@ -174,13 +172,7 @@ export default function ProfileScreen() {
         maxToRenderPerBatch={10}
         windowSize={5}
         removeClippedSubviews={true}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor="#1DB954"
-          />
-        }
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           !pipelineError ? (
             <Text style={styles.emptyText}>

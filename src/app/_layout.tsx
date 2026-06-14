@@ -84,6 +84,7 @@ function InnerRootLayout() {
         <Stack.Screen name="login" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="playlist" />
+        <Stack.Screen name="download-search" />
       </Stack>
 
       {!isLoginScreen && <GlobalMiniPlayer />}

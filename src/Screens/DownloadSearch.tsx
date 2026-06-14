@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { downloadService } from "@/Services/downloadService";
 import { DownloadSongItem } from "@/Components/DownloadSongItem";
 import { DownloadAlbumItem } from "@/Components/DownloadAlbumItem";
@@ -18,6 +20,7 @@ import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdat
 type SearchType = "tracks" | "albums";
 
 export default function DownloadSearchScreen() {
+  const router = useRouter();
   const { downloadCreds } = useAuth();
 
   const [query, setQuery] = useState("");
@@ -94,10 +97,21 @@ export default function DownloadSearchScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Download Music</Text>
-      <Text style={styles.subHeader}>
-        Search & import tracks directly into your server
-      </Text>
+      <View style={styles.headerRowContainer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={26} color="#fff" />
+        </TouchableOpacity>
+
+        <View style={styles.titleTextGroup}>
+          <Text style={styles.header}>Download Music</Text>
+          <Text style={styles.subHeader}>
+            Search & import tracks directly into your server
+          </Text>
+        </View>
+      </View>
 
       <IndependentUpdateTextInput
         textId="download-search"
@@ -155,6 +169,7 @@ export default function DownloadSearchScreen() {
             maxToRenderPerBatch={5}
             windowSize={3}
             removeClippedSubviews={true}
+            showsVerticalScrollIndicator={false}
           />
         )}
       </View>
@@ -166,8 +181,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#121212",
-    paddingTop: 60,
     paddingHorizontal: 16,
+  },
+  headerRowContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingTop: 60,
+    marginBottom: 16,
+  },
+  backButton: {
+    paddingRight: 14,
+    paddingTop: 2,
+  },
+  titleTextGroup: {
+    flex: 1,
   },
   centerContainer: {
     flex: 1,
@@ -182,7 +209,6 @@ const styles = StyleSheet.create({
   subHeader: {
     color: "#666",
     fontSize: 13,
-    marginBottom: 16,
     marginTop: 2,
   },
   tabBar: {

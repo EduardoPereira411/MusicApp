@@ -165,6 +165,7 @@ export default function LoginScreen() {
           { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 },
         ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>Navidrome Subsonic Client</Text>
 

@@ -61,6 +61,7 @@ export const ItemFlatList = React.memo(
         refreshing={isRefreshing}
         onRefresh={onRefresh}
         ListEmptyComponent={ListEmptyComponent}
+        showsVerticalScrollIndicator={false}
       />
     );
   },
