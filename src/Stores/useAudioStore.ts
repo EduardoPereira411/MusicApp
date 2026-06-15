@@ -9,6 +9,7 @@ import {
 } from "@/Services/navidromeService";
 import { ToastType } from "@/Stores/useToastStore";
 import { useShallow } from "zustand/react/shallow";
+import { useCallback } from "react";
 
 const generateUniqueId = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
@@ -638,8 +639,10 @@ export const useAutoUpcomingQueue = () =>
         .filter((item) => item.origin === "auto");
     }),
   );
-export const useIsPlaying = (selector?: (state: AudioState) => boolean) => {
-  return useAudioStore(selector || ((state) => state.playing));
+export const useIsRowPlaying = (isCurrent: boolean) => {
+  return useAudioStore(
+    useCallback((state) => (isCurrent ? state.playing : false), [isCurrent]),
+  );
 };
 export const useHasNextTrack = () =>
   useAudioStore((s) => s.playingSongQueueIndex < s.queue.length - 1);

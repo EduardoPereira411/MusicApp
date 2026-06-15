@@ -10,7 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import {
   useAudioActions,
-  useIsPlaying,
+  useIsRowPlaying,
   useHasNextTrack,
   useHasPreviousTrack,
   useAudioPlayerInstance,
@@ -47,9 +47,7 @@ export const PlayPauseButton = React.memo(function PlayPauseButton({
   isCurrent = false,
 }: PlayPauseButtonProps) {
   const { togglePlayPause } = useAudioActions();
-  const playing = useIsPlaying(
-    useCallback((state) => (isCurrent ? state.playing : false), [isCurrent]),
-  );
+  const playing = useIsRowPlaying(isCurrent);
 
   const handlePress = () => {
     if (item && !isCurrent) {
@@ -69,40 +67,6 @@ export const PlayPauseButton = React.memo(function PlayPauseButton({
     </TouchableOpacity>
   );
 });
-
-export const ItemPlayPauseButton = React.memo(
-  ({
-    item,
-    onPlay,
-    isCurrent,
-  }: {
-    item: Song;
-    onPlay: (song: Song) => void;
-    isCurrent: boolean;
-  }) => {
-    const isPlaying = useIsPlaying();
-    const showAsPlaying = isPlaying && isCurrent;
-    const { togglePlayPause } = useAudioActions();
-
-    const handlePress = () => {
-      if (isCurrent) {
-        togglePlayPause();
-      } else {
-        onPlay(item);
-      }
-    };
-
-    return (
-      <TouchableOpacity onPress={handlePress}>
-        <Ionicons
-          name={showAsPlaying ? "pause-circle" : "play-circle"}
-          size={28}
-          color={"#1DB954"}
-        />
-      </TouchableOpacity>
-    );
-  },
-);
 
 export const NextButton = React.memo(function NextButton({
   size = 24,
