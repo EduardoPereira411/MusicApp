@@ -47,8 +47,9 @@ export const PlayPauseButton = React.memo(function PlayPauseButton({
   isCurrent = false,
 }: PlayPauseButtonProps) {
   const { togglePlayPause } = useAudioActions();
-  const isPlaying = useIsPlaying();
-  const playing = isCurrent ? isPlaying : false;
+  const playing = useIsPlaying(
+    useCallback((state) => (isCurrent ? state.playing : false), [isCurrent]),
+  );
 
   const handlePress = () => {
     if (item && !isCurrent) {

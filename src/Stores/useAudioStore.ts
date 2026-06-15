@@ -638,7 +638,9 @@ export const useAutoUpcomingQueue = () =>
         .filter((item) => item.origin === "auto");
     }),
   );
-export const useIsPlaying = () => useAudioStore((s) => s.playing);
+export const useIsPlaying = (selector?: (state: AudioState) => boolean) => {
+  return useAudioStore(selector || ((state) => state.playing));
+};
 export const useHasNextTrack = () =>
   useAudioStore((s) => s.playingSongQueueIndex < s.queue.length - 1);
 export const useHasPreviousTrack = () =>
