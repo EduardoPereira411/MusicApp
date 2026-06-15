@@ -51,7 +51,7 @@ function InnerRootLayout() {
     return () => {
       teardownNativeControls();
     };
-  }, [nativePlayerInstance, initializePlayer]);
+  }, [nativePlayerInstance]);
 
   useEffect(() => {
     if (isLoading) return;
