@@ -97,7 +97,7 @@ export const SearchPageList = ({
       onOptionsPress={onOptionsPress}
       onSwipe={onSwipe}
       context={context}
-      windowSize={5}
+      windowSize={11}
       ListEmptyComponent={
         query.trim() ? (
           <Text style={styles.emptyText}>No results found for "{query}"</Text>

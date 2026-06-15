@@ -103,7 +103,7 @@ export const HomepageList = ({
       context={context}
       isRefreshing={isRefreshing}
       onRefresh={handleRefresh}
-      windowSize={5}
+      windowSize={11}
     />
   );
 };
