@@ -11,7 +11,7 @@ import { Image } from "expo-image";
 import { AlbumTracksModal } from "@/Components/AlbumTracksModal";
 import { downloadService } from "@/Services/downloadService";
 import { DownloadAlbumMetadata } from "@/Models/Models";
-import { useAuth } from "@/Context/AuthContext";
+import { useDownloadAuth } from "@/Context/DownloadContext";
 
 interface DownloadAlbumItemProps {
   item: DownloadAlbumMetadata;
@@ -19,7 +19,7 @@ interface DownloadAlbumItemProps {
 
 export const DownloadAlbumItem = React.memo(
   ({ item }: DownloadAlbumItemProps) => {
-    const { downloadCreds } = useAuth();
+    const { downloadCreds } = useDownloadAuth();
 
     const [modalVisible, setModalVisible] = useState(false);
     const [isDownloadingAll, setIsDownloadingAll] = useState(false);

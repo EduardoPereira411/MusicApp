@@ -1,14 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { authStorage } from "@/Services/navidromeService";
-import { downloadAuthStorage } from "@/Services/downloadService";
-import { NavidromeCredentials, DownloadAPICredentials } from "@/Models/Models";
+import { NavidromeCredentials } from "@/Models/Models";
 
 interface AuthContextType {
   navidromeCreds: NavidromeCredentials | null;
-  downloadCreds: DownloadAPICredentials | null;
   isLoading: boolean;
   setNavidromeAuth: (creds: NavidromeCredentials | null) => Promise<void>;
-  setDownloadAuth: (creds: DownloadAPICredentials | null) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -17,20 +14,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [navidromeCreds, setNavidromeCreds] =
     useState<NavidromeCredentials | null>(null);
-  const [downloadCreds, setDownloadCreds] =
-    useState<DownloadAPICredentials | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function bootstrapStorage() {
       try {
-        const [navidrome, download] = await Promise.all([
-          authStorage.getCredentials(),
-          downloadAuthStorage.getCredentials(),
-        ]);
-
+        const navidrome = await authStorage.getCredentials();
         if (navidrome) setNavidromeCreds(navidrome);
-        if (download) setDownloadCreds(download);
       } catch (error) {
         console.error(
           "[AuthContext] Failed to bootstrap application keys safely:",
@@ -40,7 +30,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     }
-
     bootstrapStorage();
   }, []);
 
@@ -53,22 +42,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setNavidromeCreds(creds);
   };
 
-  const setDownloadAuth = async (creds: DownloadAPICredentials | null) => {
-    if (creds === null) {
-      await downloadAuthStorage.clearCredentials();
-    } else {
-      await downloadAuthStorage.saveCredentials(creds);
-    }
-    setDownloadCreds(creds);
-  };
-
   const logout = async () => {
-    await Promise.all([
-      authStorage.clearCredentials(),
-      downloadAuthStorage.clearCredentials(),
-    ]);
+    await authStorage.clearCredentials();
     const savedNavidromeCreds = await authStorage.getCredentials();
-    const savedDownloadCreds = await downloadAuthStorage.getCredentials();
 
     setNavidromeCreds(
       savedNavidromeCreds
@@ -79,27 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         : null,
     );
-    setDownloadCreds(
-      savedDownloadCreds
-        ? {
-            serverUrl: savedDownloadCreds.serverUrl,
-            username: "",
-            password: "",
-          }
-        : null,
-    );
   };
 
   return (
     <AuthContext.Provider
-      value={{
-        navidromeCreds,
-        downloadCreds,
-        isLoading,
-        setNavidromeAuth,
-        setDownloadAuth,
-        logout,
-      }}
+      value={{ navidromeCreds, isLoading, setNavidromeAuth, logout }}
     >
       {children}
     </AuthContext.Provider>

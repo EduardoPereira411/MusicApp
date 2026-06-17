@@ -13,15 +13,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { downloadService } from "@/Services/downloadService";
 import { DownloadSongItem } from "@/Components/DownloadSongItem";
 import { DownloadAlbumItem } from "@/Components/DownloadAlbumItem";
-import { useAuth } from "@/Context/AuthContext";
 import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
+import { useDownloadAuth } from "@/Context/DownloadContext";
 
 type SearchType = "tracks" | "albums";
 
 export default function DownloadSearchScreen() {
   const router = useRouter();
-  const { downloadCreds } = useAuth();
+  const { downloadCreds } = useDownloadAuth();
 
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<SearchType>("tracks");

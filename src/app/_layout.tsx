@@ -3,6 +3,7 @@ import { LogBox, View, ActivityIndicator, StyleSheet } from "react-native";
 import { Stack, useSegments, useRouter } from "expo-router";
 import { useAudioPlayer } from "expo-audio";
 import { AuthProvider, useAuth } from "@/Context/AuthContext";
+import { DownloadProvider } from "@/Context/DownloadContext";
 import { ToastProvider } from "@/Context/ToastContext";
 import {
   useAudioActions,
@@ -112,11 +113,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <ToastProvider>
-          <RecommendationsOrchestrator />
-          <InnerRootLayout />
-          <ExpandedPlayerModal />
-        </ToastProvider>
+        <DownloadProvider>
+          <ToastProvider>
+            <RecommendationsOrchestrator />
+            <InnerRootLayout />
+            <ExpandedPlayerModal />
+          </ToastProvider>
+        </DownloadProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

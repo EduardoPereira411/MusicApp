@@ -7,12 +7,12 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
-import { useAuth } from "@/Context/AuthContext";
 import { useTextInputStore } from "@/Stores/useTextInputStore";
 import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
+import { useDownloadAuth } from "@/Context/DownloadContext";
 
 export const DownloadConfigSection = React.memo(() => {
-  const { setDownloadAuth } = useAuth();
+  const { setDownloadAuth } = useDownloadAuth();
   const setStoreText = useTextInputStore((state) => state.setTexts);
 
   const [showDlConfig, setShowDlConfig] = useState<boolean>(false);

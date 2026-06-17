@@ -16,11 +16,12 @@ import { useAuth } from "@/Context/AuthContext";
 import { buildSubsonicAuthParams } from "@/Services/navidromeService";
 import { useTextInputStore } from "@/Stores/useTextInputStore";
 import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
+import { useDownloadAuth } from "@/Context/DownloadContext";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { navidromeCreds, downloadCreds, setNavidromeAuth, setDownloadAuth } =
-    useAuth();
+  const { navidromeCreds, setNavidromeAuth } = useAuth();
+  const { downloadCreds, setDownloadAuth } = useDownloadAuth();
 
   const setStoreField = useTextInputStore((state) => state.setTexts);
 

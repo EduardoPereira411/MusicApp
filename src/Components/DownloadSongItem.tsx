@@ -10,7 +10,7 @@ import {
 import { Image } from "expo-image";
 import { downloadService } from "@/Services/downloadService";
 import { DownloadTrackMetadata } from "@/Models/Models";
-import { useAuth } from "@/Context/AuthContext";
+import { useDownloadAuth } from "@/Context/DownloadContext";
 
 interface DownloadSongItemProps {
   item: DownloadTrackMetadata;
@@ -18,7 +18,7 @@ interface DownloadSongItemProps {
 
 export const DownloadSongItem = React.memo(
   ({ item }: DownloadSongItemProps) => {
-    const { downloadCreds } = useAuth();
+    const { downloadCreds } = useDownloadAuth();
     const [isDownloading, setIsDownloading] = React.useState(false);
 
     const handleDownload = async () => {

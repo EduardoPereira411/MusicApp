@@ -17,10 +17,12 @@ import { MediaCollectionItem } from "@/Components/ItemDisplays/MediaCollectionIt
 import { SharedCollectionData } from "@/Models/Models";
 import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import { DownloadConfigSection } from "@/Components/Optimized/DownloadConfigSection";
+import { useDownloadAuth } from "@/Context/DownloadContext";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { navidromeCreds, downloadCreds, logout } = useAuth();
+  const { navidromeCreds, logout } = useAuth();
+  const { downloadCreds } = useDownloadAuth();
   const { logoutCleanUp } = useAudioActions();
   const setStoreText = useTextInputStore((state) => state.setTexts);
 

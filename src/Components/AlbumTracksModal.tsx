@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DownloadSongItem } from "@/Components/DownloadSongItem";
 import { downloadService } from "@/Services/downloadService";
-import { useAuth } from "@/Context/AuthContext";
+import { useDownloadAuth } from "@/Context/DownloadContext";
 
 interface AlbumTracksModalProps {
   visible: boolean;
@@ -27,7 +27,7 @@ export function AlbumTracksModal({
   albumTitle,
   onClose,
 }: AlbumTracksModalProps) {
-  const { downloadCreds } = useAuth();
+  const { downloadCreds } = useDownloadAuth();
 
   const [tracks, setTracks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
