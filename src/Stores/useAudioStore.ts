@@ -264,27 +264,38 @@ export const audioActions: AudioActions = {
     const { player, queue, playingSongQueueIndex, cachedCreds } = get();
     if (!player || !cachedCreds) return;
 
-    if (queue[playingSongQueueIndex]?.id === song.id) {
+    const currentSong = queue[playingSongQueueIndex];
+    const determinedContext = contextInfo || { type: "search" };
+
+    const isSameSong = currentSong?.id === song.id;
+    const isSameContext =
+      currentSong?.playbackContext?.type === determinedContext.type &&
+      currentSong?.playbackContext?.id === determinedContext.id;
+
+    if (isSameSong && isSameContext) {
       player.playing ? player.pause() : player.play();
       return;
     }
 
     try {
-      const url = getStreamUrl(cachedCreds, song.id);
-      if (!url) throw new Error("Failed to format media stream URL.");
+      const preservedUserQueue =
+        playingSongQueueIndex >= 0
+          ? queue
+              .slice(playingSongQueueIndex + 1)
+              .filter((track) => track.origin === "user")
+          : [];
 
-      const artworkUrl = song.coverArt
-        ? getArtworkUrl(cachedCreds, song.coverArt, 100)
-        : null;
-      const determinedContext = contextInfo || { type: "search" };
-      let newQueue: QueueSong[] = [];
-      const updatedPools = { userQueue: [], contextQueue: [] as Song[] };
+      let incomingContextQueue: QueueSong[] = [];
+      const updatedPools = {
+        userQueue: preservedUserQueue,
+        contextQueue: [] as Song[],
+      };
 
       if (contextSongs && contextSongs.length > 0) {
         const idx = contextSongs.findIndex((s) => s.id === song.id);
         const relativeContext =
           idx !== -1 ? contextSongs.slice(idx) : contextSongs;
-        const baseIndex = determinedContext.songIndex ?? 0;
+        const baseIndex = idx !== -1 ? idx : (determinedContext.songIndex ?? 0);
 
         const fullyDecoratedContext = relativeContext.map((track, offset) => ({
           ...track,
@@ -295,13 +306,16 @@ export const audioActions: AudioActions = {
         }));
 
         updatedPools.contextQueue = fullyDecoratedContext;
-        newQueue = fullyDecoratedContext.slice(0, 5).map((track) => ({
-          ...track,
-          origin: "auto" as const,
-          clientQueueId: generateUniqueId(),
-        }));
+
+        incomingContextQueue = fullyDecoratedContext
+          .slice(0, 5)
+          .map((track) => ({
+            ...track,
+            origin: "auto" as const,
+            clientQueueId: generateUniqueId(),
+          }));
       } else {
-        newQueue = [
+        incomingContextQueue = [
           {
             ...song,
             origin: "user" as const,
@@ -310,6 +324,52 @@ export const audioActions: AudioActions = {
           },
         ];
       }
+
+      const currentTrackBase =
+        contextSongs && contextSongs.length > 0
+          ? incomingContextQueue[0]
+          : {
+              ...song,
+              origin: "user" as const,
+              clientQueueId: generateUniqueId(),
+              playbackContext: determinedContext,
+            };
+
+      const finalUpcomingContext =
+        contextSongs && contextSongs.length > 0
+          ? incomingContextQueue.slice(1)
+          : [];
+
+      const newQueue = [
+        currentTrackBase,
+        ...preservedUserQueue,
+        ...finalUpcomingContext,
+      ];
+
+      if (isSameSong) {
+        set({
+          queue: newQueue,
+          playingSongQueueIndex: 0,
+          pools: updatedPools,
+          lookAheadError: false,
+        });
+
+        MediaControl.updateMetadata({
+          title: song.title,
+          artist: song.artist,
+          album: song.album || "Navidrome Album",
+          duration: song.duration || 0,
+        }).catch(() => {});
+
+        return;
+      }
+
+      const url = getStreamUrl(cachedCreds, song.id);
+      if (!url) throw new Error("Failed to format media stream URL.");
+
+      const artworkUrl = song.coverArt
+        ? getArtworkUrl(cachedCreds, song.coverArt, 100)
+        : null;
 
       set({
         queue: newQueue,
