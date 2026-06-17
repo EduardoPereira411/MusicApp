@@ -28,7 +28,6 @@ export const MediaCollectionItem = React.memo(
       <TouchableOpacity style={styles.itemCard} onPress={handlePress}>
         <ArtworkImage
           coverArtId={item.coverArt}
-          size={100}
           type={item.type}
           fallbackName={item.name}
           style={styles.cardArt}

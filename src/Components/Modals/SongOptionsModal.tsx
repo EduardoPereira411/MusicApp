@@ -53,7 +53,6 @@ export function SongOptionsModal() {
           <View style={styles.songHeader}>
             <ArtworkImage
               coverArtId={song.coverArt}
-              size={100}
               type="track"
               style={styles.metaArt}
             />

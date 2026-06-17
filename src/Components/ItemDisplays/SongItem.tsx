@@ -124,7 +124,6 @@ export const SongItem = React.memo(
               {!hideArtwork && (
                 <ArtworkImage
                   coverArtId={item.coverArt}
-                  size={100}
                   type="track"
                   style={styles.cardArt}
                 />

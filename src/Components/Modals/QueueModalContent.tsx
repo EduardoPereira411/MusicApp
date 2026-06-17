@@ -42,7 +42,6 @@ const NowPlayingHeaderTrack = React.memo(function NowPlayingHeaderTrack() {
         <View style={styles.trackDetails}>
           <ArtworkImage
             coverArtId={currentSong.coverArt}
-            size={100}
             type="track"
             transition={150}
             style={styles.artwork}

@@ -23,7 +23,6 @@ const MiniPlayerMeta = React.memo(
       <>
         <ArtworkImage
           coverArtId={song.coverArt}
-          size={100}
           type="track"
           style={styles.coverImage}
         />

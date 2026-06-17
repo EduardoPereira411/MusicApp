@@ -42,7 +42,6 @@ export const QueueTrack = React.memo(
         >
           <ArtworkImage
             coverArtId={coverArt}
-            size={100}
             type="track"
             transition={0}
             style={styles.artwork}
