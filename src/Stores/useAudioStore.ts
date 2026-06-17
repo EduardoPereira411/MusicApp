@@ -286,10 +286,7 @@ export const audioActions: AudioActions = {
           : [];
 
       let incomingContextQueue: QueueSong[] = [];
-      const updatedPools = {
-        userQueue: preservedUserQueue,
-        contextQueue: [] as Song[],
-      };
+      let contextPoolTracks: Song[] = [];
 
       if (contextSongs && contextSongs.length > 0) {
         const idx = contextSongs.findIndex((s) => s.id === song.id);
@@ -297,7 +294,7 @@ export const audioActions: AudioActions = {
           idx !== -1 ? contextSongs.slice(idx) : contextSongs;
         const baseIndex = idx !== -1 ? idx : (determinedContext.songIndex ?? 0);
 
-        const fullyDecoratedContext = relativeContext.map((track, offset) => ({
+        contextPoolTracks = relativeContext.map((track, offset) => ({
           ...track,
           playbackContext: {
             ...determinedContext,
@@ -305,46 +302,39 @@ export const audioActions: AudioActions = {
           },
         }));
 
-        updatedPools.contextQueue = fullyDecoratedContext;
-
-        incomingContextQueue = fullyDecoratedContext
-          .slice(0, 5)
-          .map((track) => ({
-            ...track,
-            origin: "auto" as const,
-            clientQueueId: generateUniqueId(),
-          }));
+        incomingContextQueue = contextPoolTracks.slice(0, 5).map((track) => ({
+          ...track,
+          origin: "auto" as const,
+          clientQueueId: generateUniqueId(),
+        }));
       } else {
-        incomingContextQueue = [
-          {
-            ...song,
-            origin: "user" as const,
-            clientQueueId: generateUniqueId(),
-            playbackContext: determinedContext,
-          },
-        ];
+        const singleTrack: QueueSong = {
+          ...song,
+          origin: "user" as const,
+          clientQueueId: generateUniqueId(),
+          playbackContext: determinedContext,
+        };
+        incomingContextQueue = [singleTrack];
+        contextPoolTracks = [singleTrack];
       }
 
-      const currentTrackBase =
-        contextSongs && contextSongs.length > 0
-          ? incomingContextQueue[0]
-          : {
-              ...song,
-              origin: "user" as const,
-              clientQueueId: generateUniqueId(),
-              playbackContext: determinedContext,
-            };
+      const currentTrackBase = incomingContextQueue[0] || {
+        ...song,
+        origin: "user" as const,
+        clientQueueId: generateUniqueId(),
+        playbackContext: determinedContext,
+      };
 
-      const finalUpcomingContext =
-        contextSongs && contextSongs.length > 0
-          ? incomingContextQueue.slice(1)
-          : [];
-
+      const finalUpcomingContext = incomingContextQueue.slice(1);
       const newQueue = [
         currentTrackBase,
         ...preservedUserQueue,
         ...finalUpcomingContext,
       ];
+      const updatedPools = {
+        userQueue: preservedUserQueue,
+        contextQueue: contextPoolTracks,
+      };
 
       if (isSameSong) {
         set({
@@ -353,14 +343,6 @@ export const audioActions: AudioActions = {
           pools: updatedPools,
           lookAheadError: false,
         });
-
-        MediaControl.updateMetadata({
-          title: song.title,
-          artist: song.artist,
-          album: song.album || "Navidrome Album",
-          duration: song.duration || 0,
-        }).catch(() => {});
-
         return;
       }
 
@@ -383,11 +365,12 @@ export const audioActions: AudioActions = {
       player.replace({ uri: url });
       player.play();
     } catch (err: any) {
-      if (showToast)
+      if (showToast) {
         showToast(
           `Streaming initialization failed: ${err.message || err}`,
           "error",
         );
+      }
     }
   },
 
