@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,11 +12,19 @@ import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdat
 import { useDownloadAuth } from "@/Context/DownloadContext";
 
 export const DownloadConfigSection = React.memo(() => {
-  const { setDownloadAuth } = useDownloadAuth();
+  const { downloadCreds, setDownloadAuth } = useDownloadAuth();
   const setStoreText = useTextInputStore((state) => state.setTexts);
 
   const [showDlConfig, setShowDlConfig] = useState<boolean>(false);
   const [isSavingDl, setIsSavingDl] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (downloadCreds) {
+      setStoreText("dlBaseUrl", downloadCreds.serverUrl || "");
+      setStoreText("dlUsername", downloadCreds.username || "");
+      setStoreText("dlPassword", downloadCreds.password || "");
+    }
+  }, [downloadCreds, setStoreText]);
 
   const handleSaveDownloadConfig = useCallback(async () => {
     const currentTexts = useTextInputStore.getState().texts;

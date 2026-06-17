@@ -11,34 +11,22 @@ import {
 import { useRouter } from "expo-router";
 import { useAuth } from "@/Context/AuthContext";
 import { useAudioActions } from "@/Stores/useAudioStore";
-import { useTextInputStore } from "@/Stores/useTextInputStore";
 import { fetchNavidromePlaylists } from "@/Services/navidromeService";
 import { MediaCollectionItem } from "@/Components/ItemDisplays/MediaCollectionItem";
 import { SharedCollectionData } from "@/Models/Models";
 import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import { DownloadConfigSection } from "@/Components/Optimized/DownloadConfigSection";
-import { useDownloadAuth } from "@/Context/DownloadContext";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { navidromeCreds, logout } = useAuth();
-  const { downloadCreds } = useDownloadAuth();
   const { logoutCleanUp } = useAudioActions();
-  const setStoreText = useTextInputStore((state) => state.setTexts);
 
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   const username = navidromeCreds?.username || "";
-
-  useEffect(() => {
-    if (downloadCreds) {
-      setStoreText("dlBaseUrl", downloadCreds.serverUrl || "");
-      setStoreText("dlUsername", downloadCreds.username || "");
-      setStoreText("dlPassword", downloadCreds.password || "");
-    }
-  }, [downloadCreds, setStoreText]);
 
   const loadPlaylists = useCallback(async () => {
     if (!navidromeCreds) return;
