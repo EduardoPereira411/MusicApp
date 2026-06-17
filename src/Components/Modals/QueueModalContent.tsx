@@ -14,7 +14,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   useAudioActions,
-  useCachedCreds,
   useCurrentSong,
   useUserUpcomingQueue,
   useAutoUpcomingQueue,
@@ -23,9 +22,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Sortable from "react-native-sortables";
 import { QueueTrack } from "@/Components/ItemDisplays/QueueTrack";
 import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
-import { getArtworkUrl } from "@/Services/navidromeService";
-import { Image } from "expo-image";
 import { useUiStore } from "@/Stores/useUIStore";
+import { ArtworkImage } from "@/Components/ItemDisplays/ArtworkImage";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 const keyExtractor = (item: any) => item.clientQueueId;
@@ -34,13 +32,6 @@ const renderQueueItem = ({ item }: { item: any }) => <QueueTrack item={item} />;
 
 const NowPlayingHeaderTrack = React.memo(function NowPlayingHeaderTrack() {
   const currentSong = useCurrentSong();
-  const cachedCreds = useCachedCreds();
-
-  const artworkUrl = useMemo(() => {
-    return cachedCreds && currentSong?.coverArt
-      ? getArtworkUrl(cachedCreds, currentSong.coverArt, 100)
-      : null;
-  }, [cachedCreds, currentSong?.coverArt]);
 
   if (!currentSong) return null;
 
@@ -49,12 +40,12 @@ const NowPlayingHeaderTrack = React.memo(function NowPlayingHeaderTrack() {
       <Text style={styles.sectionTitle}>Now Playing</Text>
       <View style={[styles.trackRow, styles.playingRow]}>
         <View style={styles.trackDetails}>
-          <Image
-            source={artworkUrl ? { uri: artworkUrl } : undefined}
-            style={styles.artwork}
-            contentFit="cover"
+          <ArtworkImage
+            coverArtId={currentSong.coverArt}
+            size={100}
+            type="track"
             transition={150}
-            cachePolicy="memory-disk"
+            style={styles.artwork}
           />
           <View style={styles.textContainer}>
             <Text style={[styles.title, styles.playingText]} numberOfLines={1}>

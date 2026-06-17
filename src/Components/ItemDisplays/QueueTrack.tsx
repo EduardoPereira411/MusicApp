@@ -1,16 +1,10 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Image } from "expo-image";
-import {
-  useAudioActions,
-  useAudioQueue,
-  usePlayingSongIndex,
-} from "@/Stores/useAudioStore";
-import { getArtworkUrl } from "@/Services/navidromeService";
+import { useAudioActions } from "@/Stores/useAudioStore";
 import { QueueSong } from "@/Models/Models";
-import { useAuth } from "@/Context/AuthContext";
+import { ArtworkImage } from "@/Components/ItemDisplays/ArtworkImage";
 
 interface QueueTrackProps {
   item: QueueSong;
@@ -19,19 +13,8 @@ interface QueueTrackProps {
 export const QueueTrack = React.memo(
   function QueueTrack({ item }: QueueTrackProps) {
     const { clientQueueId, coverArt, title, artist, origin } = item;
-    const { navidromeCreds } = useAuth();
     const { skipToSongOnQueue, removeFromQueue, promoteAutoTrackToUser } =
       useAudioActions();
-
-    const artworkUrl = useMemo(() => {
-      return navidromeCreds && coverArt
-        ? getArtworkUrl(navidromeCreds, coverArt, 100)
-        : null;
-    }, [navidromeCreds, coverArt]);
-
-    const imageSource = useMemo(() => {
-      return artworkUrl ? { uri: artworkUrl } : null;
-    }, [artworkUrl]);
 
     const handleTrackPress = useCallback(
       () => skipToSongOnQueue(clientQueueId),
@@ -57,16 +40,14 @@ export const QueueTrack = React.memo(
           onPress={handleTrackPress}
           activeOpacity={0.7}
         >
-          {imageSource ? (
-            <Image
-              source={imageSource}
-              style={styles.artwork}
-              cachePolicy="memory-disk"
-              transition={0}
-            />
-          ) : (
-            <View style={[styles.artwork, styles.fallbackArtwork]} />
-          )}
+          <ArtworkImage
+            coverArtId={coverArt}
+            size={100}
+            type="track"
+            transition={0}
+            style={styles.artwork}
+          />
+
           <View style={styles.textContainer}>
             <Text style={styles.title} numberOfLines={1}>
               {title}
@@ -130,9 +111,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 4,
-  },
-  fallbackArtwork: {
-    backgroundColor: "#333",
   },
   textContainer: {
     flex: 1,

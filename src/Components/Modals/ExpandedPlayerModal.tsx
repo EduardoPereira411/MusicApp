@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,7 @@ import {
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAudioActions, useCurrentSong } from "@/Stores/useAudioStore";
-import { Image } from "expo-image";
+import { useCurrentSong } from "@/Stores/useAudioStore";
 import { useRouter } from "expo-router";
 
 import { QueueModalContent } from "@/Components/Modals/QueueModalContent";
@@ -24,6 +23,7 @@ import {
   AudioSlider,
 } from "@/Components/Optimized/AudioControls";
 import { useUiStore } from "@/Stores/useUIStore";
+import { ArtworkImage } from "@/Components/ItemDisplays/ArtworkImage";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -46,14 +46,7 @@ export function ExpandedPlayerModal() {
   const closeQueue = () => closeModal("queue-modal");
 
   const currentSong = useCurrentSong();
-  const { getArtworkForSong } = useAudioActions();
-
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
-
-  const artworkURL = useMemo(() => {
-    if (!isPlayerVisible || !currentSong?.coverArt) return null;
-    return getArtworkForSong(currentSong.coverArt, 300);
-  }, [isPlayerVisible, currentSong?.coverArt, getArtworkForSong]);
 
   useEffect(() => {
     if (isPlayerVisible) {
@@ -120,14 +113,11 @@ export function ExpandedPlayerModal() {
           </View>
 
           <View style={styles.artworkContainer}>
-            <Image
-              source={
-                artworkURL
-                  ? { uri: artworkURL }
-                  : require("@/assets/images/icon.png")
-              }
+            <ArtworkImage
+              coverArtId={currentSong.coverArt}
+              size={300}
+              type="track"
               style={styles.bigArtwork}
-              cachePolicy="memory-disk"
             />
           </View>
 

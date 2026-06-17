@@ -15,24 +15,17 @@ import {
   AudioSlider,
 } from "@/Components/Optimized/AudioControls";
 import { useUiStore } from "@/Stores/useUIStore";
+import { ArtworkImage } from "@/Components/ItemDisplays/ArtworkImage";
 
 const MiniPlayerMeta = React.memo(
   function MiniPlayerMeta({ song }: { song: any }) {
-    const { getArtworkForSong } = useAudioActions();
-    const artworkURL = useMemo(
-      () => getArtworkForSong(song.coverArt, 100),
-      [song, getArtworkForSong],
-    );
     return (
       <>
-        <Image
-          source={
-            artworkURL
-              ? { uri: artworkURL }
-              : require("@/assets/images/icon.png")
-          }
+        <ArtworkImage
+          coverArtId={song.coverArt}
+          size={100}
+          type="track"
           style={styles.coverImage}
-          cachePolicy="memory-disk"
         />
         <View style={styles.songInfo}>
           <Text style={styles.title} numberOfLines={1}>

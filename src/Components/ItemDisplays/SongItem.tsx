@@ -1,6 +1,5 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Image } from "expo-image";
 import { Song, PlaybackContext } from "@/Models/Models";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -9,14 +8,10 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
-import {
-  useCachedCreds,
-  useCurrentSong,
-  useIsSongCurrent,
-} from "@/Stores/useAudioStore";
-import { getArtworkUrl } from "@/Services/navidromeService";
+import { useIsSongCurrent } from "@/Stores/useAudioStore";
 import { PlayPauseButton } from "../Optimized/AudioControls";
 import { useUiStore } from "@/Stores/useUIStore";
+import { ArtworkImage } from "@/Components/ItemDisplays/ArtworkImage";
 
 interface SongItemProps {
   item: Song;
@@ -42,8 +37,6 @@ export const SongItem = React.memo(
     index,
     currentContext,
   }: SongItemProps) => {
-    const cachedCreds = useCachedCreds();
-
     const openModal = useUiStore((state) => state.openModal);
     const handleOptionsPress = React.useCallback(() => {
       if (onOptionsPress) {
@@ -60,11 +53,6 @@ export const SongItem = React.memo(
 
     const translateX = useSharedValue(0);
     const isGreen = useSharedValue(false);
-
-    const artworkUrl =
-      cachedCreds && item?.coverArt
-        ? getArtworkUrl(cachedCreds, item.coverArt, 100)
-        : null;
 
     const panGesture = Gesture.Pan()
       .activeOffsetX([-10, 10])
@@ -134,17 +122,11 @@ export const SongItem = React.memo(
               )}
 
               {!hideArtwork && (
-                <Image
-                  source={
-                    artworkUrl
-                      ? { uri: artworkUrl }
-                      : require("@/assets/images/icon.png")
-                  }
+                <ArtworkImage
+                  coverArtId={item.coverArt}
+                  size={100}
+                  type="track"
                   style={styles.cardArt}
-                  contentFit="cover"
-                  transition={200}
-                  recyclingKey={artworkUrl || ""}
-                  cachePolicy="memory-disk"
                 />
               )}
 

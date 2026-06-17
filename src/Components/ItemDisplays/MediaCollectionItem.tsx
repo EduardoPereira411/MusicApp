@@ -1,10 +1,8 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { SharedCollectionData } from "@/Models/Models";
-import { useAuth } from "@/Context/AuthContext";
-import { getArtworkUrl } from "@/Services/navidromeService";
+import { ArtworkImage } from "@/Components/ItemDisplays/ArtworkImage";
 
 interface MediaCollectionItemProps {
   item: SharedCollectionData;
@@ -12,14 +10,8 @@ interface MediaCollectionItemProps {
 
 export const MediaCollectionItem = React.memo(
   ({ item }: MediaCollectionItemProps) => {
-    const { navidromeCreds } = useAuth();
     const router = useRouter();
     const isArtist = item.type === "artist";
-
-    const artworkUrl =
-      navidromeCreds && item?.coverArt
-        ? getArtworkUrl(navidromeCreds, item.coverArt, 100)
-        : null;
 
     const handlePress = () => {
       router.push({
@@ -34,31 +26,13 @@ export const MediaCollectionItem = React.memo(
 
     return (
       <TouchableOpacity style={styles.itemCard} onPress={handlePress}>
-        {artworkUrl ? (
-          <Image
-            source={{ uri: artworkUrl }}
-            style={[styles.cardArt, isArtist && styles.artistAvatar]}
-            contentFit="cover"
-            transition={200}
-            cachePolicy="memory-disk"
-          />
-        ) : isArtist ? (
-          <View
-            style={[
-              styles.cardArt,
-              styles.artistAvatar,
-              styles.avatarPlaceholder,
-            ]}
-          >
-            <Text style={styles.avatarText}>
-              {item.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        ) : (
-          <View style={[styles.cardArt, styles.iconPlaceholder]}>
-            <Text style={styles.placeholderIcon}>📁</Text>
-          </View>
-        )}
+        <ArtworkImage
+          coverArtId={item.coverArt}
+          size={100}
+          type={item.type}
+          fallbackName={item.name}
+          style={styles.cardArt}
+        />
 
         <View style={styles.infoContainer}>
           <Text style={styles.mainText} numberOfLines={1}>

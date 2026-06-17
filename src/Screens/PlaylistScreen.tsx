@@ -16,14 +16,9 @@ import { Song, SharedCollectionData } from "@/Models/Models";
 import { SongItem } from "@/Components/ItemDisplays/SongItem";
 import { SongOptionsModal } from "@/Components/Modals/SongOptionsModal";
 import { MediaCollectionItem } from "@/Components/ItemDisplays/MediaCollectionItem";
-import { Image } from "expo-image";
 import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
-import {
-  fetchCollectionDetails,
-  getArtworkUrl,
-} from "@/Services/navidromeService";
-
-const APP_ICON_FALLBACK = require("@/assets/images/icon.png");
+import { fetchCollectionDetails } from "@/Services/navidromeService";
+import { ArtworkImage } from "@/Components/ItemDisplays/ArtworkImage";
 
 export default function PlaylistScreen() {
   const router = useRouter();
@@ -41,7 +36,6 @@ export default function PlaylistScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
-  // Pull stable action methods directly from the state-slice core
   const { playSongNow: storePlaySongNow, addToQueue: storeAddToQueue } =
     useAudioActions();
 
@@ -81,6 +75,7 @@ export default function PlaylistScreen() {
     }
   }
 
+  // Calculate only the stable cover art ID reference string
   const targetCoverArtId = useMemo(() => {
     if (type === "artist" && collections.length > 0) {
       return collections.find((c) => c.coverArt)?.coverArt || "";
@@ -93,14 +88,6 @@ export default function PlaylistScreen() {
     }
     return "";
   }, [type, songs, collections, collectionCoverArt]);
-
-  const headerArtworkSource = useMemo(() => {
-    if (!navidromeCreds || !targetCoverArtId) {
-      return APP_ICON_FALLBACK;
-    }
-    const url = getArtworkUrl(navidromeCreds, targetCoverArtId, 300);
-    return url ? { uri: url } : APP_ICON_FALLBACK;
-  }, [navidromeCreds, targetCoverArtId]);
 
   const handlePlaySong = useCallback(
     (item: Song, itemIndex: number, contextQueue: Song[] = songs) => {
@@ -196,12 +183,12 @@ export default function PlaylistScreen() {
     return (
       <View style={styles.headerBlock}>
         <View style={styles.artworkWrapper}>
-          <Image
-            source={headerArtworkSource}
+          <ArtworkImage
+            coverArtId={targetCoverArtId}
+            size={300}
+            type={type === "artist" ? "artist" : "album"}
+            fallbackName={name}
             style={styles.heroArtwork}
-            contentFit="cover"
-            transition={200}
-            cachePolicy="disk"
           />
         </View>
 
@@ -248,7 +235,7 @@ export default function PlaylistScreen() {
       </View>
     );
   }, [
-    headerArtworkSource,
+    targetCoverArtId,
     type,
     name,
     collections.length,

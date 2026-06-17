@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState } from "react";
 import {
   Modal,
   View,
@@ -6,22 +6,16 @@ import {
   StyleSheet,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  FlatList,
-  ActivityIndicator,
-  Alert,
 } from "react-native";
-import { Image } from "expo-image";
-import { useAuth } from "@/Context/AuthContext";
 import { useToast } from "@/Context/ToastContext";
 import { useAudioActions } from "@/Stores/useAudioStore";
-import { getArtworkUrl } from "@/Services/navidromeService";
 import { useRouter } from "expo-router";
 import { AddToPlaylistModal } from "@/Components/Modals/AddToPlaylistModal";
 import { useUiStore } from "@/Stores/useUIStore";
+import { ArtworkImage } from "@/Components/ItemDisplays/ArtworkImage";
 
 export function SongOptionsModal() {
   const router = useRouter();
-  const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
 
   const visible = useUiStore((state) => !!state.modals["song-options"]);
@@ -31,11 +25,6 @@ export function SongOptionsModal() {
 
   const { addToQueue: storeAddToQueue } = useAudioActions();
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
-
-  const artworkUrl = useMemo(() => {
-    if (!visible || !navidromeCreds || !song?.coverArt) return null;
-    return getArtworkUrl(navidromeCreds, song.coverArt, 100);
-  }, [visible, navidromeCreds, song?.id, song?.coverArt]);
 
   if (!visible || !song) return null;
 
@@ -62,11 +51,11 @@ export function SongOptionsModal() {
 
         <View style={styles.sheetContainer}>
           <View style={styles.songHeader}>
-            <Image
-              source={{ uri: artworkUrl || undefined }}
+            <ArtworkImage
+              coverArtId={song.coverArt}
+              size={100}
+              type="track"
               style={styles.metaArt}
-              contentFit="cover"
-              cachePolicy="memory-disk"
             />
             <View style={styles.metaTextContainer}>
               <Text style={styles.metaTitle} numberOfLines={1}>
@@ -191,32 +180,5 @@ const styles = StyleSheet.create({
   cancelText: {
     color: "#b3b3b3",
     fontWeight: "600",
-  },
-  playlistWrapper: {
-    minHeight: 150,
-  },
-  subHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  backButton: {
-    paddingRight: 16,
-    paddingVertical: 5,
-  },
-  backButtonText: {
-    color: "#1DB954",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  subHeaderTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  emptyText: {
-    color: "#b3b3b3",
-    textAlign: "center",
-    marginVertical: 20,
   },
 });
