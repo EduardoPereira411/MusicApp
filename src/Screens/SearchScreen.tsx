@@ -1,4 +1,3 @@
-// @/app/search.tsx
 import React, { useState, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useAuth } from "@/Context/AuthContext";

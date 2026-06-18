@@ -1,39 +1,21 @@
-import { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
+import { useState, useEffect } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { downloadService } from "@/Services/downloadService";
-import { DownloadSongItem } from "@/Components/DownloadSongItem";
-import { DownloadAlbumItem } from "@/Components/DownloadAlbumItem";
-import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
 import { useDownloadAuth } from "@/Context/DownloadContext";
 import { useTextInputStore } from "@/Stores/useTextInputStore";
 
-type SearchType = "tracks" | "albums";
+import { DownloadTracksList } from "@/Components/ItemLists/DownloadTracksList";
+import { DownloadAlbumsList } from "@/Components/ItemLists/DownloadAlbumsList";
+
+type SearchType = "tracks" | "albums" | "artists";
 
 export default function DownloadSearchScreen() {
   const router = useRouter();
   const { downloadCreds } = useDownloadAuth();
   const { q } = useLocalSearchParams<{ q?: string }>();
-
-  const query = useTextInputStore(
-    (state) => state.texts["download-search"] || "",
-  );
-
   const [activeTab, setActiveTab] = useState<SearchType>("tracks");
-  const [songs, setSongs] = useState<any[]>([]);
-  const [albums, setAlbums] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   useEffect(() => {
     if (q) {
@@ -41,66 +23,14 @@ export default function DownloadSearchScreen() {
     }
   }, [q]);
 
-  const executeDownloadSearch = useCallback(async () => {
-    if (!query.trim()) return;
-
+  useEffect(() => {
     if (!downloadCreds) {
       Alert.alert(
         "Setup Required",
         "Please configure your Download API server credentials in the Profile tab first.",
       );
-      return;
     }
-
-    setLoading(true);
-    setPipelineError(null);
-    try {
-      if (activeTab === "tracks") {
-        const results = await downloadService.searchSongs(downloadCreds, query);
-        setSongs(results);
-      } else {
-        const results = await downloadService.searchAlbums(
-          downloadCreds,
-          query,
-        );
-        setAlbums(results);
-      }
-    } catch (e: any) {
-      setPipelineError(
-        e.message || "Failed to search the remote Download Proxy endpoint.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [query, activeTab, downloadCreds]);
-
-  useEffect(() => {
-    if (!query.trim()) {
-      setSongs([]);
-      setAlbums([]);
-      setPipelineError(null);
-      return;
-    }
-
-    executeDownloadSearch();
-  }, [query, activeTab, executeDownloadSearch]);
-
-  const renderItem = useCallback(
-    ({ item }: { item: any }) => {
-      if (activeTab === "tracks") {
-        return <DownloadSongItem item={item} />;
-      } else {
-        return <DownloadAlbumItem item={item} />;
-      }
-    },
-    [activeTab],
-  );
-
-  const keyExtractor = useCallback((item: any, index: number) => {
-    return (
-      item.download_url || item.browseId || item.album_id || index.toString()
-    );
-  }, []);
+  }, [downloadCreds]);
 
   return (
     <View style={styles.container}>
@@ -127,19 +57,14 @@ export default function DownloadSearchScreen() {
       />
 
       <View style={styles.tabBar}>
-        {(["tracks", "albums"] as SearchType[]).map((tab) => (
+        {(["tracks", "albums", "artists"] as SearchType[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[
               styles.tabButton,
               activeTab === tab && styles.tabButtonActive,
             ]}
-            onPress={() => {
-              setSongs([]);
-              setAlbums([]);
-              setPipelineError(null);
-              setActiveTab(tab);
-            }}
+            onPress={() => setActiveTab(tab)}
           >
             <Text
               style={[
@@ -153,31 +78,19 @@ export default function DownloadSearchScreen() {
         ))}
       </View>
 
-      {pipelineError && (
-        <ErrorDisplay
-          title="Download Pipeline Exception"
-          message={pipelineError}
-          onRetry={executeDownloadSearch}
-          retryButtonTitle="Retry Search Pipeline"
-        />
-      )}
-
       <View style={{ flex: 1 }}>
-        {loading ? (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#1DB954" />
+        {activeTab === "tracks" && (
+          <DownloadTracksList downloadCreds={downloadCreds} />
+        )}
+        {activeTab === "albums" && (
+          <DownloadAlbumsList downloadCreds={downloadCreds} />
+        )}
+        {activeTab === "artists" && (
+          <View style={styles.notImplementedContainer}>
+            <Text style={styles.notImplementedText}>
+              Not implemented yet, sowy :(
+            </Text>
           </View>
-        ) : (
-          <FlatList
-            data={activeTab === "tracks" ? songs : albums}
-            keyExtractor={keyExtractor}
-            renderItem={renderItem}
-            initialNumToRender={8}
-            maxToRenderPerBatch={5}
-            windowSize={3}
-            removeClippedSubviews={true}
-            showsVerticalScrollIndicator={false}
-          />
         )}
       </View>
     </View>
@@ -241,5 +154,15 @@ const styles = StyleSheet.create({
   },
   tabButtonTextActive: {
     color: "#00A3FF",
+  },
+  notImplementedContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  notImplementedText: {
+    color: "#b3b3b3",
+    fontSize: 15,
+    fontStyle: "italic",
   },
 });
