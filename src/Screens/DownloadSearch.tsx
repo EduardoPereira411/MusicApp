@@ -25,7 +25,10 @@ export default function DownloadSearchScreen() {
   const { downloadCreds } = useDownloadAuth();
   const { q } = useLocalSearchParams<{ q?: string }>();
 
-  const [query, setQuery] = useState("");
+  const query = useTextInputStore(
+    (state) => state.texts["download-search"] || "",
+  );
+
   const [activeTab, setActiveTab] = useState<SearchType>("tracks");
   const [songs, setSongs] = useState<any[]>([]);
   const [albums, setAlbums] = useState<any[]>([]);
@@ -34,27 +37,11 @@ export default function DownloadSearchScreen() {
 
   useEffect(() => {
     if (q) {
-      setQuery(q);
       useTextInputStore.getState().setTexts("download-search", q);
     }
   }, [q]);
 
-  useEffect(() => {
-    if (!query.trim()) {
-      setSongs([]);
-      setAlbums([]);
-      setPipelineError(null);
-      return;
-    }
-
-    const delayDebounce = setTimeout(() => {
-      executeDownloadSearch();
-    }, 600);
-
-    return () => clearTimeout(delayDebounce);
-  }, [query, activeTab]);
-
-  async function executeDownloadSearch() {
+  const executeDownloadSearch = useCallback(async () => {
     if (!query.trim()) return;
 
     if (!downloadCreds) {
@@ -85,7 +72,18 @@ export default function DownloadSearchScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [query, activeTab, downloadCreds]);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setSongs([]);
+      setAlbums([]);
+      setPipelineError(null);
+      return;
+    }
+
+    executeDownloadSearch();
+  }, [query, activeTab, executeDownloadSearch]);
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
@@ -126,8 +124,6 @@ export default function DownloadSearchScreen() {
         textId="download-search"
         debounceDelay={600}
         placeholder="Search YouTube Music..."
-        value={query}
-        onChangeText={setQuery}
       />
 
       <View style={styles.tabBar}>
@@ -157,12 +153,14 @@ export default function DownloadSearchScreen() {
         ))}
       </View>
 
-      <ErrorDisplay
-        title="Download Pipeline Exception"
-        message={pipelineError}
-        onRetry={executeDownloadSearch}
-        retryButtonTitle="Retry Search Pipeline"
-      />
+      {pipelineError && (
+        <ErrorDisplay
+          title="Download Pipeline Exception"
+          message={pipelineError}
+          onRetry={executeDownloadSearch}
+          retryButtonTitle="Retry Search Pipeline"
+        />
+      )}
 
       <View style={{ flex: 1 }}>
         {loading ? (
