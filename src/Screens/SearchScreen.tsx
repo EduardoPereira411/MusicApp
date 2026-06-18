@@ -19,14 +19,50 @@ export const SEARCH_PLAYBACK_CONTEXT = {
   songIndex: 0,
 };
 
+const SuggestionBanner = () => {
+  const router = useRouter();
+  const searchQuery = useTextInputStore(
+    (state) => state.texts["search-menu"] || "",
+  );
+
+  if (!searchQuery.trim()) return null;
+
+  const handleBannerPress = () => {
+    const currentQuery =
+      useTextInputStore.getState().texts["search-menu"] || "";
+
+    if (currentQuery.trim()) {
+      useTextInputStore.getState().setTexts("download-search", currentQuery);
+    }
+
+    router.push({
+      pathname: "/download-search",
+      params: { q: currentQuery },
+    });
+  };
+
+  return (
+    <TouchableOpacity
+      style={styles.suggestionBanner}
+      onPress={handleBannerPress}
+      activeOpacity={0.8}
+    >
+      <View style={styles.bannerTextGroup}>
+        <Text style={styles.suggestionTitle}>
+          Not finding what you're looking for?
+        </Text>
+        <Text style={styles.suggestionSubtitle} numberOfLines={1}>
+          Search & import "{searchQuery}" via YouTube Music ➔
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
 export default function SearchScreen() {
   const router = useRouter();
   const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
-
-  const searchQuery = useTextInputStore(
-    (state) => state.texts["search-menu"] || "",
-  );
 
   const { playSongNow: storePlaySongNow, addToQueue: storeAddToQueue } =
     useAudioActions();
@@ -47,23 +83,13 @@ export default function SearchScreen() {
     [storeAddToQueue, showToast],
   );
 
-  const handleGoToDownloader = () => {
-    if (searchQuery.trim()) {
-      useTextInputStore.getState().setTexts("download-search", searchQuery);
-    }
-    router.push({
-      pathname: "/download-search",
-      params: { q: searchQuery },
-    });
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.header}>Search</Text>
         <TouchableOpacity
           style={styles.downloaderButton}
-          onPress={handleGoToDownloader}
+          onPress={() => router.push("/download-search")}
         >
           <Text style={styles.downloaderButtonText}>Go to Downloader</Text>
         </TouchableOpacity>
@@ -75,22 +101,7 @@ export default function SearchScreen() {
         debounceDelay={600}
       />
 
-      {searchQuery.trim().length > 0 && (
-        <TouchableOpacity
-          style={styles.suggestionBanner}
-          onPress={handleGoToDownloader}
-          activeOpacity={0.8}
-        >
-          <View style={styles.bannerTextGroup}>
-            <Text style={styles.suggestionTitle}>
-              Not finding what you're looking for?
-            </Text>
-            <Text style={styles.suggestionSubtitle} numberOfLines={1}>
-              Search & import "{searchQuery}" via YouTube Music ➔
-            </Text>
-          </View>
-        </TouchableOpacity>
-      )}
+      <SuggestionBanner />
 
       <SearchSectionHeader />
 
