@@ -1,4 +1,4 @@
-// @/app/search.tsx (or wherever your SearchScreen file lives)
+// @/app/search.tsx
 import React, { useState, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useAuth } from "@/Context/AuthContext";
@@ -13,6 +13,7 @@ import {
   SearchSectionVisibilityContainer,
 } from "@/Components/Headers/SearchSectionSelector";
 import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
+import { useTextInputStore } from "@/Stores/useTextInputStore";
 
 export const SEARCH_PLAYBACK_CONTEXT = {
   type: "search" as const,
@@ -23,6 +24,10 @@ export default function SearchScreen() {
   const router = useRouter();
   const { navidromeCreds } = useAuth();
   const { showToast } = useToast();
+
+  const searchQuery = useTextInputStore(
+    (state) => state.texts["search-menu"] || "",
+  );
 
   const { playSongNow: storePlaySongNow, addToQueue: storeAddToQueue } =
     useAudioActions();
@@ -43,13 +48,23 @@ export default function SearchScreen() {
     [storeAddToQueue, showToast],
   );
 
+  const handleGoToDownloader = () => {
+    if (searchQuery.trim()) {
+      useTextInputStore.getState().setTexts("download-search", searchQuery);
+    }
+    router.push({
+      pathname: "/download-search",
+      params: { q: searchQuery },
+    });
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.header}>Search</Text>
         <TouchableOpacity
           style={styles.downloaderButton}
-          onPress={() => router.push("/download-search")}
+          onPress={handleGoToDownloader}
         >
           <Text style={styles.downloaderButtonText}>Go to Downloader</Text>
         </TouchableOpacity>
@@ -60,6 +75,23 @@ export default function SearchScreen() {
         placeholder="Artists, songs, or albums"
         debounceDelay={600}
       />
+
+      {searchQuery.trim().length > 0 && (
+        <TouchableOpacity
+          style={styles.suggestionBanner}
+          onPress={handleGoToDownloader}
+          activeOpacity={0.8}
+        >
+          <View style={styles.bannerTextGroup}>
+            <Text style={styles.suggestionTitle}>
+              Not finding what you're looking for?
+            </Text>
+            <Text style={styles.suggestionSubtitle} numberOfLines={1}>
+              Search & import "{searchQuery}" via YouTube Music ➔
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       <SearchSectionHeader />
 
@@ -130,5 +162,27 @@ const styles = StyleSheet.create({
   },
   screenWrapper: {
     flex: 1,
+  },
+  suggestionBanner: {
+    backgroundColor: "#1e1e1e",
+    borderWidth: 1,
+    borderColor: "#333",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 5,
+  },
+  bannerTextGroup: {
+    flexDirection: "column",
+  },
+  suggestionTitle: {
+    color: "#b3b3b3",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  suggestionSubtitle: {
+    color: "#00A3FF",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginTop: 4,
   },
 });

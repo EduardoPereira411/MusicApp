@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { downloadService } from "@/Services/downloadService";
 import { DownloadSongItem } from "@/Components/DownloadSongItem";
@@ -16,12 +16,14 @@ import { DownloadAlbumItem } from "@/Components/DownloadAlbumItem";
 import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
 import { useDownloadAuth } from "@/Context/DownloadContext";
+import { useTextInputStore } from "@/Stores/useTextInputStore";
 
 type SearchType = "tracks" | "albums";
 
 export default function DownloadSearchScreen() {
   const router = useRouter();
   const { downloadCreds } = useDownloadAuth();
+  const { q } = useLocalSearchParams<{ q?: string }>();
 
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<SearchType>("tracks");
@@ -29,6 +31,13 @@ export default function DownloadSearchScreen() {
   const [albums, setAlbums] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (q) {
+      setQuery(q);
+      useTextInputStore.getState().setTexts("download-search", q);
+    }
+  }, [q]);
 
   useEffect(() => {
     if (!query.trim()) {
