@@ -1,9 +1,12 @@
-// @/Components/Headers/SearchSectionSelector.tsx
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { create } from "zustand";
+import {
+  GenericSectionHeader,
+  GenericVisibilityContainer,
+} from "@/Components/Headers/GenericSectionSelector";
 
 export type SearchSectionType = "tracks" | "albums" | "artists";
+const TABS: SearchSectionType[] = ["tracks", "albums", "artists"];
 
 interface SearchTabState {
   activeSection: SearchSectionType;
@@ -17,31 +20,12 @@ export const useSearchTabStore = create<SearchTabState>((set) => ({
 
 export function SearchSectionHeader() {
   const { activeSection, setActiveSection } = useSearchTabStore();
-
   return (
-    <View style={styles.tabBar}>
-      {(["tracks", "albums", "artists"] as SearchSectionType[]).map(
-        (section) => (
-          <TouchableOpacity
-            key={section}
-            style={[
-              styles.tabButton,
-              activeSection === section && styles.tabButtonActive,
-            ]}
-            onPress={() => setActiveSection(section)}
-          >
-            <Text
-              style={[
-                styles.tabButtonText,
-                activeSection === section && styles.tabButtonTextActive,
-              ]}
-            >
-              {section.toUpperCase()}
-            </Text>
-          </TouchableOpacity>
-        ),
-      )}
-    </View>
+    <GenericSectionHeader
+      tabs={TABS}
+      activeSection={activeSection}
+      setActiveSection={setActiveSection}
+    />
   );
 }
 
@@ -54,35 +38,11 @@ export function SearchSectionVisibilityContainer({
 }) {
   const activeSection = useSearchTabStore((state) => state.activeSection);
   return (
-    <View
-      style={
-        activeSection === targetSection
-          ? styles.visibleContainer
-          : styles.hiddenContainer
-      }
+    <GenericVisibilityContainer
+      activeSection={activeSection}
+      targetSection={targetSection}
     >
       {children}
-    </View>
+    </GenericVisibilityContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    flexDirection: "row",
-    marginBottom: 20,
-    backgroundColor: "#1e1e1e",
-    borderRadius: 8,
-    padding: 4,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: "center",
-    borderRadius: 6,
-  },
-  tabButtonActive: { backgroundColor: "#282828" },
-  tabButtonText: { color: "#888888", fontSize: 12, fontWeight: "bold" },
-  tabButtonTextActive: { color: "#1DB954" },
-  visibleContainer: { flex: 1 },
-  hiddenContainer: { display: "none" },
-});

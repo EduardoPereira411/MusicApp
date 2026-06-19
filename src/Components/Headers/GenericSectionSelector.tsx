@@ -1,25 +1,22 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { create } from "zustand";
 
-export type SectionType = "tracks" | "albums" | "artists";
-
-interface TabState {
-  activeSection: SectionType;
-  setActiveSection: (section: SectionType) => void;
+interface GenericSectionSelectorProps<T extends string> {
+  tabs: T[];
+  activeSection: T;
+  setActiveSection: (section: T) => void;
+  activeTextColor?: string;
 }
 
-export const useTabStore = create<TabState>((set) => ({
-  activeSection: "tracks",
-  setActiveSection: (section) => set({ activeSection: section }),
-}));
-
-export function SectionHeader() {
-  const { activeSection, setActiveSection } = useTabStore();
-
+export function GenericSectionHeader<T extends string>({
+  tabs,
+  activeSection,
+  setActiveSection,
+  activeTextColor = "#1DB954",
+}: GenericSectionSelectorProps<T>) {
   return (
     <View style={styles.tabBar}>
-      {(["tracks", "albums", "artists"] as SectionType[]).map((section) => (
+      {tabs.map((section) => (
         <TouchableOpacity
           key={section}
           style={[
@@ -31,7 +28,7 @@ export function SectionHeader() {
           <Text
             style={[
               styles.tabButtonText,
-              activeSection === section && styles.tabButtonTextActive,
+              activeSection === section && { color: activeTextColor },
             ]}
           >
             {section.toUpperCase()}
@@ -42,14 +39,17 @@ export function SectionHeader() {
   );
 }
 
-export function SectionHeaderVisibilityContainer({
+interface VisibilityContainerProps<T extends string> {
+  activeSection: T;
+  targetSection: T;
+  children: React.ReactNode;
+}
+
+export function GenericVisibilityContainer<T extends string>({
+  activeSection,
   targetSection,
   children,
-}: {
-  targetSection: SectionType;
-  children: React.ReactNode;
-}) {
-  const activeSection = useTabStore((state) => state.activeSection);
+}: VisibilityContainerProps<T>) {
   return (
     <View
       style={
@@ -77,21 +77,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 6,
   },
-  tabButtonActive: {
-    backgroundColor: "#282828",
-  },
-  tabButtonText: {
-    color: "#888888",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  tabButtonTextActive: {
-    color: "#1DB954",
-  },
-  visibleContainer: {
-    flex: 1,
-  },
-  hiddenContainer: {
-    display: "none",
-  },
+  tabButtonActive: { backgroundColor: "#282828" },
+  tabButtonText: { color: "#888888", fontSize: 12, fontWeight: "bold" },
+  visibleContainer: { flex: 1 },
+  hiddenContainer: { display: "none" },
 });

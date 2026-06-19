@@ -5,39 +5,38 @@ import {
   GenericVisibilityContainer,
 } from "@/Components/Headers/GenericSectionSelector";
 
-export type DownloadSectionType = "tracks" | "albums" | "artists" | "videos";
-const TABS: DownloadSectionType[] = ["tracks", "albums", "artists", "videos"];
+export type HomeSectionType = "tracks" | "albums" | "artists";
+const TABS: HomeSectionType[] = ["tracks", "albums", "artists"];
 
-interface DownloadTabState {
-  activeSection: DownloadSectionType;
-  setActiveSection: (section: DownloadSectionType) => void;
+interface HomeTabState {
+  activeSection: HomeSectionType;
+  setActiveSection: (section: HomeSectionType) => void;
 }
 
-export const useDownloadTabStore = create<DownloadTabState>((set) => ({
+export const useHomeTabStore = create<HomeTabState>((set) => ({
   activeSection: "tracks",
   setActiveSection: (section) => set({ activeSection: section }),
 }));
 
-export function DownloadSectionHeader() {
-  const { activeSection, setActiveSection } = useDownloadTabStore();
+export function HomeSectionHeader() {
+  const { activeSection, setActiveSection } = useHomeTabStore();
   return (
     <GenericSectionHeader
       tabs={TABS}
       activeSection={activeSection}
       setActiveSection={setActiveSection}
-      activeTextColor="#00A3FF"
     />
   );
 }
 
-export function DownloadSectionVisibilityContainer({
+export function HomeSectionVisibilityContainer({
   targetSection,
   children,
 }: {
-  targetSection: DownloadSectionType;
+  targetSection: HomeSectionType;
   children: React.ReactNode;
 }) {
-  const activeSection = useDownloadTabStore((state) => state.activeSection);
+  const activeSection = useHomeTabStore((state) => state.activeSection);
   return (
     <GenericVisibilityContainer
       activeSection={activeSection}

@@ -6,9 +6,9 @@ import { useToast } from "@/Context/ToastContext";
 import { Song } from "@/Models/Models";
 import { SongOptionsModal } from "@/Components/Modals/SongOptionsModal";
 import {
-  SectionHeader,
-  SectionHeaderVisibilityContainer,
-} from "@/Components/Headers/TopBarSectionSelector";
+  HomeSectionHeader,
+  HomeSectionVisibilityContainer,
+} from "@/Components/Headers/HomeSectionSelector";
 import { HomepageList } from "@/Components/ItemLists/HomePageList";
 
 export const HOME_PLAYBACK_CONTEXT = { type: "home" as const };
@@ -44,10 +44,10 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <Text style={styles.header}>Dashboard Feed</Text>
 
-      <SectionHeader />
+      <HomeSectionHeader />
 
       <View style={styles.screenWrapper}>
-        <SectionHeaderVisibilityContainer targetSection="tracks">
+        <HomeSectionVisibilityContainer targetSection="tracks">
           <HomepageList
             activeSection="tracks"
             navidromeCreds={navidromeCreds}
@@ -55,9 +55,9 @@ export default function HomeScreen() {
             onSwipe={handleSwipeAddToQueue}
             context={HOME_PLAYBACK_CONTEXT}
           />
-        </SectionHeaderVisibilityContainer>
+        </HomeSectionVisibilityContainer>
 
-        <SectionHeaderVisibilityContainer targetSection="albums">
+        <HomeSectionVisibilityContainer targetSection="albums">
           <HomepageList
             activeSection="albums"
             navidromeCreds={navidromeCreds}
@@ -65,9 +65,9 @@ export default function HomeScreen() {
             onSwipe={handleSwipeAddToQueue}
             context={HOME_PLAYBACK_CONTEXT}
           />
-        </SectionHeaderVisibilityContainer>
+        </HomeSectionVisibilityContainer>
 
-        <SectionHeaderVisibilityContainer targetSection="artists">
+        <HomeSectionVisibilityContainer targetSection="artists">
           <HomepageList
             activeSection="artists"
             navidromeCreds={navidromeCreds}
@@ -75,7 +75,7 @@ export default function HomeScreen() {
             onSwipe={handleSwipeAddToQueue}
             context={HOME_PLAYBACK_CONTEXT}
           />
-        </SectionHeaderVisibilityContainer>
+        </HomeSectionVisibilityContainer>
       </View>
 
       <SongOptionsModal />

@@ -74,6 +74,13 @@ export default function DownloadSearchScreen() {
             </Text>
           </View>
         </DownloadSectionVisibilityContainer>
+        <DownloadSectionVisibilityContainer targetSection="videos">
+          <View style={styles.notImplementedContainer}>
+            <Text style={styles.notImplementedText}>
+              Not implemented yet, sowy :(
+            </Text>
+          </View>
+        </DownloadSectionVisibilityContainer>
       </View>
     </View>
   );
