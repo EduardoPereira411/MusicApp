@@ -1,21 +1,21 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
 import { useDownloadAuth } from "@/Context/DownloadContext";
 import { useTextInputStore } from "@/Stores/useTextInputStore";
-
 import { DownloadTracksList } from "@/Components/ItemLists/DownloadTracksList";
 import { DownloadAlbumsList } from "@/Components/ItemLists/DownloadAlbumsList";
-
-type SearchType = "tracks" | "albums" | "artists";
+import {
+  DownloadSectionHeader,
+  DownloadSectionVisibilityContainer,
+} from "@/Components/Headers/DownloadSectionSelector";
 
 export default function DownloadSearchScreen() {
   const router = useRouter();
   const { downloadCreds } = useDownloadAuth();
   const { q } = useLocalSearchParams<{ q?: string }>();
-  const [activeTab, setActiveTab] = useState<SearchType>("tracks");
 
   useEffect(() => {
     if (q) {
@@ -56,42 +56,24 @@ export default function DownloadSearchScreen() {
         placeholder="Search YouTube Music..."
       />
 
-      <View style={styles.tabBar}>
-        {(["tracks", "albums", "artists"] as SearchType[]).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.tabButton,
-              activeTab === tab && styles.tabButtonActive,
-            ]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text
-              style={[
-                styles.tabButtonText,
-                activeTab === tab && styles.tabButtonTextActive,
-              ]}
-            >
-              {tab.toUpperCase()}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <DownloadSectionHeader />
 
-      <View style={{ flex: 1 }}>
-        {activeTab === "tracks" && (
+      <View style={styles.screenWrapper}>
+        <DownloadSectionVisibilityContainer targetSection="tracks">
           <DownloadTracksList downloadCreds={downloadCreds} />
-        )}
-        {activeTab === "albums" && (
+        </DownloadSectionVisibilityContainer>
+
+        <DownloadSectionVisibilityContainer targetSection="albums">
           <DownloadAlbumsList downloadCreds={downloadCreds} />
-        )}
-        {activeTab === "artists" && (
+        </DownloadSectionVisibilityContainer>
+
+        <DownloadSectionVisibilityContainer targetSection="artists">
           <View style={styles.notImplementedContainer}>
             <Text style={styles.notImplementedText}>
               Not implemented yet, sowy :(
             </Text>
           </View>
-        )}
+        </DownloadSectionVisibilityContainer>
       </View>
     </View>
   );
@@ -116,11 +98,6 @@ const styles = StyleSheet.create({
   titleTextGroup: {
     flex: 1,
   },
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   header: {
     color: "#fff",
     fontSize: 24,
@@ -131,29 +108,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
-  tabBar: {
-    flexDirection: "row",
-    marginBottom: 20,
-    backgroundColor: "#1e1e1e",
-    borderRadius: 8,
-    padding: 4,
-  },
-  tabButton: {
+  screenWrapper: {
     flex: 1,
-    paddingVertical: 8,
-    alignItems: "center",
-    borderRadius: 6,
-  },
-  tabButtonActive: {
-    backgroundColor: "#282828",
-  },
-  tabButtonText: {
-    color: "#888888",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  tabButtonTextActive: {
-    color: "#00A3FF",
   },
   notImplementedContainer: {
     flex: 1,
