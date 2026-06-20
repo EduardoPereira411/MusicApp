@@ -55,41 +55,42 @@ export const DownloadSongItem = React.memo(
     const artworkUrl = item.album_cover || "";
 
     return (
-      <View style={styles.container}>
+      <View style={styles.itemCard}>
         <Image
           source={
             artworkUrl
               ? { uri: artworkUrl }
               : require("@/assets/images/icon.png")
           }
-          style={styles.coverArt}
+          style={styles.cardArt}
           contentFit="cover"
           transition={200}
           recyclingKey={artworkUrl}
         />
-        <View style={styles.textContainer}>
-          <Text style={styles.title} numberOfLines={1}>
+        <View style={styles.infoContainer}>
+          <Text style={styles.mainText} numberOfLines={1}>
             {item.song_name}
           </Text>
-          <Text style={styles.subtitle} numberOfLines={1}>
-            {item.artist} {item.album_name ? `• ${item.album_name}` : ""}
+          <Text style={styles.subText} numberOfLines={1}>
+            {item.artist} {item.album_name ? `• ${item.album_name}` : ""}{" "}
+            {item.song_duration
+              ? `• ${formatDuration(item.song_duration)}`
+              : ""}
           </Text>
-          {item.song_duration ? (
-            <Text style={styles.durationText}>
-              {formatDuration(item.song_duration)}
-            </Text>
-          ) : null}
         </View>
 
         <TouchableOpacity
-          style={[styles.button, isDownloading && styles.buttonDisabled]}
+          style={[
+            styles.downloadButton,
+            isDownloading && styles.disabledButton,
+          ]}
           onPress={handleDownload}
           disabled={isDownloading}
         >
           {isDownloading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Get</Text>
+            <Text style={styles.downloadButtonText}>Get</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -98,23 +99,38 @@ export const DownloadSongItem = React.memo(
 );
 
 const styles = StyleSheet.create({
-  container: {
+  itemCard: {
+    backgroundColor: "#1e1e1e",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    backgroundColor: "#121212",
+    borderWidth: 1,
+    borderColor: "rgba(0, 163, 255, 0.15)",
   },
-  coverArt: {
-    width: 50,
-    height: 50,
-    borderRadius: 4,
+  cardArt: {
+    width: 55,
+    height: 55,
+    borderRadius: 6,
     backgroundColor: "#282828",
+    marginRight: 14,
   },
-  textContainer: { flex: 1, marginLeft: 14, justifyContent: "center" },
-  title: { color: "#fff", fontSize: 15, fontWeight: "600", marginBottom: 2 },
-  subtitle: { color: "#b3b3b3", fontSize: 13, marginBottom: 2 },
-  durationText: { color: "#666", fontSize: 11 },
-  button: {
+  infoContainer: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  mainText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  subText: {
+    color: "#b3b3b3",
+    fontSize: 13,
+  },
+  downloadButton: {
     backgroundColor: "#00A3FF",
     paddingVertical: 6,
     paddingHorizontal: 16,
@@ -122,6 +138,12 @@ const styles = StyleSheet.create({
     minWidth: 60,
     alignItems: "center",
   },
-  buttonDisabled: { backgroundColor: "#333" },
-  buttonText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
+  disabledButton: {
+    backgroundColor: "#333",
+  },
+  downloadButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 13,
+  },
 });

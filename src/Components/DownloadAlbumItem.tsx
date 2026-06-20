@@ -53,8 +53,8 @@ export const DownloadAlbumItem = React.memo(
     return (
       <>
         <TouchableOpacity
-          style={styles.container}
-          activeOpacity={0.7}
+          style={styles.itemCard}
+          activeOpacity={0.8}
           onPress={() => setModalVisible(true)}
         >
           <Image
@@ -63,23 +63,23 @@ export const DownloadAlbumItem = React.memo(
                 ? { uri: artworkUrl }
                 : require("@/assets/images/icon.png")
             }
-            style={styles.coverArt}
+            style={styles.cardArt}
             contentFit="cover"
             transition={200}
             recyclingKey={artworkUrl}
           />
-          <View style={styles.textContainer}>
-            <Text style={styles.name} numberOfLines={1}>
+          <View style={styles.infoContainer}>
+            <Text style={styles.mainText} numberOfLines={1}>
               {displayTitle}
             </Text>
-            <Text style={styles.details} numberOfLines={1}>
+            <Text style={styles.subText} numberOfLines={1}>
               {item.album_type || "Album"} • {item.artist}
             </Text>
           </View>
 
           <TouchableOpacity
             style={[
-              styles.getButton,
+              styles.downloadButton,
               isDownloadingAll && styles.disabledButton,
             ]}
             onPress={handleDownloadFullAlbum}
@@ -88,7 +88,7 @@ export const DownloadAlbumItem = React.memo(
             {isDownloadingAll ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.getButtonText}>Get</Text>
+              <Text style={styles.downloadButtonText}>Get</Text>
             )}
           </TouchableOpacity>
         </TouchableOpacity>
@@ -105,22 +105,38 @@ export const DownloadAlbumItem = React.memo(
 );
 
 const styles = StyleSheet.create({
-  container: {
+  itemCard: {
+    backgroundColor: "#1e1e1e",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    backgroundColor: "#121212",
+    borderWidth: 1,
+    borderColor: "rgba(0, 163, 255, 0.15)",
   },
-  coverArt: {
-    width: 64,
-    height: 64,
+  cardArt: {
+    width: 55,
+    height: 55,
     borderRadius: 6,
     backgroundColor: "#282828",
+    marginRight: 14,
   },
-  textContainer: { flex: 1, marginLeft: 14, justifyContent: "center" },
-  name: { color: "#fff", fontSize: 16, fontWeight: "600", marginBottom: 4 },
-  details: { color: "#b3b3b3", fontSize: 13 },
-  getButton: {
+  infoContainer: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  mainText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  subText: {
+    color: "#b3b3b3",
+    fontSize: 13,
+  },
+  downloadButton: {
     backgroundColor: "#00A3FF",
     paddingVertical: 6,
     paddingHorizontal: 16,
@@ -128,6 +144,12 @@ const styles = StyleSheet.create({
     minWidth: 60,
     alignItems: "center",
   },
-  disabledButton: { backgroundColor: "#333" },
-  getButtonText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
+  disabledButton: {
+    backgroundColor: "#333",
+  },
+  downloadButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 13,
+  },
 });
