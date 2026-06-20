@@ -13,6 +13,7 @@ import {
 import GlobalMiniPlayer from "@/Components/GlobalMiniPlayer";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ExpandedPlayerModal } from "@/Components/Modals/ExpandedPlayerModal";
+import { useNavigationStore } from "@/Stores/useNavigationStore";
 
 LogBox.ignoreLogs(["Dispatching media control event"]);
 const originalLog = console.log;
@@ -34,6 +35,13 @@ console.log = (...args) => {
 function InnerRootLayout() {
   const segments = useSegments();
   const router = useRouter();
+
+  const setIsInTabs = useNavigationStore((state) => state.setIsInTabs);
+
+  useEffect(() => {
+    const checkTabs = segments[0] === "(tabs)";
+    setIsInTabs(checkTabs);
+  }, [segments, setIsInTabs]);
   const { navidromeCreds, isLoading } = useAuth();
 
   const nativePlayerInstance = useAudioPlayer();

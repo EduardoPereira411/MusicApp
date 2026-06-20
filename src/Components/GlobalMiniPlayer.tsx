@@ -1,7 +1,11 @@
 import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigationStore } from "@/Stores/useNavigationStore";
+import Animated, {
+  useAnimatedStyle,
+  withTiming,
+} from "react-native-reanimated";
 import {
   useAudioActions,
   useAudioQueue,
@@ -48,44 +52,58 @@ export default function GlobalMiniPlayer() {
   const openFullPlayer = () => openModal("expanded-player");
 
   const insets = useSafeAreaInsets();
-
+  const isInTabs = useNavigationStore((state) => state.isInTabs);
   const currentSong = useCurrentSong();
+  const animatedStyle = useAnimatedStyle(() => {
+    const translateY = isInTabs ? 0 : 49;
+
+    return {
+      transform: [
+        {
+          translateY: withTiming(translateY, {
+            duration: 200,
+          }),
+        },
+      ],
+    };
+  });
 
   if (!currentSong) return null;
 
-  const dynamicBottom = 49 + insets.bottom + 8;
-
   return (
-    <>
-      <View pointerEvents={isPlayerVisible ? "none" : "auto"}>
-        <View style={[styles.miniPlayerContainer, { bottom: dynamicBottom }]}>
-          <View style={styles.topRow}>
-            <TouchableOpacity
-              style={styles.metaClickableArea}
-              onPress={openFullPlayer}
-              activeOpacity={0.7}
-            >
-              <MiniPlayerMeta song={currentSong} />
-            </TouchableOpacity>
+    <Animated.View
+      pointerEvents={isPlayerVisible ? "none" : "auto"}
+      style={[
+        styles.miniPlayerContainer,
+        { bottom: 49 + insets.bottom + 8 },
+        animatedStyle,
+      ]}
+    >
+      <View style={styles.topRow}>
+        <TouchableOpacity
+          style={styles.metaClickableArea}
+          onPress={openFullPlayer}
+          activeOpacity={0.7}
+        >
+          <MiniPlayerMeta song={currentSong} />
+        </TouchableOpacity>
 
-            <View style={styles.controlsContainer}>
-              <PreviousButton style={styles.controlButton} />
-              <PlayPauseButton
-                size={38}
-                style={styles.playButton}
-                color="#1DB954"
-                isCurrent={true}
-              />
-              <NextButton style={styles.controlButton} />
-            </View>
-          </View>
-
-          <View style={styles.sliderContainer}>
-            <AudioSlider style={styles.slider} />
-          </View>
+        <View style={styles.controlsContainer}>
+          <PreviousButton style={styles.controlButton} />
+          <PlayPauseButton
+            size={38}
+            style={styles.playButton}
+            color="#1DB954"
+            isCurrent={true}
+          />
+          <NextButton style={styles.controlButton} />
         </View>
       </View>
-    </>
+
+      <View style={styles.sliderContainer}>
+        <AudioSlider style={styles.slider} />
+      </View>
+    </Animated.View>
   );
 }
 

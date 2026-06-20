@@ -6,5 +6,8 @@
 - Components to Optimize
   - MediaCollectionItem and perhaps SongItem
   - DownloadSongItem and DownloadAlbumItem
-- Screens to optimize
-  - Download Search and Search - MAke is so searches are more optimized instead of doing all of the same time even if user doesn't consume them (also maybe show loading feedback when issuing query)
+- Modals
+  - Implement prettier modals for where I have Alert
+- Add tracker for download status, and perhaps make it so the user can add the song straught to the queue once the download is finished
+- Add functionality for song lyrics
+- Add functionality to browse artists and download raw videos, and edit metadata of videos download
