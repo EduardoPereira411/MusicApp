@@ -8,10 +8,10 @@ import {
   Alert,
 } from "react-native";
 import { Image } from "expo-image";
-import { AlbumTracksModal } from "@/Components/AlbumTracksModal";
 import { downloadService } from "@/Services/downloadService";
 import { DownloadAlbumMetadata } from "@/Models/Models";
 import { useDownloadAuth } from "@/Context/DownloadContext";
+import { useUiStore } from "@/Stores/useUIStore";
 
 interface DownloadAlbumItemProps {
   item: DownloadAlbumMetadata;
@@ -21,7 +21,14 @@ export const DownloadAlbumItem = React.memo(
   ({ item }: DownloadAlbumItemProps) => {
     const { downloadCreds } = useDownloadAuth();
 
-    const [modalVisible, setModalVisible] = useState(false);
+    const openModal = useUiStore((state) => state.openModal);
+
+    const handlePress = React.useCallback(() => {
+      openModal("album-tracks-modal", {
+        albumId: item.album_id,
+        albumTitle: item.album_name,
+      });
+    }, [item.album_id, item.album_name]);
     const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
     const displayTitle = item.album_name || (item as any).title;
@@ -55,7 +62,7 @@ export const DownloadAlbumItem = React.memo(
         <TouchableOpacity
           style={styles.itemCard}
           activeOpacity={0.8}
-          onPress={() => setModalVisible(true)}
+          onPress={handlePress}
         >
           <Image
             source={
@@ -92,13 +99,6 @@ export const DownloadAlbumItem = React.memo(
             )}
           </TouchableOpacity>
         </TouchableOpacity>
-
-        <AlbumTracksModal
-          visible={modalVisible}
-          albumId={displayId}
-          albumTitle={displayTitle}
-          onClose={() => setModalVisible(false)}
-        />
       </>
     );
   },

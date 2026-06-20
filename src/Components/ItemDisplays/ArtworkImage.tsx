@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { StyleSheet, View, Text } from "react-native";
 import { Image, ImageProps } from "expo-image";
 import { useAuth } from "@/Context/AuthContext";
+import { useDownloadAuth } from "@/Context/DownloadContext";
 import { getArtworkUrl } from "@/Services/navidromeService";
 
 interface ArtworkImageProps extends Omit<Partial<ImageProps>, "source"> {
@@ -9,6 +10,7 @@ interface ArtworkImageProps extends Omit<Partial<ImageProps>, "source"> {
   size?: number;
   type?: "track" | "album" | "artist" | "playlist";
   fallbackName?: string;
+  isDownloadSource?: boolean;
 }
 
 export const ArtworkImage = React.memo(
@@ -20,16 +22,22 @@ export const ArtworkImage = React.memo(
     style,
     transition = 200,
     cachePolicy = "memory-disk",
+    isDownloadSource = false,
     ...restProps
   }: ArtworkImageProps) => {
     const { navidromeCreds } = useAuth();
+    const { downloadCreds } = useDownloadAuth();
 
     const artworkUrl = useMemo(() => {
+      if (isDownloadSource) {
+        return coverArtId || null;
+      }
+
       if (navidromeCreds && coverArtId) {
         return getArtworkUrl(navidromeCreds, coverArtId, size);
       }
       return null;
-    }, [navidromeCreds, coverArtId, size]);
+    }, [navidromeCreds, downloadCreds, coverArtId, size, isDownloadSource]);
 
     const isArtist = type === "artist";
 

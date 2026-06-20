@@ -14,10 +14,12 @@ import { useDownloadAuth } from "@/Context/DownloadContext";
 
 interface DownloadSongItemProps {
   item: DownloadTrackMetadata;
+  index?: number;
+  showTrackNumber?: boolean;
 }
 
 export const DownloadSongItem = React.memo(
-  ({ item }: DownloadSongItemProps) => {
+  ({ item, index, showTrackNumber = true }: DownloadSongItemProps) => {
     const { downloadCreds } = useDownloadAuth();
     const [isDownloading, setIsDownloading] = React.useState(false);
 
@@ -56,17 +58,22 @@ export const DownloadSongItem = React.memo(
 
     return (
       <View style={styles.itemCard}>
-        <Image
-          source={
-            artworkUrl
-              ? { uri: artworkUrl }
-              : require("@/assets/images/icon.png")
-          }
-          style={styles.cardArt}
-          contentFit="cover"
-          transition={200}
-          recyclingKey={artworkUrl}
-        />
+        {showTrackNumber && typeof index === "number" ? (
+          <Text style={styles.trackNumberText}>{index + 1}</Text>
+        ) : (
+          <Image
+            source={
+              artworkUrl
+                ? { uri: artworkUrl }
+                : require("@/assets/images/icon.png")
+            }
+            style={styles.cardArt}
+            contentFit="cover"
+            transition={200}
+            recyclingKey={artworkUrl}
+          />
+        )}
+
         <View style={styles.infoContainer}>
           <Text style={styles.mainText} numberOfLines={1}>
             {item.song_name}
@@ -101,13 +108,22 @@ export const DownloadSongItem = React.memo(
 const styles = StyleSheet.create({
   itemCard: {
     backgroundColor: "#1e1e1e",
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderRadius: 8,
-    marginBottom: 12,
+    marginBottom: 10,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(0, 163, 255, 0.15)",
+    borderColor: "rgba(0, 163, 255, 0.08)",
+  },
+  trackNumberText: {
+    color: "#b3b3b3",
+    fontSize: 14,
+    width: 28,
+    textAlign: "center",
+    marginRight: 10,
+    fontWeight: "500",
   },
   cardArt: {
     width: 55,
@@ -137,6 +153,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     minWidth: 60,
     alignItems: "center",
+    marginLeft: 12,
   },
   disabledButton: {
     backgroundColor: "#333",
