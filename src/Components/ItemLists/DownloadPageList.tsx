@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { DownloadTrackMetadata, DownloadAlbumMetadata } from "@/Models/Models";
 import { downloadService } from "@/Services/downloadService";
@@ -24,6 +24,8 @@ export const DownloadPageList = ({
     (state) => state.activeSection,
   );
 
+  const lastSearchedQueryRef = useRef<string | null>(null);
+
   const [dataStore, setDataStore] = useState<{
     tracks: DownloadTrackMetadata[];
     albums: DownloadAlbumMetadata[];
@@ -35,10 +37,6 @@ export const DownloadPageList = ({
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   const executeSearch = useCallback(async () => {
-    if (activeSection !== globalActiveSection) {
-      return;
-    }
-
     if (!query.trim() || !downloadCreds) {
       return;
     }
@@ -57,6 +55,7 @@ export const DownloadPageList = ({
         );
         setDataStore((prev) => ({ ...prev, albums: results || [] }));
       }
+      lastSearchedQueryRef.current = query;
     } catch (e: any) {
       setPipelineError(
         e.message || `Failed to search remote ${activeSection}.`,
@@ -64,10 +63,16 @@ export const DownloadPageList = ({
     } finally {
       setLoading(false);
     }
-  }, [query, downloadCreds, activeSection, globalActiveSection]);
+  }, [query, downloadCreds, activeSection]);
 
   useEffect(() => {
-    executeSearch();
+    if (activeSection !== globalActiveSection) {
+      return;
+    }
+
+    if (query !== lastSearchedQueryRef.current) {
+      executeSearch();
+    }
   }, [query, activeSection, globalActiveSection, executeSearch]);
 
   if (loading && dataStore[activeSection].length === 0) {
