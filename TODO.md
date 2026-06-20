@@ -7,4 +7,4 @@
   - MediaCollectionItem and perhaps SongItem
   - DownloadSongItem and DownloadAlbumItem
 - Screens to optimize
-  - Download Search and Search - maybe also find a way to merge them into one?
+  - Download Search and Search - MAke is so searches are more optimized instead of doing all of the same time even if user doesn't consume them (also maybe show loading feedback when issuing query)

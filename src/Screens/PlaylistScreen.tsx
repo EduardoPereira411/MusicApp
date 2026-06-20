@@ -60,7 +60,7 @@ export default function PlaylistScreen() {
       if (type === "artist") {
         setCollections(result.collections || []);
         setSongs([]);
-        setCollectionCoverArt("");
+        setCollectionCoverArt(result.coverArt || "");
       } else {
         setSongs(result.songs || []);
         setCollections([]);
@@ -77,9 +77,6 @@ export default function PlaylistScreen() {
 
   // Calculate only the stable cover art ID reference string
   const targetCoverArtId = useMemo(() => {
-    if (type === "artist" && collections.length > 0) {
-      return collections.find((c) => c.coverArt)?.coverArt || "";
-    }
     if (collectionCoverArt) {
       return collectionCoverArt;
     }

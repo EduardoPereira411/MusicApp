@@ -336,7 +336,7 @@ export async function searchAll(
         type: "artist",
         subItemCount: artist.albumCount,
         subtitle: `${artist.albumCount || 0} Albums`,
-        coverArt: "",
+        coverArt: artist.coverArt,
       }));
 
     return { songs, albums, artists };
@@ -376,7 +376,7 @@ export async function fetchArtists(
             type: "artist",
             subItemCount: art.albumCount,
             subtitle: `${art.albumCount || 0} Albums`,
-            coverArt: "",
+            coverArt: art.coverArt,
           });
         });
       }
@@ -420,6 +420,7 @@ export async function fetchCollectionDetails(
 
       const artistData = subResponse?.artist;
       if (!artistData) return { collections: [] };
+      const artistCoverArt = artistData.coverArt || "";
 
       const rawAlbums = artistData.album || [];
       const albumsArray = Array.isArray(rawAlbums) ? rawAlbums : [rawAlbums];
@@ -433,7 +434,7 @@ export async function fetchCollectionDetails(
         coverArt: album.coverArt || album.id,
       }));
 
-      return { collections: albums };
+      return { collections: albums, coverArt: artistCoverArt };
     }
 
     const endpoint = type === "playlist" ? "getPlaylist.view" : "getAlbum.view";

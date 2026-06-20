@@ -37,7 +37,7 @@ export const ArtworkImage = React.memo(
       return (
         <Image
           source={{ uri: artworkUrl }}
-          style={[styles.baseArt, isArtist && styles.artistAvatar, style]}
+          style={[styles.baseArt, style, isArtist && styles.artistAvatar]}
           transition={transition}
           cachePolicy={cachePolicy}
           recyclingKey={artworkUrl}
@@ -52,9 +52,9 @@ export const ArtworkImage = React.memo(
         <View
           style={[
             styles.baseArt,
+            style,
             styles.artistAvatar,
             styles.placeholder,
-            style,
           ]}
         >
           <Text style={styles.avatarText}>
