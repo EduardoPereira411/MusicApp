@@ -1,8 +1,8 @@
 import React, { useCallback } from "react";
 import { FlatList, StyleSheet } from "react-native";
 import { DownloadTrackMetadata, DownloadAlbumMetadata } from "@/Models/Models";
-import { DownloadSongItem } from "@/Components/DownloadSongItem";
-import { DownloadAlbumItem } from "@/Components/DownloadAlbumItem";
+import { DownloadSongItem } from "@/Components/ItemDisplays/DownloadSongItem";
+import { DownloadAlbumItem } from "@/Components/ItemDisplays/DownloadAlbumItem";
 
 interface DownloadItemFlatListProps {
   data: (DownloadTrackMetadata | DownloadAlbumMetadata)[];
