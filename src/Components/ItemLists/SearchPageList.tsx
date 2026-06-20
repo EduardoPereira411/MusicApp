@@ -1,4 +1,10 @@
-import { useCallback, useState, useEffect, useRef } from "react";
+import React, {
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+} from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import {
   Song,
@@ -20,6 +26,15 @@ interface SearchPageListProps {
   onSwipe: (song: Song) => void;
   context: PlaybackContext;
 }
+
+const RenderEmptyState = React.memo(({ query }: { query: string }) => {
+  if (query.trim()) {
+    return <Text style={styles.emptyText}>No results found for "{query}"</Text>;
+  }
+  return (
+    <Text style={styles.emptyText}>Type something to begin your search.</Text>
+  );
+});
 
 export const SearchPageList = ({
   activeSection,
@@ -87,6 +102,11 @@ export const SearchPageList = ({
     }
   }, [query, activeSection, globalActiveSection, executeSearch]);
 
+  const renderEmpty = useMemo(
+    () => <RenderEmptyState query={query} />,
+    [query],
+  );
+
   if (loading && dataStore[activeSection].length === 0) {
     return (
       <View style={styles.centerContainer}>
@@ -115,15 +135,7 @@ export const SearchPageList = ({
       onSwipe={onSwipe}
       context={context}
       windowSize={11}
-      ListEmptyComponent={
-        query.trim() ? (
-          <Text style={styles.emptyText}>No results found for "{query}"</Text>
-        ) : (
-          <Text style={styles.emptyText}>
-            Type something to begin your search.
-          </Text>
-        )
-      }
+      ListEmptyComponent={renderEmpty}
     />
   );
 };
