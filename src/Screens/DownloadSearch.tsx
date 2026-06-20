@@ -5,8 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import IndependentUpdateTextInput from "@/Components/TextInputs/IndependentUpdateTextInput";
 import { useDownloadAuth } from "@/Context/DownloadContext";
 import { useTextInputStore } from "@/Stores/useTextInputStore";
-import { DownloadTracksList } from "@/Components/ItemLists/DownloadTracksList";
-import { DownloadAlbumsList } from "@/Components/ItemLists/DownloadAlbumsList";
+import { DownloadPageList } from "@/Components/ItemLists/DownloadPageList";
 import {
   DownloadSectionHeader,
   DownloadSectionVisibilityContainer,
@@ -60,11 +59,17 @@ export default function DownloadSearchScreen() {
 
       <View style={styles.screenWrapper}>
         <DownloadSectionVisibilityContainer targetSection="tracks">
-          <DownloadTracksList downloadCreds={downloadCreds} />
+          <DownloadPageList
+            activeSection="tracks"
+            downloadCreds={downloadCreds}
+          />
         </DownloadSectionVisibilityContainer>
 
         <DownloadSectionVisibilityContainer targetSection="albums">
-          <DownloadAlbumsList downloadCreds={downloadCreds} />
+          <DownloadPageList
+            activeSection="albums"
+            downloadCreds={downloadCreds}
+          />
         </DownloadSectionVisibilityContainer>
 
         <DownloadSectionVisibilityContainer targetSection="artists">
