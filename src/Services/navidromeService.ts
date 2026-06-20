@@ -274,6 +274,7 @@ export async function fetchAlbums(
 export async function searchAll(
   creds: NavidromeCredentials,
   query: string,
+  section?: "tracks" | "albums" | "artists",
 ): Promise<{
   songs: Song[];
   albums: SharedCollectionData[];
@@ -284,7 +285,11 @@ export async function searchAll(
     if (!params) throw new Error("Missing structural auth properties.");
     if (!query.trim()) return { songs: [], albums: [], artists: [] };
 
-    const url = `${creds.serverUrl}/rest/search3.view?${params}&query=${encodeURIComponent(query)}&songCount=30&albumCount=30&artistCount=30`;
+    const songCount = !section || section === "tracks" ? 30 : 0;
+    const albumCount = !section || section === "albums" ? 30 : 0;
+    const artistCount = !section || section === "artists" ? 30 : 0;
+
+    const url = `${creds.serverUrl}/rest/search3.view?${params}&query=${encodeURIComponent(query)}&songCount=${songCount}&albumCount=${albumCount}&artistCount=${artistCount}`;
     const response = await fetch(url);
     if (!response.ok)
       throw new Error(`Server connection error: ${response.status}`);

@@ -1,5 +1,4 @@
-// @/Components/ItemLists/SearchPageList.tsx
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import {
   Song,
@@ -11,6 +10,7 @@ import { searchAll } from "@/Services/navidromeService";
 import { ErrorDisplay } from "@/Components/ItemDisplays/ErrorDisplay";
 import { ItemFlatList } from "@/Components/ItemLists/ItemFlatList";
 import { useTextInputStore } from "@/Stores/useTextInputStore";
+import { useSearchTabStore } from "../Headers/SearchSectionSelector";
 
 interface SearchPageListProps {
   activeSection: "tracks" | "albums" | "artists";
@@ -30,6 +30,10 @@ export const SearchPageList = ({
   context,
 }: SearchPageListProps) => {
   const query = useTextInputStore((state) => state.texts["search-menu"] || "");
+  const globalActiveSection = useSearchTabStore((state) => state.activeSection);
+
+  const lastSearchedQueryRef = useRef<string | null>(null);
+
   const [dataStore, setDataStore] = useState<{
     tracks: Song[];
     albums: SharedCollectionData[];
@@ -41,7 +45,7 @@ export const SearchPageList = ({
 
   const executeSearch = useCallback(async () => {
     if (!query.trim() || !navidromeCreds) {
-      setDataStore({ tracks: [], albums: [], artists: [] });
+      setDataStore((prev) => ({ ...prev, [activeSection]: [] }));
       setPipelineError(null);
       return;
     }
@@ -50,12 +54,20 @@ export const SearchPageList = ({
     setPipelineError(null);
 
     try {
-      const result = await searchAll(navidromeCreds, query);
-      setDataStore({
-        tracks: result.songs || [],
-        albums: result.albums || [],
-        artists: result.artists || [],
+      const result = await searchAll(navidromeCreds, query, activeSection);
+
+      setDataStore((prev) => {
+        if (activeSection === "tracks") {
+          return { ...prev, tracks: result.songs || [] };
+        } else if (activeSection === "albums") {
+          return { ...prev, albums: result.albums || [] };
+        } else if (activeSection === "artists") {
+          return { ...prev, artists: result.artists || [] };
+        }
+        return prev;
       });
+
+      lastSearchedQueryRef.current = query;
     } catch (e: any) {
       setPipelineError(
         e.message || "Failed to finalize content search parameters.",
@@ -63,14 +75,19 @@ export const SearchPageList = ({
     } finally {
       setLoading(false);
     }
-  }, [query, navidromeCreds]);
+  }, [query, navidromeCreds, activeSection]);
 
-  // Handle Debounce internally
   useEffect(() => {
-    executeSearch();
-  }, [query, executeSearch]);
+    if (activeSection !== globalActiveSection) {
+      return;
+    }
 
-  if (loading) {
+    if (query !== lastSearchedQueryRef.current) {
+      executeSearch();
+    }
+  }, [query, activeSection, globalActiveSection, executeSearch]);
+
+  if (loading && dataStore[activeSection].length === 0) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#1DB954" />
