@@ -10,9 +10,82 @@ import {
 import { ToastType } from "@/Stores/useToastStore";
 import { useShallow } from "zustand/react/shallow";
 import { useCallback } from "react";
+import { scheduleOnRN } from "react-native-worklets";
 
+let queueIdCounter = 0;
 const generateUniqueId = (): string =>
-  `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  `track-${Date.now()}-${queueIdCounter++}`;
+
+function processQueueBackground(
+  song: Song,
+  currentQueue: QueueSong[],
+  playingIndex: number,
+  contextSongs: Song[] | undefined,
+  determinedContext: PlaybackContext,
+  callback: (result: {
+    newQueue: QueueSong[];
+    updatedPools: { userQueue: QueueSong[]; contextQueue: Song[] };
+  }) => void,
+) {
+  "worklet";
+
+  const preservedUserQueue =
+    playingIndex >= 0
+      ? currentQueue
+          .slice(playingIndex + 1)
+          .filter((track) => track.origin === "user")
+      : [];
+
+  let incomingContextQueue: QueueSong[] = [];
+  let contextPoolTracks: Song[] = [];
+
+  if (contextSongs && contextSongs.length > 0) {
+    const idx = contextSongs.findIndex((s) => s.id === song.id);
+    const relativeContext = idx !== -1 ? contextSongs.slice(idx) : contextSongs;
+    const baseIndex = idx !== -1 ? idx : (determinedContext.songIndex ?? 0);
+
+    contextPoolTracks = relativeContext.map((track, offset) => ({
+      ...track,
+      playbackContext: { ...determinedContext, songIndex: baseIndex + offset },
+    }));
+
+    incomingContextQueue = contextPoolTracks.slice(0, 5).map((track) => ({
+      ...track,
+      origin: "auto" as const,
+      clientQueueId: generateUniqueId(),
+    }));
+  } else {
+    const singleTrack: QueueSong = {
+      ...song,
+      origin: "user" as const,
+      clientQueueId: generateUniqueId(),
+      playbackContext: determinedContext,
+    };
+    incomingContextQueue = [singleTrack];
+    contextPoolTracks = [singleTrack];
+  }
+
+  const currentTrackBase = incomingContextQueue[0] || {
+    ...song,
+    origin: "user" as const,
+    clientQueueId: generateUniqueId(),
+    playbackContext: determinedContext,
+  };
+
+  const finalUpcomingContext = incomingContextQueue.slice(1);
+  const newQueue = [
+    currentTrackBase,
+    ...preservedUserQueue,
+    ...finalUpcomingContext,
+  ];
+
+  const updatedPools = {
+    userQueue: preservedUserQueue,
+    contextQueue: contextPoolTracks,
+  };
+
+  scheduleOnRN(callback, { newQueue, updatedPools });
+}
 
 interface AudioState {
   queue: QueueSong[];
@@ -278,74 +351,6 @@ export const audioActions: AudioActions = {
     }
 
     try {
-      const preservedUserQueue =
-        playingSongQueueIndex >= 0
-          ? queue
-              .slice(playingSongQueueIndex + 1)
-              .filter((track) => track.origin === "user")
-          : [];
-
-      let incomingContextQueue: QueueSong[] = [];
-      let contextPoolTracks: Song[] = [];
-
-      if (contextSongs && contextSongs.length > 0) {
-        const idx = contextSongs.findIndex((s) => s.id === song.id);
-        const relativeContext =
-          idx !== -1 ? contextSongs.slice(idx) : contextSongs;
-        const baseIndex = idx !== -1 ? idx : (determinedContext.songIndex ?? 0);
-
-        contextPoolTracks = relativeContext.map((track, offset) => ({
-          ...track,
-          playbackContext: {
-            ...determinedContext,
-            songIndex: baseIndex + offset,
-          },
-        }));
-
-        incomingContextQueue = contextPoolTracks.slice(0, 5).map((track) => ({
-          ...track,
-          origin: "auto" as const,
-          clientQueueId: generateUniqueId(),
-        }));
-      } else {
-        const singleTrack: QueueSong = {
-          ...song,
-          origin: "user" as const,
-          clientQueueId: generateUniqueId(),
-          playbackContext: determinedContext,
-        };
-        incomingContextQueue = [singleTrack];
-        contextPoolTracks = [singleTrack];
-      }
-
-      const currentTrackBase = incomingContextQueue[0] || {
-        ...song,
-        origin: "user" as const,
-        clientQueueId: generateUniqueId(),
-        playbackContext: determinedContext,
-      };
-
-      const finalUpcomingContext = incomingContextQueue.slice(1);
-      const newQueue = [
-        currentTrackBase,
-        ...preservedUserQueue,
-        ...finalUpcomingContext,
-      ];
-      const updatedPools = {
-        userQueue: preservedUserQueue,
-        contextQueue: contextPoolTracks,
-      };
-
-      if (isSameSong) {
-        set({
-          queue: newQueue,
-          playingSongQueueIndex: 0,
-          pools: updatedPools,
-          lookAheadError: false,
-        });
-        return;
-      }
-
       const url = getStreamUrl(cachedCreds, song.id);
       if (!url) throw new Error("Failed to format media stream URL.");
 
@@ -354,9 +359,7 @@ export const audioActions: AudioActions = {
         : null;
 
       set({
-        queue: newQueue,
         playingSongQueueIndex: 0,
-        pools: updatedPools,
         lookAheadError: false,
         hasUpdatedDuration: false,
         currentArtworkUrl: artworkUrl,
@@ -364,6 +367,20 @@ export const audioActions: AudioActions = {
 
       player.replace({ uri: url });
       player.play();
+
+      processQueueBackground(
+        song,
+        queue,
+        playingSongQueueIndex,
+        contextSongs,
+        determinedContext,
+        (result) => {
+          set({
+            queue: result.newQueue,
+            pools: result.updatedPools,
+          });
+        },
+      );
     } catch (err: any) {
       if (showToast) {
         showToast(
