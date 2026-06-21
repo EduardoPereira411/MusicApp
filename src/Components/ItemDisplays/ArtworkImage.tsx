@@ -26,7 +26,6 @@ export const ArtworkImage = React.memo(
     ...restProps
   }: ArtworkImageProps) => {
     const { navidromeCreds } = useAuth();
-    const { downloadCreds } = useDownloadAuth();
 
     const artworkUrl = useMemo(() => {
       if (isDownloadSource) {
@@ -37,7 +36,7 @@ export const ArtworkImage = React.memo(
         return getArtworkUrl(navidromeCreds, coverArtId, size);
       }
       return null;
-    }, [navidromeCreds, downloadCreds, coverArtId, size, isDownloadSource]);
+    }, [navidromeCreds, coverArtId, size, isDownloadSource]);
 
     const isArtist = type === "artist";
 
