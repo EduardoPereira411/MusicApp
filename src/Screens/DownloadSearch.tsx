@@ -10,7 +10,7 @@ import {
   DownloadSectionHeader,
   DownloadSectionVisibilityContainer,
 } from "@/Components/Headers/DownloadSectionSelector";
-import { AlbumTracksModal } from "@/Components/AlbumTracksModal";
+import { AlbumTracksModal } from "@/Components/Modals/AlbumTracksModal";
 
 export default function DownloadSearchScreen() {
   const router = useRouter();
