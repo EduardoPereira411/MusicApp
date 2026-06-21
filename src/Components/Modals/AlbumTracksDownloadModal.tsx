@@ -19,7 +19,7 @@ import { useUiStore } from "@/Stores/useUIStore";
 
 const MODAL_ID = "album-tracks-modal";
 
-export function AlbumTracksModal() {
+export function AlbumTracksDownloadModal() {
   const insets = useSafeAreaInsets();
   const { downloadCreds } = useDownloadAuth();
 
