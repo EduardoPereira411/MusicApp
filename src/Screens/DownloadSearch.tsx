@@ -21,6 +21,9 @@ export default function DownloadSearchScreen() {
     if (q) {
       useTextInputStore.getState().setTexts("download-search", q);
     }
+    return () => {
+      useTextInputStore.getState().setTexts("download-search", "");
+    };
   }, [q]);
 
   useEffect(() => {

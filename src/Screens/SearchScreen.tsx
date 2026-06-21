@@ -25,8 +25,6 @@ const SuggestionBanner = () => {
     (state) => state.texts["search-menu"] || "",
   );
 
-  if (!searchQuery.trim()) return null;
-
   const handleBannerPress = () => {
     const currentQuery =
       useTextInputStore.getState().texts["search-menu"] || "";
@@ -41,6 +39,8 @@ const SuggestionBanner = () => {
     });
   };
 
+  const hasQuery = searchQuery.trim().length > 0;
+
   return (
     <TouchableOpacity
       style={styles.suggestionBanner}
@@ -49,10 +49,14 @@ const SuggestionBanner = () => {
     >
       <View style={styles.bannerTextGroup}>
         <Text style={styles.suggestionTitle}>
-          Not finding what you're looking for?
+          {hasQuery
+            ? "Not finding what you're looking for?"
+            : "Song not present on the server?"}
         </Text>
         <Text style={styles.suggestionSubtitle} numberOfLines={1}>
-          Search & import "{searchQuery}" via YouTube Music ➔
+          {hasQuery
+            ? `Search & import "${searchQuery}" via YouTube Music ➔`
+            : "Go to Downloader to get it ➔"}
         </Text>
       </View>
     </TouchableOpacity>
@@ -87,12 +91,6 @@ export default function SearchScreen() {
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.header}>Search</Text>
-        <TouchableOpacity
-          style={styles.downloaderButton}
-          onPress={() => router.push("/download-search")}
-        >
-          <Text style={styles.downloaderButtonText}>Go to Downloader</Text>
-        </TouchableOpacity>
       </View>
 
       <IndependentUpdateTextInput
@@ -159,16 +157,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 24,
     fontWeight: "bold",
-  },
-  downloaderButton: {
-    backgroundColor: "#282828",
-    padding: 8,
-    borderRadius: 20,
-  },
-  downloaderButtonText: {
-    color: "#00A3FF",
-    fontWeight: "bold",
-    fontSize: 13,
   },
   screenWrapper: {
     flex: 1,
