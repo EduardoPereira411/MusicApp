@@ -113,7 +113,8 @@ export function AlbumTracksDownloadModal() {
   );
 
   const keyExtractor = useCallback((item: any, index: number) => {
-    return item.download_url || index.toString();
+    const trackId = item.id || item.track_id || "track";
+    return `${item.download_url || trackId}-${index}`;
   }, []);
 
   const renderListHeader = useMemo(() => {
