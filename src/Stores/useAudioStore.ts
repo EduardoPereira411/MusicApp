@@ -100,6 +100,7 @@ interface AudioState {
     contextQueue: Song[];
   };
   hasUpdatedDuration: boolean;
+  currentTime: number;
 }
 
 interface AudioActions {
@@ -155,6 +156,7 @@ const useAudioStore = create<AudioState>(() => ({
   cachedCreds: null,
   pools: { userQueue: [], contextQueue: [] },
   hasUpdatedDuration: false,
+  currentTime: 0,
 }));
 
 const set = useAudioStore.setState;
@@ -193,6 +195,11 @@ export const audioActions: AudioActions = {
         const state = get();
         const currentSong = state.queue[state.playingSongQueueIndex] || null;
 
+        if (statusUpdate.currentTime !== undefined) {
+          if (get().currentTime !== statusUpdate.currentTime) {
+            set({ currentTime: statusUpdate.currentTime });
+          }
+        }
         if (statusUpdate.didJustFinish) {
           if (state.playingSongQueueIndex < state.queue.length - 1) {
             audioActions.loadSongAtIndex(state.playingSongQueueIndex + 1);
@@ -591,6 +598,7 @@ export const audioActions: AudioActions = {
       playing: false,
       cachedCreds: null,
       currentArtworkUrl: null,
+      currentTime: 0,
       pools: { userQueue: [], contextQueue: [] },
     });
     MediaControl.updateMetadata({
@@ -710,3 +718,5 @@ export const useHasPreviousTrack = () =>
   useAudioStore((s) => s.playingSongQueueIndex > 0);
 
 export const useAudioActions = () => audioActions;
+export const useAudioCurrentTime = () =>
+  useAudioStore((state) => state.currentTime);

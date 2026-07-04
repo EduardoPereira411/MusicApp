@@ -1,6 +1,11 @@
 import * as SecureStore from "expo-secure-store";
 import md5 from "md5";
-import { Song, SharedCollectionData } from "@/Models/Models";
+import {
+  Song,
+  SharedCollectionData,
+  LyricLine,
+  SongLyricsData,
+} from "@/Models/Models";
 import { NavidromeCredentials } from "@/Models/Models";
 
 const KEYS = {
@@ -204,6 +209,60 @@ export async function addTrackToPlaylist(
   }
 }
 
+export async function fetchSongLyrics(
+  creds: NavidromeCredentials,
+  songId: string,
+): Promise<SongLyricsData | null> {
+  try {
+    const params = getSubsonicAuthParams(creds);
+    if (!params) throw new Error("Missing structural auth properties.");
+
+    const url = `${creds.serverUrl}/rest/getLyricsBySongId.view?${params}&id=${songId}`;
+
+    const response = await fetch(url);
+    if (!response.ok)
+      throw new Error(`Server connection error: ${response.status}`);
+
+    const data = await response.json();
+    const subResponse = data["subsonic-response"];
+    if (subResponse?.status === "failed") {
+      throw new Error(
+        subResponse.error?.message || "Lyrics payload request denied.",
+      );
+    }
+
+    const lyricsList = subResponse?.lyricsList;
+    if (!lyricsList) return null;
+
+    const rawStructuredLyrics = lyricsList?.structuredLyrics;
+    const structuredLyrics = Array.isArray(rawStructuredLyrics)
+      ? rawStructuredLyrics[0]
+      : rawStructuredLyrics;
+
+    if (!structuredLyrics) return null;
+
+    const rawLines = structuredLyrics.line || [];
+    const linesArray = Array.isArray(rawLines) ? rawLines : [rawLines];
+
+    const lines: LyricLine[] = linesArray.map((line: any) => ({
+      start: line.start !== undefined ? Number(line.start) : undefined,
+      value: line.value || "",
+    }));
+
+    return {
+      artist: structuredLyrics.artist || "Unknown Artist",
+      title: structuredLyrics.title || "Unknown Title",
+      synced:
+        typeof structuredLyrics.synced === "string"
+          ? structuredLyrics.synced === "true"
+          : !!structuredLyrics.synced,
+      lines,
+    };
+  } catch (e: any) {
+    console.warn(`Failed fetching lyrics down stream: ${e.message || e}`);
+    return null;
+  }
+}
 export async function fetchTracks(
   creds: NavidromeCredentials,
 ): Promise<Song[]> {

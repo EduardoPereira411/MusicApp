@@ -14,6 +14,7 @@ import GlobalMiniPlayer from "@/Components/GlobalMiniPlayer";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ExpandedPlayerModal } from "@/Components/Modals/ExpandedPlayerModal";
 import { useNavigationStore } from "@/Stores/useNavigationStore";
+import { LyricsModal } from "@/Components/Modals/LyricsModal";
 
 LogBox.ignoreLogs(["Dispatching media control event"]);
 const originalLog = console.log;
@@ -126,6 +127,7 @@ export default function RootLayout() {
             <RecommendationsOrchestrator />
             <InnerRootLayout />
             <ExpandedPlayerModal />
+            <LyricsModal />
           </ToastProvider>
         </DownloadProvider>
       </AuthProvider>

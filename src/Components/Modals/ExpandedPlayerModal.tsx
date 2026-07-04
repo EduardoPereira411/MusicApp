@@ -44,6 +44,7 @@ export function ExpandedPlayerModal() {
   };
   const openQueue = () => openModal("queue-modal");
   const closeQueue = () => closeModal("queue-modal");
+  const openLyricsModal = () => openModal("lyrics");
 
   const currentSong = useCurrentSong();
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
@@ -106,10 +107,20 @@ export function ExpandedPlayerModal() {
             <TouchableOpacity onPress={closePlayer} style={styles.iconButton}>
               <Ionicons name="chevron-down" size={28} color="#fff" />
             </TouchableOpacity>
+
             <Text style={styles.headerTitle}>Now Playing</Text>
-            <TouchableOpacity onPress={openQueue} style={styles.iconButton}>
-              <Ionicons name="list" size={24} color="#fff" />
-            </TouchableOpacity>
+
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TouchableOpacity
+                onPress={openLyricsModal}
+                style={[styles.iconButton, { marginRight: 12 }]}
+              >
+                <Ionicons name="mic-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={openQueue} style={styles.iconButton}>
+                <Ionicons name="list" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.artworkContainer}>
