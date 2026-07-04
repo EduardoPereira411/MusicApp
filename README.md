@@ -35,3 +35,9 @@ eas build --platform android --profile preview
 ```
 npm run build:temp
 ```
+
+2. The generated file is in:
+
+```
+android/app/build/outputs/apk/release/app-release.apk
+```
