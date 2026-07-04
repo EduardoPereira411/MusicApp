@@ -12,11 +12,22 @@ interface DownloadItemFlatListProps {
 }
 
 export const DownloadItemFlatList = React.memo(
-  ({ data, isTracks, windowSize = 5 }: DownloadItemFlatListProps) => {
+  ({
+    data,
+    isTracks,
+    windowSize = 5,
+    ListEmptyComponent,
+  }: DownloadItemFlatListProps) => {
     const renderItem = useCallback(
       ({ item }: { item: DownloadTrackMetadata | DownloadAlbumMetadata }) => {
         if (isTracks) {
-          return <DownloadSongItem item={item as DownloadTrackMetadata} />;
+          return (
+            <DownloadSongItem
+              item={item as DownloadTrackMetadata}
+              autocompleteOnDownload={isTracks}
+              getLyricsOnDownload={isTracks}
+            />
+          );
         }
         return <DownloadAlbumItem item={item as DownloadAlbumMetadata} />;
       },
@@ -27,14 +38,13 @@ export const DownloadItemFlatList = React.memo(
       <FlatList
         data={data}
         keyExtractor={(item, index) => {
-          return (
-            (item as any).download_url ||
-            (item as any).album_id ||
-            (item as any).browseId ||
-            index.toString()
-          );
+          if (isTracks) {
+            return (item as DownloadTrackMetadata).video_id || index.toString();
+          }
+          return (item as DownloadAlbumMetadata).album_id || index.toString();
         }}
         renderItem={renderItem}
+        ListEmptyComponent={ListEmptyComponent}
         contentContainerStyle={styles.listContainer}
         initialNumToRender={8}
         maxToRenderPerBatch={5}

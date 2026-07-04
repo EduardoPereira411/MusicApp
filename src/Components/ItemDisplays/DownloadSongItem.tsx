@@ -13,13 +13,21 @@ import { DownloadTrackMetadata } from "@/Models/Models";
 import { useDownloadAuth } from "@/Context/DownloadContext";
 
 interface DownloadSongItemProps {
-  item: DownloadTrackMetadata;
+  item: DownloadTrackMetadata & { artists?: string[]; artist?: string };
   index?: number;
   showTrackNumber?: boolean;
+  autocompleteOnDownload?: boolean;
+  getLyricsOnDownload?: boolean;
 }
 
 export const DownloadSongItem = React.memo(
-  ({ item, index, showTrackNumber = true }: DownloadSongItemProps) => {
+  ({
+    item,
+    index,
+    showTrackNumber = true,
+    autocompleteOnDownload = false,
+    getLyricsOnDownload = false,
+  }: DownloadSongItemProps) => {
     const { downloadCreds } = useDownloadAuth();
     const [isDownloading, setIsDownloading] = React.useState(false);
 
@@ -34,6 +42,8 @@ export const DownloadSongItem = React.memo(
         const response = await downloadService.downloadTrack(
           downloadCreds,
           item,
+          autocompleteOnDownload,
+          getLyricsOnDownload,
         );
         if (response && response.status === "accepted") {
           Alert.alert("Success", `Started downloading: ${item.song_name}`);
@@ -55,6 +65,10 @@ export const DownloadSongItem = React.memo(
     };
 
     const artworkUrl = item.album_cover || "";
+
+    const displayArtists = Array.isArray(item.artists)
+      ? item.artists.join(", ")
+      : item.artist || "Unknown Artist";
 
     return (
       <View style={styles.itemCard}>
@@ -79,7 +93,7 @@ export const DownloadSongItem = React.memo(
             {item.song_name}
           </Text>
           <Text style={styles.subText} numberOfLines={1}>
-            {item.artist} {item.album_name ? `• ${item.album_name}` : ""}{" "}
+            {displayArtists} {item.album_name ? `• ${item.album_name}` : ""}{" "}
             {item.song_duration
               ? `• ${formatDuration(item.song_duration)}`
               : ""}

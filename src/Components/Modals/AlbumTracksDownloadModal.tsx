@@ -16,6 +16,7 @@ import { downloadService } from "@/Services/downloadService";
 import { useDownloadAuth } from "@/Context/DownloadContext";
 import { ArtworkImage } from "@/Components/ItemDisplays/ArtworkImage";
 import { useUiStore } from "@/Stores/useUIStore";
+import { DownloadTrackMetadata, SimpleTrackMetadata } from "@/Models/Models";
 
 const MODAL_ID = "album-tracks-modal";
 
@@ -30,7 +31,7 @@ export function AlbumTracksDownloadModal() {
   const albumId = modalPayload?.albumId;
   const albumTitle = modalPayload?.albumTitle || "";
 
-  const [tracks, setTracks] = useState<any[]>([]);
+  const [tracks, setTracks] = useState<DownloadTrackMetadata[]>([]);
   const [loading, setLoading] = useState(false);
   const [bulkDownloading, setBulkDownloading] = useState(false);
   const [albumMeta, setAlbumMeta] = useState({ coverArt: "", artist: "" });
@@ -52,26 +53,38 @@ export function AlbumTracksDownloadModal() {
 
     setLoading(true);
     try {
-      const data = await downloadService.getAlbumTracks(
-        downloadCreds,
-        albumId,
-        false,
-      );
+      const data = await downloadService.getAlbumTracks(downloadCreds, albumId);
 
-      if (data && data.results) {
-        const albumCover = data.album_cover || "";
-        const releaseYear = data.release || "1900";
-        const artistName = data.artist || "";
+      if (data && data.results && data.results[0]) {
+        const structuralDetails = data.results[0];
+        const albumCover = structuralDetails.album_cover || "";
+        const releaseYear = structuralDetails.release || "1900";
+        const artistName = Array.isArray(structuralDetails.artists)
+          ? structuralDetails.artists.join(", ")
+          : "";
 
         setAlbumMeta({ coverArt: albumCover, artist: artistName });
 
-        const enrichedTracks = data.results.map((track: any) => ({
-          ...track,
-          album_cover: albumCover,
-          release: releaseYear,
-          artist: artistName,
-          album_name: data.album_name || albumTitle,
-        }));
+        const rawTracks: SimpleTrackMetadata[] =
+          structuralDetails.results || [];
+
+        const enrichedTracks: DownloadTrackMetadata[] = rawTracks.map(
+          (track) => ({
+            song_name: track.song_name,
+            video_id: track.video_id,
+            song_duration: track.song_duration,
+            track_number: track.track_number,
+            is_explicit: track.is_explicit,
+            isrc: track.isrc,
+            album_cover: albumCover,
+            release: releaseYear,
+            artists: Array.isArray(structuralDetails.artists)
+              ? structuralDetails.artists
+              : [artistName],
+            album_name: structuralDetails.album_name || albumTitle,
+            album_id: albumId,
+          }),
+        );
 
         setTracks(enrichedTracks);
       }
@@ -86,17 +99,24 @@ export function AlbumTracksDownloadModal() {
     if (!downloadCreds || !albumId) return;
 
     setBulkDownloading(true);
-    const data = await downloadService.getAlbumTracks(
-      downloadCreds,
-      albumId,
-      true,
-    );
-    if (data) {
-      Alert.alert("Success", "All tracks added to the download queue!");
-    } else {
-      Alert.alert("Error", "Failed executing bulk downloads.");
+    try {
+      const response = await downloadService.downloadAlbum(
+        downloadCreds,
+        albumId,
+      );
+      if (response && response.status === "accepted") {
+        Alert.alert(
+          "Success",
+          `All tracks added to download queue! Task ID: ${response.task_id}`,
+        );
+      } else {
+        Alert.alert("Error", "Failed executing bulk downloads.");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Bulk action failure.");
+    } finally {
+      setBulkDownloading(false);
     }
-    setBulkDownloading(false);
   };
 
   const handleClose = () => {
@@ -104,17 +124,21 @@ export function AlbumTracksDownloadModal() {
   };
 
   const renderItem = useCallback(
-    ({ item, index }: { item: any; index: number }) => {
+    ({ item, index }: { item: DownloadTrackMetadata; index: number }) => {
       return (
-        <DownloadSongItem item={item} index={index} showTrackNumber={true} />
+        <DownloadSongItem
+          item={item}
+          index={index}
+          showTrackNumber={true}
+          getLyricsOnDownload={true}
+        />
       );
     },
     [],
   );
 
-  const keyExtractor = useCallback((item: any, index: number) => {
-    const trackId = item.id || item.track_id || "track";
-    return `${item.download_url || trackId}-${index}`;
+  const keyExtractor = useCallback((item: DownloadTrackMetadata) => {
+    return item.video_id;
   }, []);
 
   const renderListHeader = useMemo(() => {
@@ -194,7 +218,7 @@ export function AlbumTracksDownloadModal() {
 
         {loading ? (
           <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#1DB954" />
+            <ActivityIndicator size="large" color="#00A3FF" />
           </View>
         ) : (
           <FlatList

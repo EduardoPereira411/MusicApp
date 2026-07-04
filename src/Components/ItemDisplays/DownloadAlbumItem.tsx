@@ -43,18 +43,25 @@ export const DownloadAlbumItem = React.memo(
 
       setIsDownloadingAll(true);
 
-      const response = await downloadService.getAlbumTracks(
-        downloadCreds,
-        displayId,
-        true,
-      );
+      try {
+        const response = await downloadService.downloadAlbum(
+          downloadCreds,
+          displayId,
+        );
 
-      if (response) {
-        Alert.alert("Success", `Queued full album download!`);
-      } else {
-        Alert.alert("Error", "Failed to queue album download.");
+        if (response && response.status === "accepted") {
+          Alert.alert(
+            "Success",
+            `Queued full album download! Task ID: ${response.task_id}`,
+          );
+        } else {
+          Alert.alert("Error", "Failed to queue album download.");
+        }
+      } catch (error: any) {
+        Alert.alert("Error", error.message || "Failed execution.");
+      } finally {
+        setIsDownloadingAll(false);
       }
-      setIsDownloadingAll(false);
     };
 
     return (
@@ -80,7 +87,7 @@ export const DownloadAlbumItem = React.memo(
               {displayTitle}
             </Text>
             <Text style={styles.subText} numberOfLines={1}>
-              {item.album_type || "Album"} • {item.artist}
+              {item.album_type || "Album"} • {item.artists}
             </Text>
           </View>
 

@@ -48,7 +48,7 @@ export interface Artist {
 export interface DownloadAlbumMetadata {
   album_name: string;
   album_id: string;
-  artist: string;
+  artists: string[];
   release?: string;
   album_cover?: string;
   album_type?: string;
@@ -57,12 +57,39 @@ export interface DownloadAlbumMetadata {
 
 export interface DownloadTrackMetadata {
   song_name: string;
-  artist: string;
+  artists: string[];
+  video_id: string;
   album_name?: string;
+  album_id?: string;
   track_number?: string;
   release?: string;
   album_cover?: string;
-  download_url: string;
   song_duration?: number;
-  source: string;
+  is_explicit?: boolean;
+  isrc?: string | null;
+}
+
+export interface SimpleTrackMetadata {
+  song_name: string;
+  video_id: string;
+  is_explicit: boolean;
+  track_number: string;
+  song_duration?: number;
+  isrc?: string | null;
+}
+
+export interface AlbumTrackSearchResponse extends DownloadAlbumMetadata {
+  results: SimpleTrackMetadata[];
+}
+
+export interface LyricLine {
+  start?: number;
+  value: string;
+}
+
+export interface SongLyricsData {
+  artist: string;
+  title: string;
+  synced: boolean;
+  lines: LyricLine[];
 }
