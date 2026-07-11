@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Linking,
 } from "react-native";
 import { Image } from "expo-image";
 import { downloadService } from "@/Services/downloadService";
@@ -57,6 +58,37 @@ export const DownloadSongItem = React.memo(
       }
     };
 
+    const handleOpenInYTMusic = () => {
+      const videoId = item.video_id || (item as any).videoId;
+
+      if (!videoId) {
+        Alert.alert("Error", "No video ID found for this track.");
+        return;
+      }
+
+      Alert.alert(
+        "Open in YouTube Music",
+        `Would you like to open "${item.song_name}" on YouTube Music?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Yes",
+            onPress: async () => {
+              const url = `https://music.youtube.com/watch?v=${videoId}`;
+              try {
+                await Linking.openURL(url);
+              } catch (error) {
+                Alert.alert(
+                  "Error",
+                  "An error occurred trying to open the app or browser.",
+                );
+              }
+            },
+          },
+        ],
+      );
+    };
+
     const formatDuration = (seconds?: number) => {
       if (!seconds) return "";
       const mins = Math.floor(seconds / 60);
@@ -72,33 +104,39 @@ export const DownloadSongItem = React.memo(
 
     return (
       <View style={styles.itemCard}>
-        {showTrackNumber && typeof index === "number" ? (
-          <Text style={styles.trackNumberText}>{index + 1}</Text>
-        ) : (
-          <Image
-            source={
-              artworkUrl
-                ? { uri: artworkUrl }
-                : require("@/assets/images/icon.png")
-            }
-            style={styles.cardArt}
-            contentFit="cover"
-            transition={200}
-            recyclingKey={artworkUrl}
-          />
-        )}
+        <TouchableOpacity
+          style={styles.clickableArea}
+          onPress={handleOpenInYTMusic}
+          activeOpacity={0.7}
+        >
+          {showTrackNumber && typeof index === "number" ? (
+            <Text style={styles.trackNumberText}>{index + 1}</Text>
+          ) : (
+            <Image
+              source={
+                artworkUrl
+                  ? { uri: artworkUrl }
+                  : require("@/assets/images/icon.png")
+              }
+              style={styles.cardArt}
+              contentFit="cover"
+              transition={200}
+              recyclingKey={artworkUrl}
+            />
+          )}
 
-        <View style={styles.infoContainer}>
-          <Text style={styles.mainText} numberOfLines={1}>
-            {item.song_name}
-          </Text>
-          <Text style={styles.subText} numberOfLines={1}>
-            {displayArtists} {item.album_name ? `• ${item.album_name}` : ""}{" "}
-            {item.song_duration
-              ? `• ${formatDuration(item.song_duration)}`
-              : ""}
-          </Text>
-        </View>
+          <View style={styles.infoContainer}>
+            <Text style={styles.mainText} numberOfLines={1}>
+              {item.song_name}
+            </Text>
+            <Text style={styles.subText} numberOfLines={1}>
+              {displayArtists} {item.album_name ? `• ${item.album_name}` : ""}{" "}
+              {item.song_duration
+                ? `• ${formatDuration(item.song_duration)}`
+                : ""}
+            </Text>
+          </View>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[
@@ -122,14 +160,20 @@ export const DownloadSongItem = React.memo(
 const styles = StyleSheet.create({
   itemCard: {
     backgroundColor: "#1e1e1e",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
     borderRadius: 8,
     marginBottom: 10,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(0, 163, 255, 0.08)",
+    paddingRight: 14,
+  },
+  clickableArea: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingLeft: 14,
   },
   trackNumberText: {
     color: "#b3b3b3",

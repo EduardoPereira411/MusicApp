@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -119,6 +120,35 @@ export function AlbumTracksDownloadModal() {
     }
   };
 
+  const handleOpenAlbumInYTMusic = () => {
+    if (!albumId) {
+      Alert.alert("Error", "No album ID found for this context.");
+      return;
+    }
+
+    Alert.alert(
+      "Open in YouTube Music",
+      `Would you like to open "${albumTitle}" on YouTube Music?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes",
+          onPress: async () => {
+            const url = `https://music.youtube.com/browse/${albumId}`;
+            try {
+              await Linking.openURL(url);
+            } catch (error) {
+              Alert.alert(
+                "Error",
+                "An error occurred trying to open the app or browser.",
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const handleClose = () => {
     closeModal(MODAL_ID);
   };
@@ -187,11 +217,28 @@ export function AlbumTracksDownloadModal() {
                   name="cloud-download"
                   size={18}
                   color="#fff"
-                  style={{ marginRight: 8 }}
+                  style={{ marginRight: 6 }}
                 />
-                <Text style={styles.actionButtonText}>Download All Songs</Text>
+                <Text style={styles.actionButtonText} numberOfLines={1}>
+                  Download All
+                </Text>
               </>
             )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.secondaryActionButton]}
+            onPress={handleOpenAlbumInYTMusic}
+          >
+            <Ionicons
+              name="open-outline"
+              size={18}
+              color="#fff"
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.actionButtonText} numberOfLines={1}>
+              YT Music
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -327,24 +374,30 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginBottom: 16,
   },
+  // 4. Clean side-by-side flex layout configurations
   actionButtonGroup: {
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
     width: "100%",
+    gap: 12, // Spaces the buttons evenly without breaking layout
   },
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     height: 44,
-    paddingHorizontal: 32,
+    paddingHorizontal: 16,
     borderRadius: 22,
-    maxWidth: 280,
-    flex: 1,
+    flex: 1, // Ensures buttons share available room equally
   },
   downloadMainButton: {
     backgroundColor: "#00A3FF",
+  },
+  secondaryActionButton: {
+    backgroundColor: "#242424",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
   bulkDisabled: {
     backgroundColor: "#333",
